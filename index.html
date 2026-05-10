@@ -656,7 +656,7 @@
   </button>
 </div>
 
-<!-- Onboarding step 1: pick service -->
+<!-- Onboarding step 1: pick service (tap-to-advance) -->
 <div id="ob-service-screen" class="onboard" hidden>
   <div class="ob-inner">
     <div class="ob-hero">
@@ -671,28 +671,10 @@
         <button type="button" data-service="spotify">Spotify</button>
       </div>
     </div>
-    <button type="button" id="ob-service-go" class="ob-go" disabled data-i18n="ob.next"></button>
   </div>
 </div>
 
-<!-- Onboarding step 2: log in -->
-<div id="ob-login-screen" class="onboard" hidden>
-  <div class="ob-inner">
-    <div class="ob-hero">
-      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
-      <h1 data-i18n="login.h1"></h1>
-      <div class="sub" data-i18n="login.sub"></div>
-    </div>
-    <div class="ob-note">
-      <span data-i18n="login.text1"></span>
-      <a class="open-link" id="login-open-link" target="_blank" rel="noopener" data-i18n="login.open"></a>
-    </div>
-    <button type="button" id="login-confirm" class="ob-go" data-i18n="login.confirm"></button>
-    <button type="button" id="login-back" class="ob-secondary" data-i18n="back"></button>
-  </div>
-</div>
-
-<!-- Onboarding step 3: pick user -->
+<!-- Onboarding step 2: pick user -->
 <div id="ob-who-screen" class="onboard" hidden>
   <div class="ob-inner">
     <div class="ob-hero">
@@ -820,12 +802,9 @@
       'ob.h1': 'Музыка к венчанию',
       'ob.sub': '12 июля 2026 · Франция',
       'ob.service': 'Через что слушаешь',
+      'ob.serviceHint': 'Чтобы играли полные треки, войди в {service} на этом устройстве',
+      'ob.serviceOpenLink': 'Открыть {service} →',
       'ob.next': 'Дальше',
-      'login.h1': 'Войди в {service}',
-      'login.sub': 'Без подписки треки играют только 30 секунд',
-      'login.text1': 'Открой {service} в этом Safari и войди под своим аккаунтом. Это надо сделать один раз.',
-      'login.open': 'Открыть {service} →',
-      'login.confirm': 'Я вошла, продолжить',
       'back': '← Назад',
       'welcome.h1': 'С возвращением',
       'welcome.sub': 'Кто из вас сегодня?',
@@ -882,12 +861,9 @@
       'ob.h1': 'Wedding music',
       'ob.sub': 'July 12, 2026 · France',
       'ob.service': 'Service',
+      'ob.serviceHint': 'For full tracks, sign in to {service} on this device',
+      'ob.serviceOpenLink': 'Open {service} →',
       'ob.next': 'Next',
-      'login.h1': 'Sign in to {service}',
-      'login.sub': 'Without a subscription, tracks play only 30 seconds',
-      'login.text1': 'Open {service} in this Safari and sign in. You only need to do this once.',
-      'login.open': 'Open {service} →',
-      'login.confirm': "I'm signed in, continue",
       'back': '← Back',
       'welcome.h1': 'Welcome back',
       'welcome.sub': 'Who is here today?',
@@ -977,7 +953,6 @@
   /* ===== screen routing ===== */
   const screens = {
     obService: document.getElementById('ob-service-screen'),
-    obLogin: document.getElementById('ob-login-screen'),
     obWho: document.getElementById('ob-who-screen'),
     discovery: document.getElementById('discovery')
   };
@@ -988,48 +963,22 @@
     topBarEl.hidden = (name !== 'discovery');
   }
 
-  /* ===== Onboarding step 1: pick service ===== */
-  let pickedService = '';
-  const obServiceGo = document.getElementById('ob-service-go');
+  /* ===== Onboarding step 1: pick service (TAP TO ADVANCE) ===== */
   document.querySelectorAll('#ob-service button').forEach(b => {
     b.addEventListener('click', () => {
-      pickedService = b.dataset.service;
+      service = b.dataset.service;
+      lsSet(K_SERVICE, service);
       document.querySelectorAll('#ob-service button').forEach(x => x.classList.toggle('active', x === b));
-      obServiceGo.disabled = false;
+      // advance immediately to user-pick (or discovery if user already known)
+      setTimeout(() => {
+        if (userName) showDiscovery();
+        else showScreen('obWho');
+      }, 220);
     });
   });
-  obServiceGo.addEventListener('click', () => {
-    if (obServiceGo.disabled) return;
-    service = pickedService;
-    lsSet(K_SERVICE, service);
-    showScreen('obLogin');
-    refreshLoginScreen();
-  });
+  function refreshLoginScreen() { /* removed: no longer a separate screen */ }
 
-  /* ===== Onboarding step 2: log in ===== */
-  function refreshLoginScreen() {
-    const name = service === 'spotify' ? 'Spotify' : 'Apple Music';
-    const href = service === 'spotify' ? 'https://open.spotify.com' : 'https://music.apple.com';
-    const h1 = document.querySelector('#ob-login-screen [data-i18n="login.h1"]');
-    if (h1) h1.textContent = t('login.h1', { service: name });
-    const text = document.querySelector('#ob-login-screen [data-i18n="login.text1"]');
-    if (text) text.textContent = t('login.text1', { service: name });
-    const link = document.getElementById('login-open-link');
-    if (link) {
-      link.href = href;
-      link.textContent = t('login.open', { service: name });
-    }
-  }
-  document.getElementById('login-confirm').addEventListener('click', () => {
-    loginConfirmed = true;
-    lsSet(K_LOGIN_CONFIRMED, '1');
-    if (userName) showDiscovery(); else showScreen('obWho');
-  });
-  document.getElementById('login-back').addEventListener('click', () => {
-    showScreen('obService');
-  });
-
-  /* ===== Onboarding step 3: pick user ===== */
+  /* ===== Onboarding step 2: pick user ===== */
   document.querySelectorAll('#ob-user button').forEach(b => {
     b.addEventListener('click', () => {
       userName = b.dataset.user;
@@ -1493,9 +1442,6 @@
   applyStaticI18n();
   if (!service) {
     showScreen('obService');
-  } else if (!loginConfirmed) {
-    showScreen('obLogin');
-    refreshLoginScreen();
   } else if (!userName) {
     showScreen('obWho');
   } else {
