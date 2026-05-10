@@ -125,7 +125,7 @@
   nav.track-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
   nav.track-nav .nav-jump { flex: 1; text-align: center; font-weight: 600; }
 
-  main#tracks { padding: 20px 16px 140px; max-width: 640px; margin: 0 auto; }
+  main#tracks { padding: 20px 16px 40px; max-width: 640px; margin: 0 auto; }
 
   article.track { display: none; }
   article.track[data-active] {
@@ -195,23 +195,6 @@
   .saved-flag { display: inline-block; font-size: 12px; color: var(--text-dim); margin-top: 6px; opacity: 0; transition: opacity 0.3s; }
   .saved-flag.show { opacity: 1; }
 
-  footer.app-footer {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: rgba(13,13,15,0.95);
-    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    border-top: 1px solid var(--border);
-    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
-    text-align: center; z-index: 100;
-  }
-  footer.app-footer button {
-    appearance: none; background: var(--accent); color: #0d0d0f;
-    border: 0; border-radius: 12px; padding: 14px 22px;
-    font-size: 15px; font-weight: 600; font-family: inherit;
-    cursor: pointer; width: 100%; max-width: 360px;
-    -webkit-tap-highlight-color: transparent;
-  }
-  footer.app-footer button:active { opacity: 0.85; }
-
   /* Jump-to sheet */
   .sheet-backdrop {
     position: fixed; inset: 0;
@@ -250,6 +233,20 @@
   .sheet-row .sr-artist { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sheet-row .sr-rating { font-size: 13px; color: var(--text-dim); width: 50px; text-align: right; flex-shrink: 0; }
   .sheet-row .sr-rating.has { color: var(--accent); font-weight: 600; }
+  .sheet-divider { height: 1px; background: var(--border); margin: 14px 4px 12px; }
+  .sheet-action {
+    width: 100%; appearance: none;
+    background: var(--accent); color: #0d0d0f;
+    border: 0; border-radius: 12px; padding: 14px 22px;
+    font-family: inherit; font-size: 15px; font-weight: 600;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    min-height: 48px;
+    transition: opacity 0.15s;
+  }
+  .sheet-action:disabled { opacity: 0.55; cursor: not-allowed; }
+  .sheet-action-hint {
+    margin: 8px 4px 0; font-size: 12px; color: var(--text-dim); text-align: center;
+  }
 
   .toast {
     position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%);
@@ -313,10 +310,6 @@
     <article class="track" data-id="t5" data-artist="Технология" data-title="Танцы вдвоём" data-category="Юля" data-spotify="5mmbea1smg4V4Pm46ua7vr"></article>
     <article class="track" data-id="t6" data-artist="Coldplay" data-title="The Scientist" data-category="Вилла" data-spotify="75JFxkI2RXiU7L9VXzMkle"></article>
   </main>
-
-  <footer class="app-footer">
-    <button id="send-report">📤 Отправить отчёт Артуру</button>
-  </footer>
 </div>
 
 <!-- JUMP-TO SHEET -->
@@ -324,6 +317,9 @@
 <div id="sheet" class="sheet" role="dialog" aria-label="Все треки">
   <h3>Все треки</h3>
   <div id="sheet-list" class="sheet-list"></div>
+  <div class="sheet-divider"></div>
+  <button type="button" id="send-report" class="sheet-action">📤 Отправить отчёт Артуру</button>
+  <div id="send-status" class="sheet-action-hint"></div>
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -337,6 +333,7 @@
   const K_SERVICE = 'venchanie_service_v1';
   const K_AUDIT = 'venchanie_audit_v6';
   const K_IDX = 'venchanie_current_idx';
+  const API_BASE = 'https://api.akoev.com';
 
   const tracks = Array.from(document.querySelectorAll('article.track'));
 
@@ -526,6 +523,7 @@
   function saveAudit() {
     lsSet(K_AUDIT, JSON.stringify(audit));
     updateProgress();
+    apiSaveDebounced();
   }
   tracks.forEach(track => {
     const id = track.dataset.id;
@@ -623,9 +621,47 @@
     userName = trimmed;
     lsSet(K_NAME, userName);
     userNameEl.textContent = userName;
+    apiSaveDebounced();
   });
 
-  /* ===== report ===== */
+  /* ===== backend sync ===== */
+  let saveDebounceTimer;
+  function apiSaveDebounced() {
+    clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(apiSaveNow, 500);
+  }
+  async function apiSaveNow() {
+    if (!userName || !service) return;
+    try {
+      await fetch(`${API_BASE}/api/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: userName, service, tracks: audit })
+      });
+    } catch (e) { /* network failure — localStorage is source of truth, retry on next change */ }
+  }
+  async function apiSubmit() {
+    if (!userName || !service) return { ok: false };
+    const tracksMeta = tracks.map(t => ({
+      id: t.dataset.id,
+      artist: t.dataset.artist,
+      title: t.dataset.title,
+      category: t.dataset.category
+    }));
+    try {
+      const resp = await fetch(`${API_BASE}/api/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: userName, service, tracks: audit, tracksMeta })
+      });
+      if (!resp.ok) return { ok: false, status: resp.status };
+      return await resp.json();
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  }
+
+  /* ===== send report ===== */
   const toast = document.getElementById('toast');
   function showToast(msg) {
     toast.textContent = msg;
@@ -633,43 +669,22 @@
     clearTimeout(toast._t);
     toast._t = setTimeout(() => toast.classList.remove('show'), 2400);
   }
-  function buildReport() {
-    const groups = {};
-    tracks.forEach(track => {
-      const cat = track.dataset.category;
-      if (!groups[cat]) groups[cat] = [];
-      const s = audit[track.dataset.id] || {};
-      groups[cat].push({
-        artist: track.dataset.artist,
-        title: track.dataset.title,
-        rating: s.rating,
-        comment: s.comment || ''
-      });
-    });
-    const lines = [`🎵 Отчёт от ${userName || 'мамы'} (венчание 12.07)`, ''];
-    for (const cat of Object.keys(groups)) {
-      lines.push(`— ${cat} —`);
-      groups[cat].forEach(t => {
-        const rating = (t.rating != null) ? `${t.rating}/10` : '⏳ не оценено';
-        let line = `${t.artist} — ${t.title}: ${rating}`;
-        if (t.comment) line += ` — «${t.comment}»`;
-        lines.push(line);
-      });
-      lines.push('');
-    }
-    return lines.join('\n').trim();
-  }
-  document.getElementById('send-report').addEventListener('click', async () => {
-    const text = buildReport();
-    if (navigator.share) {
-      try { await navigator.share({ title: 'Музыка к венчанию — отчёт', text }); return; }
-      catch (e) {}
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      showToast('Скопировано — вставь в WhatsApp');
-    } catch (e) {
-      window.prompt('Скопируй текст и отправь Артуру:', text);
+  const sendBtn = document.getElementById('send-report');
+  const sendStatus = document.getElementById('send-status');
+  sendBtn.addEventListener('click', async () => {
+    if (!window.confirm('Отправить отчёт Артуру сейчас? Можно отправить ещё раз позже.')) return;
+    sendBtn.disabled = true;
+    const origText = sendBtn.textContent;
+    sendBtn.textContent = '⏳ Отправляем…';
+    const res = await apiSubmit();
+    sendBtn.disabled = false;
+    sendBtn.textContent = origText;
+    if (res && res.ok) {
+      sendStatus.textContent = `✓ Отправлено (всего: ${res.submit_count || 1})`;
+      showToast(res.emailed ? '✓ Отчёт ушёл Артуру' : '✓ Сохранено · письмо в пути');
+      closeSheet();
+    } else {
+      showToast('Не получилось. Проверь интернет и попробуй ещё раз.');
     }
   });
 
@@ -680,6 +695,7 @@
     userNameEl.textContent = userName;
     setActive(currentIdx);
     updateProgress();
+    apiSaveDebounced();
   }
 
   if (userName && service) showApp();
