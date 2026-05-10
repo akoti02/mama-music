@@ -98,6 +98,27 @@
   .icon-btn:hover { background: var(--surface-2); }
   .icon-btn:active { transform: scale(0.94); }
   .icon-btn svg { width: 22px; height: 22px; }
+  .top-actions { display: flex; gap: 6px; }
+
+  /* ===== FAB (Share) ===== */
+  .fab {
+    position: fixed;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    right: calc(16px + env(safe-area-inset-right));
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+    color: #0a0a0d;
+    border: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 14px 32px -10px var(--gold), 0 4px 12px -2px rgba(0,0,0,0.4);
+    z-index: 90;
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+  .fab:hover { box-shadow: 0 18px 40px -10px var(--gold), 0 4px 12px -2px rgba(0,0,0,0.4); }
+  .fab:active { transform: scale(0.94); }
+  .fab svg { width: 22px; height: 22px; }
 
   /* ===== Onboarding ===== */
   .onboard {
@@ -732,6 +753,111 @@
   .sr-cats-inner button:hover { background: var(--gold-soft); color: var(--gold-bright); border-color: var(--gold-soft); }
   .sr-cats-inner button:active { transform: scale(0.95); }
 
+  /* ===== All-tracks overlay ===== */
+  .all-overlay {
+    position: fixed; inset: 0; z-index: 250;
+    background: rgba(8, 8, 10, 0.97);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.32s var(--ease-out);
+    padding-top: env(safe-area-inset-top);
+  }
+  .all-overlay.open { opacity: 1; pointer-events: auto; }
+  .ao-header {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ao-title-wrap { flex: 1; min-width: 0; }
+  .ao-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .ao-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .ao-sort {
+    flex-shrink: 0;
+    display: flex; gap: 8px;
+    padding: 12px 14px 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .ao-sort::-webkit-scrollbar { display: none; }
+  .sort-chip {
+    appearance: none;
+    background: var(--surface);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 16px;
+    color: var(--text-dim);
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap; flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .sort-chip.active { background: var(--gold); color: #0a0a0d; border-color: var(--gold); }
+  .ao-results {
+    flex: 1; min-height: 0;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 8px 14px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  /* ===== Collapsible menu sections ===== */
+  .menu-fold {
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .menu-fold-header {
+    width: 100%; appearance: none;
+    background: transparent;
+    border: 0; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+    color: var(--text);
+    text-align: left;
+    min-height: 60px;
+    transition: background 0.15s;
+  }
+  .menu-fold-header:hover { background: rgba(255,255,255,0.03); }
+  .menu-fold-header .mr-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold-bright);
+    flex-shrink: 0;
+  }
+  .menu-fold-header .mr-icon svg { width: 18px; height: 18px; }
+  .menu-fold-header .mr-text { flex: 1; min-width: 0; }
+  .menu-fold-header .mr-title { font-size: 16px; font-weight: 600; }
+  .menu-fold-header .mr-sub { font-size: 13px; color: var(--gold-bright); margin-top: 2px; font-weight: 600; }
+  .menu-fold-header .mr-arrow {
+    width: 22px; height: 22px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: transform 0.3s var(--ease-spring);
+  }
+  .menu-fold-header .mr-arrow svg { width: 100%; height: 100%; }
+  .menu-fold.open .mr-arrow { transform: rotate(180deg); }
+  .menu-fold-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.34s var(--ease), padding 0.34s var(--ease);
+    padding: 0 16px;
+  }
+  .menu-fold.open .menu-fold-body {
+    max-height: 200px;
+    padding: 4px 16px 16px;
+  }
+  #fold-mine.open .menu-fold-body {
+    max-height: 50vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* ===== Toast ===== */
   .toast {
     position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom));
@@ -771,10 +897,23 @@
     <span class="dot"></span>
     <span id="who-name">…</span>
   </button>
-  <button type="button" class="icon-btn" id="menu-btn" aria-label="меню">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-  </button>
+  <div class="top-actions">
+    <button type="button" class="icon-btn" id="search-btn" aria-label="поиск">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    </button>
+    <button type="button" class="icon-btn" id="all-btn" aria-label="все треки">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+    </button>
+    <button type="button" class="icon-btn" id="menu-btn" aria-label="меню">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </div>
 </div>
+
+<!-- Share FAB (floating action button) -->
+<button type="button" class="fab" id="share-fab" hidden aria-label="поделиться">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+</button>
 
 <!-- Onboarding step 1: pick service (tap-to-advance) -->
 <div id="ob-service-screen" class="onboard" hidden>
@@ -827,58 +966,55 @@
   <div class="sheet-grab"></div>
   <h3 data-i18n="menu.title"></h3>
 
-  <div class="sheet-section">
-    <div class="menu-row" id="menu-search">
-      <div class="mr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
-      <div class="mr-text">
-        <div class="mr-title" data-i18n="menu.search"></div>
-        <div class="mr-sub" data-i18n="menu.searchSub"></div>
-      </div>
-    </div>
-    <div class="menu-row" id="menu-all">
-      <div class="mr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
-      <div class="mr-text">
-        <div class="mr-title" data-i18n="menu.allTracks"></div>
-        <div class="mr-sub" data-i18n="menu.allTracksSub"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="sheet-section">
-    <h4 data-i18n="menu.preferences"></h4>
-    <div class="menu-row">
+  <!-- Service: collapsible -->
+  <div class="menu-fold" id="fold-service">
+    <button class="menu-fold-header" type="button">
       <div class="mr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
       <div class="mr-text">
         <div class="mr-title" data-i18n="menu.service"></div>
-        <div class="mr-sub" data-i18n="menu.serviceSub"></div>
+        <div class="mr-sub" id="service-current">Apple Music</div>
+      </div>
+      <div class="mr-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+    </button>
+    <div class="menu-fold-body">
+      <div class="seg" id="seg-service">
+        <button type="button" data-val="apple">Apple Music</button>
+        <button type="button" data-val="spotify">Spotify</button>
       </div>
     </div>
-    <div class="seg" id="seg-service" style="margin: 8px 0 16px;">
-      <button type="button" data-val="apple">Apple Music</button>
-      <button type="button" data-val="spotify">Spotify</button>
-    </div>
-    <div class="menu-row">
+  </div>
+
+  <!-- Language: collapsible -->
+  <div class="menu-fold" id="fold-lang">
+    <button class="menu-fold-header" type="button">
       <div class="mr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
       <div class="mr-text">
         <div class="mr-title" data-i18n="menu.lang"></div>
-        <div class="mr-sub" data-i18n="menu.langSub"></div>
+        <div class="mr-sub" id="lang-current">Русский</div>
+      </div>
+      <div class="mr-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+    </button>
+    <div class="menu-fold-body">
+      <div class="seg" id="seg-lang">
+        <button type="button" data-val="ru">Русский</button>
+        <button type="button" data-val="en">English</button>
       </div>
     </div>
-    <div class="seg" id="seg-lang" style="margin: 8px 0;">
-      <button type="button" data-val="ru">Русский</button>
-      <button type="button" data-val="en">English</button>
+  </div>
+
+  <!-- What's collected: collapsible -->
+  <div class="menu-fold" id="fold-mine">
+    <button class="menu-fold-header" type="button">
+      <div class="mr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="mr-text">
+        <div class="mr-title" data-i18n="menu.collected"></div>
+        <div class="mr-sub" id="mine-count">…</div>
+      </div>
+      <div class="mr-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+    </button>
+    <div class="menu-fold-body">
+      <div id="mine-list"></div>
     </div>
-  </div>
-
-  <div class="sheet-section">
-    <h4 data-i18n="menu.collected"></h4>
-    <div id="mine-list"></div>
-  </div>
-
-  <div class="sheet-section">
-    <h4 data-i18n="menu.share"></h4>
-    <button type="button" id="send-report" class="send-action" data-i18n="menu.sendBtn"></button>
-    <div class="send-hint" id="send-status"></div>
   </div>
 </div>
 
@@ -896,6 +1032,25 @@
   <div class="so-results" id="so-results">
     <div class="so-status" id="so-status" data-i18n="search.intro"></div>
   </div>
+</div>
+
+<!-- All tracks overlay -->
+<div class="all-overlay" id="all-overlay" role="dialog">
+  <div class="ao-header">
+    <button type="button" class="icon-btn" id="all-close" aria-label="закрыть">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="ao-title-wrap">
+      <div class="ao-title" data-i18n="allTracks.title"></div>
+      <div class="ao-sub"><span id="ao-counter">…</span> <span data-i18n="tracks"></span></div>
+    </div>
+  </div>
+  <div class="ao-sort">
+    <button type="button" class="sort-chip active" data-sort="alpha" data-i18n="sort.alpha"></button>
+    <button type="button" class="sort-chip" data-sort="year" data-i18n="sort.year"></button>
+    <button type="button" class="sort-chip" data-sort="title" data-i18n="sort.title"></button>
+  </div>
+  <div class="ao-results" id="ao-results"></div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -957,18 +1112,18 @@
       'cat.Юля.ctx': '«наши» треки',
       'cat.Вилла.ctx': '10 июля',
       'menu.title': 'Меню',
-      'menu.search': 'Поиск',
-      'menu.searchSub': 'найти конкретный трек',
-      'menu.allTracks': 'Все треки',
-      'menu.allTracksSub': 'весь каталог по алфавиту',
-      'menu.preferences': 'Настройки',
       'menu.service': 'Сервис',
-      'menu.serviceSub': 'через что играет музыка',
-      'menu.lang': 'Язык интерфейса',
-      'menu.langSub': 'переключение русский / английский',
+      'menu.lang': 'Язык',
       'menu.collected': 'Что собрано',
-      'menu.share': 'Отправить отчёт Артуру',
-      'menu.sendBtn': 'Отправить',
+      'allTracks.title': 'Все треки',
+      'sort.alpha': 'По артисту',
+      'sort.year': 'По году',
+      'sort.title': 'По названию',
+      'mineCount.empty': 'пока пусто',
+      'mineCount.n': '{n} {plural}',
+      'share.title': 'Музыка к венчанию',
+      'share.copied': 'Скопировано в буфер обмена',
+      'share.cancelled': '',
       'search.intro': 'Найди трек по названию или артисту — на русском или английском',
       'search.allHeader': 'Все треки в библиотеке',
       'search.typing': 'Ищу…',
@@ -1023,18 +1178,18 @@
       'cat.Юля.ctx': '"our" tracks',
       'cat.Вилла.ctx': 'July 10',
       'menu.title': 'Menu',
-      'menu.search': 'Search',
-      'menu.searchSub': 'find a specific track',
-      'menu.allTracks': 'All tracks',
-      'menu.allTracksSub': 'browse the full catalog',
-      'menu.preferences': 'Preferences',
       'menu.service': 'Service',
-      'menu.serviceSub': 'where music plays from',
-      'menu.lang': 'Interface language',
-      'menu.langSub': 'switch Russian / English',
+      'menu.lang': 'Language',
       'menu.collected': 'Collected',
-      'menu.share': 'Send report to Артур',
-      'menu.sendBtn': 'Send',
+      'allTracks.title': 'All tracks',
+      'sort.alpha': 'By artist',
+      'sort.year': 'By year',
+      'sort.title': 'By title',
+      'mineCount.empty': 'nothing yet',
+      'mineCount.n': '{n} {plural}',
+      'share.title': 'Wedding music',
+      'share.copied': 'Copied to clipboard',
+      'share.cancelled': '',
       'search.intro': 'Search by title or artist — Russian or English',
       'search.allHeader': 'All tracks in library',
       'search.typing': 'Searching…',
@@ -1108,6 +1263,8 @@
   function showScreen(name) {
     for (const k in screens) screens[k].hidden = (k !== name);
     topBarEl.hidden = (name !== 'discovery');
+    const shareFabEl = document.getElementById('share-fab');
+    if (shareFabEl) shareFabEl.hidden = (name !== 'discovery');
   }
 
   /* ===== Onboarding step 1: pick service (TAP TO ADVANCE) ===== */
@@ -1730,6 +1887,11 @@
   function syncSegments() {
     document.querySelectorAll('#seg-service button').forEach(b => b.classList.toggle('active', b.dataset.val === service));
     document.querySelectorAll('#seg-lang button').forEach(b => b.classList.toggle('active', b.dataset.val === lang));
+    // Update labels shown in collapsed-header rows
+    const svcCur = document.getElementById('service-current');
+    if (svcCur) svcCur.textContent = service === 'spotify' ? 'Spotify' : 'Apple Music';
+    const langCur = document.getElementById('lang-current');
+    if (langCur) langCur.textContent = lang === 'en' ? 'English' : 'Русский';
   }
   document.querySelectorAll('#seg-service button').forEach(b => {
     b.addEventListener('click', () => {
@@ -1756,19 +1918,43 @@
     });
   });
 
-  document.getElementById('menu-search').addEventListener('click', () => {
-    closeMenu();
-    setTimeout(() => openSearch(false), 200);
-  });
-  document.getElementById('menu-all').addEventListener('click', () => {
-    closeMenu();
-    setTimeout(() => openSearch(true), 200);
+  // Top bar buttons (always visible) wire to overlays
+  document.getElementById('search-btn').addEventListener('click', openSearch);
+  document.getElementById('all-btn').addEventListener('click', openAllTracks);
+
+  // Menu collapsibles: tap header → toggle
+  document.querySelectorAll('.menu-fold-header').forEach(h => {
+    h.addEventListener('click', () => {
+      const fold = h.closest('.menu-fold');
+      const isOpen = fold.classList.contains('open');
+      // close all others (accordion style)
+      document.querySelectorAll('.menu-fold.open').forEach(f => f.classList.remove('open'));
+      if (!isOpen) fold.classList.add('open');
+    });
   });
 
   async function renderMine() {
     const list = document.getElementById('mine-list');
+    const countEl = document.getElementById('mine-count');
     list.innerHTML = `<div class="mine-empty">…</div>`;
     const songs = await apiMine();
+    if (countEl) {
+      if (songs.length === 0) {
+        countEl.textContent = t('mineCount.empty');
+      } else {
+        let word;
+        if (lang === 'ru') {
+          const n = songs.length;
+          const m10 = n % 10, m100 = n % 100;
+          if (m10 === 1 && m100 !== 11) word = 'трек';
+          else if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) word = 'трека';
+          else word = 'треков';
+        } else {
+          word = songs.length === 1 ? 'track' : 'tracks';
+        }
+        countEl.textContent = `${songs.length} ${word}`;
+      }
+    }
     if (songs.length === 0) {
       list.innerHTML = `<div class="mine-empty">${escapeHtml(lang === 'ru' ? 'пока пусто — отбирай треки из карточек' : 'empty — start picking from cards')}</div>`;
       return;
@@ -1799,23 +1985,83 @@
     });
   }
 
+  /* ===== All-tracks overlay (separate from search) ===== */
+  const allOv = document.getElementById('all-overlay');
+  const aoResults = document.getElementById('ao-results');
+  const aoCounter = document.getElementById('ao-counter');
+  let aoSort = 'alpha';
+  let aoOffset = 0;
+  let aoTotal = 0;
+  let aoLoading = false;
+  let aoRunId = 0;
+
+  document.getElementById('all-close').addEventListener('click', closeAllTracks);
+  document.querySelectorAll('.sort-chip').forEach(b => {
+    b.addEventListener('click', () => {
+      aoSort = b.dataset.sort;
+      document.querySelectorAll('.sort-chip').forEach(x => x.classList.toggle('active', x === b));
+      aoOffset = 0;
+      aoResults.innerHTML = '';
+      loadAllTracksPage();
+    });
+  });
+  let aoScrollAttached = false;
+  function attachAoScroll() {
+    if (aoScrollAttached) return;
+    aoScrollAttached = true;
+    aoResults.addEventListener('scroll', () => {
+      if (aoLoading || aoOffset >= aoTotal) return;
+      if (aoResults.scrollTop + aoResults.clientHeight > aoResults.scrollHeight - 200) {
+        loadAllTracksPage();
+      }
+    });
+  }
+  function openAllTracks() {
+    allOv.classList.add('open');
+    attachAoScroll();
+    aoOffset = 0;
+    aoResults.innerHTML = `<div class="so-status">…</div>`;
+    loadAllTracksPage();
+  }
+  function closeAllTracks() { allOv.classList.remove('open'); }
+  async function loadAllTracksPage() {
+    if (aoLoading) return;
+    aoLoading = true;
+    const myRun = ++aoRunId;
+    try {
+      const r = await fetch(`${API}/api/library/all?limit=50&offset=${aoOffset}&sort=${encodeURIComponent(aoSort)}`);
+      if (!r.ok) { aoLoading = false; return; }
+      const d = await r.json();
+      if (myRun !== aoRunId) { aoLoading = false; return; }
+      aoTotal = d.total || 0;
+      aoCounter.textContent = fmt(aoTotal);
+      const items = d.results || [];
+      if (aoOffset === 0 && items.length === 0) {
+        aoResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.empty'))}</div>`;
+      } else {
+        if (aoOffset === 0) aoResults.innerHTML = '';
+        const html = items.map(s => searchRowHTML(s)).join('');
+        aoResults.insertAdjacentHTML('beforeend', html);
+        wireSearchRows(aoResults, items);
+        aoOffset += items.length;
+      }
+    } catch (e) {}
+    aoLoading = false;
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && allOv.classList.contains('open')) closeAllTracks();
+  });
+
   /* ===== Search overlay ===== */
   const searchOv = document.getElementById('search-overlay');
   const smInput = document.getElementById('sm-input');
   const soResults = document.getElementById('so-results');
   document.getElementById('search-close').addEventListener('click', closeSearch);
-  function openSearch(showAll) {
+  function openSearch() {
     searchOv.classList.add('open');
     smInput.value = '';
-    if (showAll) {
-      // Show first 50 alphabetically (server returns up to 24, fetch by initial letters)
-      soResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.allHeader'))}</div>`;
-      // load first page by querying common letter
-      loadAllTracks();
-    } else {
-      soResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.intro'))}</div>`;
-      setTimeout(() => smInput.focus(), 200);
-    }
+    soResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.intro'))}</div>`;
+    setTimeout(() => smInput.focus(), 200);
   }
   function closeSearch() { searchOv.classList.remove('open'); }
   document.addEventListener('keydown', (e) => {
@@ -1834,47 +2080,51 @@
     searchTimer = setTimeout(async () => {
       const results = await apiSearch(q);
       if (myRun !== searchRunId) return;
-      renderSearchResults(results);
+      if (results.length === 0) {
+        soResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.empty'))}</div>`;
+        return;
+      }
+      soResults.innerHTML = `<div id="sr-list">${results.map(s => searchRowHTML(s)).join('')}</div>`;
+      wireSearchRows(document.getElementById('sr-list'), results);
     }, 280);
   }
-  async function loadAllTracks() {
-    // request a broad search to get a sample of the library
-    const results = await apiSearch('a');
-    renderSearchResults(results, true);
+  // Shared between search overlay and all-tracks overlay
+  function searchRowHTML(s) {
+    const status = s.assigned_to ? `<div class="sr-status">${escapeHtml(t('search.assignedAs', { cat: t(`cat.${s.assigned_to}.short`), by: s.assigned_by || '' }))}</div>` : '';
+    return `
+      <div class="sr-row" data-song-id="${s.id}">
+        <div class="sr-art" id="sr-art-${s.id}">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <div class="sr-text">
+          <div class="sr-title">${escapeHtml(s.title)}</div>
+          <div class="sr-artist">${escapeHtml(s.artist)}${s.year ? ` · ${s.year}` : ''}</div>
+          ${status}
+        </div>
+        <button type="button" class="sr-add" aria-label="добавить">+</button>
+      </div>
+      <div class="sr-cats">
+        <div class="sr-cats-inner">
+          ${CATEGORIES.map(cat => `<button type="button" data-cat="${escapeHtml(cat)}" data-song-id="${s.id}">${escapeHtml(t(`cat.${cat}.short`))}</button>`).join('')}
+        </div>
+      </div>
+    `;
   }
-  function renderSearchResults(results, fromAll) {
-    if (results.length === 0) {
-      soResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.empty'))}</div>`;
-      return;
-    }
-    soResults.innerHTML = `<div id="sr-list"></div>`;
-    const list = document.getElementById('sr-list');
-    list.innerHTML = results.map(s => {
-      const status = s.assigned_to ? `<div class="sr-status">${escapeHtml(t('search.assignedAs', { cat: t(`cat.${s.assigned_to}.short`), by: s.assigned_by || '' }))}</div>` : '';
-      return `
-        <div class="sr-row" data-song-id="${s.id}">
-          <div class="sr-art" id="sr-art-${s.id}">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          </div>
-          <div class="sr-text">
-            <div class="sr-title">${escapeHtml(s.title)}</div>
-            <div class="sr-artist">${escapeHtml(s.artist)}${s.year ? ` · ${s.year}` : ''}</div>
-            ${status}
-          </div>
-          <button type="button" class="sr-add" aria-label="добавить">+</button>
-        </div>
-        <div class="sr-cats">
-          <div class="sr-cats-inner">
-            ${CATEGORIES.map(cat => `<button type="button" data-cat="${escapeHtml(cat)}" data-song-id="${s.id}">${escapeHtml(t(`cat.${cat}.short`))}</button>`).join('')}
-          </div>
-        </div>
-      `;
-    }).join('');
-    list.querySelectorAll('.sr-row').forEach(row => {
-      row.querySelector('.sr-add').addEventListener('click', (e) => { e.stopPropagation(); toggleSearchRow(row); });
-      row.addEventListener('click', () => toggleSearchRow(row));
+  function wireSearchRows(container, items) {
+    container.querySelectorAll('.sr-row').forEach(row => {
+      const addBtn = row.querySelector('.sr-add');
+      if (addBtn && !addBtn._wired) {
+        addBtn._wired = true;
+        addBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSearchRow(row); });
+      }
+      if (!row._wired) {
+        row._wired = true;
+        row.addEventListener('click', () => toggleSearchRow(row));
+      }
     });
-    list.querySelectorAll('.sr-cats button').forEach(b => {
+    container.querySelectorAll('.sr-cats button').forEach(b => {
+      if (b._wired) return;
+      b._wired = true;
       b.addEventListener('click', async (e) => {
         e.stopPropagation();
         const songId = Number(b.dataset.songId);
@@ -1882,13 +2132,21 @@
         const result = await apiAction({ song_id: songId, user: userName, action: 'assign', category: cat });
         if (result.ok) {
           showToast(t('toast.assigned', { cat: t(`cat.${cat}.short`) }));
-          const row = list.querySelector(`.sr-row[data-song-id="${songId}"]`);
-          if (row) row.classList.remove('expanded');
+          const row = container.querySelector(`.sr-row[data-song-id="${songId}"]`);
+          if (row) {
+            row.classList.remove('expanded');
+            // Update the row's status line in place
+            const txt = row.querySelector('.sr-text');
+            let statusEl = txt.querySelector('.sr-status');
+            const statusHtml = t('search.assignedAs', { cat: t(`cat.${cat}.short`), by: userName });
+            if (statusEl) statusEl.textContent = statusHtml;
+            else txt.insertAdjacentHTML('beforeend', `<div class="sr-status">${escapeHtml(statusHtml)}</div>`);
+          }
         } else { showToast(t('toast.failed')); }
       });
     });
-    // load artwork for visible rows
-    results.forEach(s => {
+    // load artwork
+    items.forEach(s => {
       lookupITunes(s.artist, s.title).then(info => {
         const el = document.getElementById(`sr-art-${s.id}`);
         if (el && info?.artwork600) {
@@ -1901,27 +2159,48 @@
   }
   function toggleSearchRow(row) {
     const wasExpanded = row.classList.contains('expanded');
-    document.querySelectorAll('.sr-row.expanded').forEach(r => r.classList.remove('expanded'));
+    // Only collapse expanded rows within the same overlay
+    const parent = row.closest('.so-results, .ao-results');
+    if (parent) parent.querySelectorAll('.sr-row.expanded').forEach(r => r.classList.remove('expanded'));
     if (!wasExpanded) row.classList.add('expanded');
   }
 
-  /* ===== Send report ===== */
-  const sendBtn = document.getElementById('send-report');
-  const sendStatus = document.getElementById('send-status');
-  sendBtn.addEventListener('click', async () => {
-    if (!confirm(t('confirmSend'))) return;
-    sendBtn.disabled = true;
-    const orig = t('menu.sendBtn');
-    sendBtn.textContent = t('sending');
-    const res = await apiSubmit();
-    sendBtn.disabled = false;
-    sendBtn.textContent = orig;
-    if (res?.ok) {
-      sendStatus.textContent = t('sendStatus');
-      showToast(res.emailed ? t('toast.sent') : t('toast.savedPending'));
-      closeMenu();
-    } else { showToast(t('toast.failed')); }
-  });
+  /* ===== Share FAB (uses native navigator.share) ===== */
+  async function buildShareText() {
+    try {
+      const r = await fetch(`${API}/api/share-text?user=${encodeURIComponent(userName)}`);
+      if (!r.ok) return '';
+      const d = await r.json();
+      return d.text || '';
+    } catch (e) { return ''; }
+  }
+  async function doShare() {
+    const text = await buildShareText();
+    if (!text) { showToast(t('toast.failed')); return; }
+    const payload = {
+      title: t('share.title'),
+      text: text,
+      url: 'https://akoev.com/'
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(payload);
+        return;
+      } catch (e) {
+        if (e?.name === 'AbortError') return; // user cancelled
+      }
+    }
+    // Fallback: copy to clipboard
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(t('share.copied'));
+    } catch (e) {
+      // Last resort: prompt
+      try { window.prompt(t('share.copied'), text); } catch (_) {}
+    }
+  }
+  const shareFab = document.getElementById('share-fab');
+  shareFab.addEventListener('click', doShare);
 
   /* ===== Toast ===== */
   const toastEl = document.getElementById('toast');
