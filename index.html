@@ -23,42 +23,23 @@
     --accent-bright: #ecc380;
     --accent-soft: rgba(212, 164, 92, 0.18);
     --warn: #fbbf24;
+    --good: #84cc16;
+    --bad: #ef4444;
     --shadow-card: 0 8px 32px -4px rgba(0, 0, 0, 0.5), 0 2px 8px -2px rgba(0, 0, 0, 0.4);
   }
   html, body { margin: 0; padding: 0; }
   html { background: var(--bg); }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    background: var(--bg); color: var(--text);
     line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
-    position: relative;
-    overflow-x: hidden;
-    min-height: 100vh;
+    overflow-x: hidden; min-height: 100vh;
   }
   [hidden] { display: none !important; }
 
-  /* ========== Cinematic background art ========== */
-  #bg-art {
-    position: fixed; inset: -60px; z-index: -2;
-    background-size: cover; background-position: center;
-    filter: blur(70px) brightness(0.45) saturate(1.3);
-    opacity: 0;
-    transition: opacity 0.7s ease, background-image 0.4s ease;
-    pointer-events: none; will-change: opacity;
-  }
-  #bg-art.loaded { opacity: 0.7; }
-  #bg-vignette {
-    position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    background:
-      radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255, 255, 255, 0.04), transparent 70%),
-      linear-gradient(180deg, rgba(8,8,10,0.3) 0%, rgba(8,8,10,0.65) 60%, rgba(8,8,10,0.85) 100%);
-  }
-
-  /* ========== Onboarding ========== */
+  /* ===== Onboarding ===== */
   #onboarding {
     min-height: 100vh; min-height: 100dvh;
     padding: 32px 22px calc(32px + env(safe-area-inset-bottom));
@@ -72,200 +53,278 @@
       radial-gradient(ellipse 50% 40% at 80% 80%, rgba(212,164,92,0.08) 0%, transparent 60%);
     pointer-events: none; z-index: -1;
   }
-  .ob-inner { width: 100%; max-width: 440px; position: relative; z-index: 1; }
+  .ob-inner { width: 100%; max-width: 440px; }
   .ob-hero { text-align: center; margin-bottom: 36px; }
   .ob-hero .ob-emoji { font-size: 38px; line-height: 1; margin-bottom: 14px; }
-  .ob-hero h1 {
-    margin: 0;
-    font-size: 34px; font-weight: 700;
-    letter-spacing: -0.025em; line-height: 1.05;
-  }
+  .ob-hero h1 { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.05; }
   .ob-hero h1 .accent {
     background: linear-gradient(135deg, var(--accent-bright) 0%, var(--accent) 100%);
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   }
-  .ob-hero .ob-sub {
-    margin: 12px 0 0; color: var(--text-dim);
-    font-size: 14px; letter-spacing: 0.01em;
-  }
+  .ob-hero .ob-sub { margin: 12px 0 0; color: var(--text-dim); font-size: 14px; }
   .ob-block { margin-bottom: 22px; }
   .ob-label {
-    display: block; font-size: 12px;
-    color: var(--text-muted); margin-bottom: 10px;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    font-weight: 600;
+    display: block; font-size: 12px; color: var(--text-muted);
+    margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
   }
-  .ob-name-input {
-    width: 100%; padding: 16px 18px;
-    background: var(--bg-card);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    color: var(--text);
-    border: 1px solid var(--border); border-radius: 14px;
-    font-family: inherit; font-size: 17px; font-weight: 500;
-    -webkit-appearance: none; appearance: none;
-    transition: border-color 0.2s, background 0.2s;
-  }
-  .ob-name-input::placeholder { color: var(--text-muted); }
-  .ob-name-input:focus { outline: none; border-color: var(--accent); background: rgba(212,164,92,0.08); }
-  .ob-service { display: flex; gap: 10px; }
-  .ob-service button {
+  .ob-pick { display: flex; gap: 10px; }
+  .ob-pick button {
     flex: 1; appearance: none;
     background: var(--bg-card);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    color: var(--text);
-    border: 1px solid var(--border); border-radius: 14px;
+    color: var(--text); border: 1px solid var(--border); border-radius: 14px;
     padding: 18px 8px;
     font-family: inherit; font-size: 14px; font-weight: 600;
-    cursor: pointer; -webkit-tap-highlight-color: transparent;
-    min-height: 60px;
+    cursor: pointer; min-height: 60px;
     transition: all 0.2s ease;
   }
-  .ob-service button:hover { border-color: var(--border-strong); }
-  .ob-service button.active {
+  .ob-pick button.active {
     background: linear-gradient(135deg, var(--accent-bright), var(--accent));
     color: #0a0a0d; border-color: var(--accent);
     box-shadow: 0 8px 24px -8px var(--accent);
   }
   .ob-login {
-    margin-top: 18px; padding: 16px 18px;
-    background: rgba(251, 191, 36, 0.06);
-    border: 1px solid rgba(251, 191, 36, 0.3);
-    border-radius: 14px;
-    font-size: 13px; line-height: 1.55;
+    margin-top: 18px; padding: 14px 16px;
+    background: rgba(251, 191, 36, 0.06); border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 12px; font-size: 13px; line-height: 1.5;
   }
   .ob-login strong { color: var(--warn); font-weight: 700; }
-  .ob-login a {
-    color: var(--warn); font-weight: 600;
-    text-decoration: underline; text-underline-offset: 2px;
-  }
+  .ob-login a { color: var(--warn); text-decoration: underline; font-weight: 600; }
   .ob-start {
     width: 100%; appearance: none;
     background: linear-gradient(135deg, var(--accent-bright) 0%, var(--accent) 100%);
-    color: #0a0a0d; border: 0;
-    border-radius: 16px; padding: 20px 22px;
+    color: #0a0a0d; border: 0; border-radius: 16px;
+    padding: 20px 22px;
     font-family: inherit; font-size: 16px; font-weight: 700;
-    letter-spacing: 0.01em;
-    cursor: pointer; -webkit-tap-highlight-color: transparent;
-    margin-top: 28px;
+    cursor: pointer; margin-top: 28px;
     box-shadow: 0 12px 32px -8px var(--accent);
-    transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.15s;
+    transition: transform 0.15s, opacity 0.15s;
   }
   .ob-start:active { transform: scale(0.98); }
-  .ob-start:disabled {
-    opacity: 0.35; cursor: not-allowed;
-    box-shadow: none;
-    background: var(--bg-card-solid); color: var(--text-muted);
-  }
+  .ob-start:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; background: var(--bg-card-solid); color: var(--text-muted); }
 
-  /* ========== App ========== */
-  header.app-header {
-    padding: 20px 20px 14px;
-    text-align: center; position: relative; z-index: 2;
+  /* ===== Generic screens ===== */
+  .screen { min-height: 100vh; min-height: 100dvh; padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
+  .screen-header {
+    padding: 22px 18px 16px;
+    text-align: center; position: relative;
   }
-  header.app-header h1 {
-    margin: 0;
-    font-size: 14px; font-weight: 600;
-    letter-spacing: 0.04em; text-transform: uppercase;
-    color: var(--text-dim);
+  .screen-header h1 {
+    margin: 0; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);
   }
-  header.app-header .greeting {
-    margin: 8px 0 0; color: var(--text);
-    font-size: 17px; font-weight: 500;
+  .screen-header .greeting {
+    margin: 8px 0 0; color: var(--text); font-size: 16px; font-weight: 500;
   }
-  header.app-header .greeting .name {
+  .screen-header .greeting .name {
     color: var(--accent-bright); cursor: pointer;
     border-bottom: 1px dotted var(--accent-soft);
-    padding-bottom: 1px;
-  }
-  header.app-header .greeting .progress {
-    color: var(--text-dim); font-size: 14px; margin-left: 6px;
   }
 
-  nav.track-nav {
+  /* Back-bar (used on category view) */
+  .back-bar {
     position: sticky; top: 0; z-index: 50;
-    background: rgba(8,8,10,0.7);
-    backdrop-filter: blur(16px) saturate(1.5);
-    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    background: rgba(8,8,10,0.75);
+    backdrop-filter: blur(18px) saturate(1.5);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
     border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 12px;
     padding: 10px 14px;
+    min-height: 56px;
   }
-  nav.track-nav button {
+  .back-btn {
     appearance: none;
     background: var(--bg-elev); color: var(--text);
-    border: 1px solid var(--border); border-radius: 12px;
-    padding: 10px 16px;
-    font-family: inherit; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border); border-radius: 10px;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px; flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .back-btn:active { transform: scale(0.93); }
+  .back-bar-title { flex: 1; min-width: 0; }
+  .back-bar-title .bb-name {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .back-bar-title .bb-context {
+    font-size: 11px; color: var(--text-dim); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ===== Home: category tiles ===== */
+  .cat-tiles {
+    padding: 8px 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    max-width: 640px; margin: 0 auto;
+  }
+  .cat-tile {
+    appearance: none; text-align: left;
+    background: var(--bg-card);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    color: var(--text);
+    border: 1px solid var(--border); border-radius: 18px;
+    padding: 18px 20px;
+    font-family: inherit; cursor: pointer;
+    transition: all 0.2s;
+    display: block;
+    width: 100%;
+  }
+  .cat-tile:active { transform: scale(0.98); }
+  .cat-tile:hover { border-color: var(--border-strong); }
+  .cat-tile.has-progress { border-color: rgba(212, 164, 92, 0.25); }
+  .cat-tile .ct-name {
+    font-size: 13px; font-weight: 700;
+    color: var(--accent-bright);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .cat-tile .ct-stage {
+    margin-top: 6px; font-size: 18px; font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .cat-tile .ct-context {
+    margin-top: 8px; font-size: 13px;
+    color: var(--text-muted); line-height: 1.45;
+  }
+  .cat-tile .ct-meta {
+    margin-top: 14px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text-muted);
+  }
+  .cat-tile .ct-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px;
+    background: var(--bg-elev);
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .cat-tile.has-progress .ct-pill.with-comments {
+    background: rgba(212, 164, 92, 0.15);
+    color: var(--accent-bright);
+  }
+
+  .home-footer {
+    padding: 28px 16px 0;
+    max-width: 640px; margin: 0 auto;
+  }
+  .primary-button {
+    width: 100%; appearance: none;
+    background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+    color: #0a0a0d; border: 0; border-radius: 16px;
+    padding: 17px 22px;
+    font-family: inherit; font-size: 15px; font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 12px 32px -8px var(--accent);
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .primary-button:active { transform: scale(0.98); }
+  .primary-button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+  .send-hint { margin-top: 10px; font-size: 12px; color: var(--text-muted); text-align: center; }
+
+  /* ===== Category view ===== */
+  .cat-add {
+    padding: 14px 16px 0;
+    max-width: 640px; margin: 0 auto;
+  }
+  .cat-add button {
+    width: 100%; appearance: none;
+    background: var(--bg-card);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    color: var(--text);
+    border: 1px dashed var(--border-strong); border-radius: 14px;
+    padding: 14px;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; min-height: 48px;
+    transition: all 0.2s;
+  }
+  .cat-add button:hover { border-color: var(--accent); color: var(--accent-bright); }
+  .cat-add button:active { transform: scale(0.98); }
+
+  .track-list {
+    padding: 14px 16px 0;
+    display: flex; flex-direction: column; gap: 10px;
+    max-width: 640px; margin: 0 auto;
+  }
+  .track-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.3s;
+  }
+  .track-card.expanded {
+    border-color: var(--accent);
+    box-shadow: 0 12px 36px -12px rgba(212, 164, 92, 0.4);
+  }
+  .track-card.has-comment { border-color: rgba(212, 164, 92, 0.3); }
+  .track-card-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
-    min-height: 42px;
+  }
+  .tc-artwork {
+    width: 52px; height: 52px;
+    flex-shrink: 0;
+    background: var(--bg-elev) center/cover no-repeat;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .tc-text { flex: 1; min-width: 0; }
+  .tc-title {
+    font-weight: 600; font-size: 15px;
+    letter-spacing: -0.005em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tc-artist {
+    margin-top: 2px;
+    font-size: 13px; color: var(--text-dim);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tc-meta {
+    margin-top: 5px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-muted);
+  }
+  .tc-meta .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 7px;
+    background: var(--bg-elev);
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .tc-meta .badge.added-arthur { color: #93c5fd; background: rgba(147, 197, 253, 0.1); }
+  .tc-meta .badge.added-yula { color: #f9a8d4; background: rgba(249, 168, 212, 0.1); }
+  .tc-meta .badge.has-comment { color: var(--accent-bright); background: var(--accent-soft); }
+  .tc-actions { display: flex; align-items: center; gap: 6px; }
+  .tc-actions button {
+    appearance: none; background: transparent; color: var(--text-dim);
+    border: 0; cursor: pointer;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    font-size: 16px;
     transition: all 0.15s;
   }
-  nav.track-nav button:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
-  nav.track-nav button:active:not(:disabled) { transform: scale(0.96); }
-  nav.track-nav button:disabled { opacity: 0.25; cursor: not-allowed; }
-  nav.track-nav .nav-jump {
-    flex: 1; text-align: center; font-weight: 700;
-    color: var(--accent-bright);
-  }
+  .tc-actions button:hover { background: var(--bg-elev); color: var(--text); }
+  .tc-actions .tc-remove:hover { color: var(--bad); background: rgba(239, 68, 68, 0.1); }
 
-  main#tracks {
-    padding: 24px 18px 60px;
-    max-width: 640px; margin: 0 auto;
-    position: relative;
+  .track-card-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.3s ease;
   }
-
-  article.track { display: none; }
-  article.track[data-active] {
-    display: block;
-    animation: trackIn 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
+  .track-card.expanded .track-card-body {
+    max-height: 800px;
   }
-  @keyframes trackIn {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: none; }
+  .track-card-body-inner {
+    padding: 0 16px 16px;
   }
-
-  /* Category chip + context above title */
-  .category-chip {
-    display: inline-block;
-    padding: 6px 14px;
-    background: rgba(212, 164, 92, 0.12);
-    color: var(--accent-bright);
-    border: 1px solid var(--accent-soft);
-    border-radius: 999px;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 700;
-  }
-  .category-context {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-top: 8px;
-    line-height: 1.45;
-  }
-  article.track .track-header {
-    margin-bottom: 18px; text-align: center; padding: 8px 4px 0;
-  }
-  article.track .track-meta {
-    margin-bottom: 18px;
-  }
-  article.track .track-title {
-    font-size: 30px; font-weight: 700;
-    line-height: 1.1; letter-spacing: -0.02em;
-    margin: 0; word-wrap: break-word;
-  }
-  article.track .track-artist {
-    font-size: 15px; color: var(--text-dim);
-    margin-top: 8px; font-weight: 500;
-  }
-
   .player-embed {
     position: relative;
     width: 100%; height: 175px;
-    border-radius: 16px; overflow: hidden;
+    border-radius: 14px; overflow: hidden;
     background: var(--bg-card-solid);
-    margin-bottom: 22px;
+    margin-bottom: 14px;
     box-shadow: var(--shadow-card);
   }
   .player-embed iframe { width: 100%; height: 100%; border: 0; background: transparent; }
@@ -280,29 +339,22 @@
     flex-direction: column; color: var(--text-dim); font-size: 13px;
     text-align: center; padding: 16px;
   }
-  .player-embed.error::before { content: "⚠️"; font-size: 24px; margin-bottom: 8px; }
+  .player-embed.error::before { content: "⚠️"; font-size: 22px; margin-bottom: 6px; }
 
-  /* Comment block (now the main interaction) */
-  .comment-block { margin-bottom: 8px; }
   .comment-label {
-    font-size: 12px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
-    margin-bottom: 10px;
-    text-align: center;
+    font-size: 11px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+    margin-bottom: 8px;
   }
   textarea.comment {
-    width: 100%; min-height: 110px;
-    padding: 16px 18px;
-    background: var(--bg-card);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    width: 100%; min-height: 90px;
+    padding: 14px 16px;
+    background: var(--bg-elev);
     color: var(--text);
-    border: 1px solid var(--border); border-radius: 16px;
+    border: 1px solid var(--border); border-radius: 12px;
     font-family: inherit; font-size: 16px; line-height: 1.45;
     resize: none; overflow: hidden;
-    transition: border-color 0.2s, background 0.2s, min-height 0.2s;
+    transition: border-color 0.2s, background 0.2s;
   }
   textarea.comment::placeholder { color: var(--text-muted); }
   textarea.comment:focus {
@@ -310,125 +362,116 @@
     background: rgba(212,164,92,0.05);
   }
   .saved-flag {
-    display: block; text-align: center;
-    font-size: 12px; color: var(--accent-bright);
-    margin-top: 12px; opacity: 0;
+    display: block; text-align: right;
+    font-size: 11px; color: var(--accent-bright);
+    margin-top: 6px; opacity: 0;
     transition: opacity 0.3s;
   }
   .saved-flag.show { opacity: 1; }
 
-  /* Sheet */
-  .sheet-backdrop {
+  /* ===== Search modal (bottom sheet) ===== */
+  .modal-backdrop {
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.6);
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     z-index: 200; opacity: 0;
     transition: opacity 0.3s; pointer-events: none;
   }
-  .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
-  .sheet {
+  .modal-backdrop.show { opacity: 1; pointer-events: auto; }
+  .search-modal {
     position: fixed; left: 0; right: 0; bottom: 0;
-    max-height: 82vh; overflow-y: auto;
-    background: rgba(20, 20, 24, 0.96);
+    height: 88vh; max-height: 88dvh;
+    background: rgba(20, 20, 24, 0.97);
     backdrop-filter: blur(24px) saturate(1.5);
     -webkit-backdrop-filter: blur(24px) saturate(1.5);
     border-radius: 22px 22px 0 0;
     border: 1px solid var(--border); border-bottom: 0;
-    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
     z-index: 201;
     transform: translateY(100%);
     transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.3, 1);
     box-shadow: 0 -16px 48px -8px rgba(0,0,0,0.6);
+    display: flex; flex-direction: column;
   }
-  .sheet.show { transform: translateY(0); }
-  .sheet::before {
-    content: '';
-    display: block;
-    width: 36px; height: 4px;
+  .search-modal.show { transform: translateY(0); }
+  .sm-grab {
+    flex-shrink: 0; width: 36px; height: 4px;
     background: var(--border-strong);
     border-radius: 999px;
-    margin: 0 auto 14px;
+    margin: 10px auto 4px;
   }
-  .sheet h3 {
-    margin: 0 0 14px; font-size: 16px; font-weight: 700;
-    text-align: center; letter-spacing: -0.01em;
+  .sm-header {
+    flex-shrink: 0;
+    padding: 8px 18px 0;
   }
-  .sheet-cat {
-    margin: 16px 4px 6px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
-    font-size: 11px;
-    color: var(--accent-bright);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 700;
+  .sm-title {
+    text-align: center; font-size: 14px; font-weight: 600;
+    color: var(--text-dim); margin-bottom: 14px;
   }
-  .sheet-cat:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
-  .sheet-cat-context {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: none;
-    letter-spacing: 0;
-    font-weight: 500;
-    margin-top: 3px;
-  }
-  .sheet-list { display: flex; flex-direction: column; gap: 4px; }
-  .sheet-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 14px;
-    border-radius: 12px;
+  .sm-title .target { color: var(--accent-bright); }
+  .sm-search {
+    display: flex; align-items: center; gap: 10px;
     background: var(--bg-elev);
-    border: 1px solid transparent;
-    cursor: pointer; -webkit-tap-highlight-color: transparent;
-    min-height: 60px;
-    transition: all 0.15s;
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 0 14px;
   }
-  .sheet-row:active { transform: scale(0.98); }
-  .sheet-row.current { border-color: var(--accent); background: rgba(212,164,92,0.08); }
-  .sheet-row .sr-num {
-    font-size: 13px; color: var(--text-muted);
-    width: 24px; flex-shrink: 0; font-weight: 600;
+  .sm-search:focus-within { border-color: var(--accent); }
+  .sm-search-icon { font-size: 16px; color: var(--text-dim); }
+  .sm-search input {
+    flex: 1; appearance: none;
+    background: transparent; color: var(--text); border: 0;
+    padding: 14px 0;
+    font-family: inherit; font-size: 16px;
   }
-  .sheet-row .sr-text { flex: 1; min-width: 0; }
-  .sheet-row .sr-title {
-    font-weight: 600; font-size: 14px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  .sm-search input::placeholder { color: var(--text-muted); }
+  .sm-search input:focus { outline: none; }
+  .sm-results {
+    flex: 1; min-height: 0;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 12px 18px calc(20px + env(safe-area-inset-bottom));
   }
-  .sheet-row .sr-artist {
-    font-size: 12px; color: var(--text-dim);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    margin-top: 2px;
-  }
-  .sheet-row .sr-mark {
-    font-size: 16px; flex-shrink: 0;
-    width: 24px; text-align: right;
-  }
-  .sheet-row .sr-mark.has { color: var(--accent-bright); }
-  .sheet-row .sr-mark.empty { color: var(--text-muted); opacity: 0.4; }
-
-  .sheet-divider {
-    height: 1px; background: var(--border);
-    margin: 18px 4px 14px;
-  }
-  .sheet-action {
-    width: 100%; appearance: none;
-    background: linear-gradient(135deg, var(--accent-bright), var(--accent));
-    color: #0a0a0d; border: 0;
-    border-radius: 14px; padding: 16px 22px;
-    font-family: inherit; font-size: 15px; font-weight: 700;
-    cursor: pointer; -webkit-tap-highlight-color: transparent;
-    min-height: 50px;
-    box-shadow: 0 10px 28px -8px var(--accent);
-    transition: transform 0.15s, opacity 0.15s;
-  }
-  .sheet-action:active { transform: scale(0.98); }
-  .sheet-action:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
-  .sheet-action-hint {
-    margin: 10px 4px 0;
-    font-size: 12px; color: var(--text-muted);
+  .sm-status {
     text-align: center;
+    color: var(--text-muted); font-size: 13px;
+    padding: 24px 0;
   }
+  .sm-result {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+  }
+  .sm-result:hover { background: var(--bg-elev); }
+  .sm-result:active { transform: scale(0.98); }
+  .sm-art {
+    width: 48px; height: 48px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    background: var(--bg-elev) center/cover no-repeat;
+  }
+  .sm-text { flex: 1; min-width: 0; }
+  .sm-rtitle {
+    font-weight: 600; font-size: 15px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sm-rartist {
+    margin-top: 2px;
+    font-size: 13px; color: var(--text-dim);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sm-add {
+    appearance: none;
+    background: var(--accent); color: #0a0a0d;
+    border: 0; border-radius: 999px;
+    width: 36px; height: 36px;
+    font-size: 18px; font-weight: 700;
+    cursor: pointer; flex-shrink: 0;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .sm-add:active { transform: scale(0.92); }
+  .sm-add:disabled { background: var(--bg-elev); color: var(--text-muted); }
 
+  /* ===== Toast ===== */
   .toast {
     position: fixed; bottom: calc(28px + env(safe-area-inset-bottom));
     left: 50%; transform: translateX(-50%) translateY(20px);
@@ -448,9 +491,6 @@
 </head>
 <body>
 
-<div id="bg-art" aria-hidden="true"></div>
-<div id="bg-vignette" aria-hidden="true"></div>
-
 <!-- ONBOARDING -->
 <div id="onboarding" hidden>
   <div class="ob-inner">
@@ -461,15 +501,18 @@
     </div>
 
     <div class="ob-block">
-      <label class="ob-label" for="ob-name">Как тебя зовут</label>
-      <input type="text" id="ob-name" class="ob-name-input" placeholder="имя" autocomplete="given-name" autocapitalize="words" enterkeyhint="next">
+      <span class="ob-label">Кто ты</span>
+      <div class="ob-pick" id="ob-user-pick" role="radiogroup">
+        <button type="button" data-user="Юля" role="radio">💗 Юля</button>
+        <button type="button" data-user="Артур" role="radio">💙 Артур</button>
+      </div>
     </div>
 
     <div class="ob-block">
       <span class="ob-label">Сервис</span>
-      <div class="ob-service" role="radiogroup" aria-label="Сервис">
-        <button type="button" data-service="apple" role="radio" aria-checked="false">🍎 Apple Music</button>
-        <button type="button" data-service="spotify" role="radio" aria-checked="false">🟢 Spotify</button>
+      <div class="ob-pick" id="ob-service-pick" role="radiogroup">
+        <button type="button" data-service="apple" role="radio">🍎 Apple Music</button>
+        <button type="button" data-service="spotify" role="radio">🟢 Spotify</button>
       </div>
     </div>
 
@@ -481,54 +524,48 @@
   </div>
 </div>
 
-<!-- APP -->
-<div id="app" hidden>
-  <header class="app-header">
+<!-- HOME -->
+<div id="home" class="screen" hidden>
+  <header class="screen-header">
     <h1>Музыка к венчанию</h1>
-    <div class="greeting">Привет, <span id="user-name" class="name" tabindex="0" role="button" title="Изменить имя"></span><span class="progress" id="progress"></span></div>
+    <div class="greeting">Привет, <span id="home-user-name" class="name" role="button" title="Изменить"></span></div>
   </header>
-
-  <nav class="track-nav" aria-label="Навигация по трекам">
-    <button type="button" id="nav-prev" aria-label="Назад">←</button>
-    <button type="button" id="nav-jump" class="nav-jump" aria-label="Все треки">1 из 6</button>
-    <button type="button" id="nav-next" aria-label="Далее">→</button>
-  </nav>
-
-  <main id="tracks">
-    <article class="track" data-id="t1" data-artist="Massive Attack" data-title="Teardrop"
-      data-category="Лаунж" data-stage="Лаунж · 17:30–19:00"
-      data-context="Фон во время приезда гостей, винного казино и аперитива. Спокойное, с элементами рока."
-      data-spotify="67Hna13dNDkZvBpTXRIaOJ"></article>
-    <article class="track" data-id="t2" data-artist="Adele" data-title="Rolling In the Deep"
-      data-category="LOVERS" data-stage="LOVERS · кавер-программа"
-      data-context="Зажигательное, с поправкой на высокий голос Дарьи Азиатцевой."
-      data-spotify="1c8gk2PeTE04A1pIDH9YMk"></article>
-    <article class="track" data-id="t3" data-artist="Queen" data-title="Don't Stop Me Now"
-      data-category="Торт" data-stage="Вынос торта · 20–40 секунд"
-      data-context="Взрывное и при этом романтичное, с элементами рока. На прототипе слушаем целиком — нужный кусок выберем потом."
-      data-spotify="5T8EDUDqKcs6OSOwEsfqG7"></article>
-    <article class="track" data-id="t4" data-artist="CamelPhat &amp; Elderbrook" data-title="Cola"
-      data-category="DJ Микки" data-stage="DJ Микки · 22:30–23:00"
-      data-context="Атмосфера для финала вечера — что подойдёт к выходу Саши Микки."
-      data-spotify="5gvGvxiMcatxFoOLGFhq37"></article>
-    <article class="track" data-id="t5" data-artist="Технология" data-title="Танцы вдвоём"
-      data-category="Юля" data-stage="Юля Карпинская · «наши» треки"
-      data-context="Личные треки для сета Юли Карпинской."
-      data-spotify="5mmbea1smg4V4Pm46ua7vr"></article>
-    <article class="track" data-id="t6" data-artist="Coldplay" data-title="The Scientist"
-      data-category="Вилла" data-stage="Вилла · 10 июля · 17:00–23:00"
-      data-context="Атмосферный фон на 3-часовую вечеринку накануне. Соотношение нерусских/русских — 75/25."
-      data-spotify="75JFxkI2RXiU7L9VXzMkle"></article>
-  </main>
+  <div id="cat-tiles" class="cat-tiles"></div>
+  <div class="home-footer">
+    <button id="send-report" class="primary-button">📤 Отправить отчёт Артуру</button>
+    <div id="send-status" class="send-hint"></div>
+  </div>
 </div>
 
-<div id="sheet-backdrop" class="sheet-backdrop" aria-hidden="true"></div>
-<div id="sheet" class="sheet" role="dialog" aria-label="Все треки">
-  <h3>Все треки по этапам</h3>
-  <div id="sheet-list" class="sheet-list"></div>
-  <div class="sheet-divider"></div>
-  <button type="button" id="send-report" class="sheet-action">📤 Отправить отчёт Артуру</button>
-  <div id="send-status" class="sheet-action-hint"></div>
+<!-- CATEGORY -->
+<div id="category" class="screen" hidden>
+  <div class="back-bar">
+    <button type="button" class="back-btn" id="cat-back" aria-label="Назад">←</button>
+    <div class="back-bar-title">
+      <div class="bb-name" id="cat-name"></div>
+      <div class="bb-context" id="cat-context"></div>
+    </div>
+  </div>
+  <div class="cat-add">
+    <button type="button" id="open-search">+ Найти и добавить трек</button>
+  </div>
+  <div id="track-list" class="track-list"></div>
+</div>
+
+<!-- SEARCH MODAL -->
+<div id="modal-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+<div id="search-modal" class="search-modal" role="dialog" aria-label="Поиск">
+  <div class="sm-grab"></div>
+  <div class="sm-header">
+    <div class="sm-title">в этап <span class="target" id="sm-target"></span></div>
+    <div class="sm-search">
+      <span class="sm-search-icon">🔍</span>
+      <input type="text" id="sm-input" placeholder="название песни или артиста" autocomplete="off" enterkeyhint="search" spellcheck="false">
+    </div>
+  </div>
+  <div id="sm-results" class="sm-results">
+    <div class="sm-status">Введи название трека или артиста — на русском или английском.</div>
+  </div>
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -537,363 +574,128 @@
 (function () {
   'use strict';
 
-  /* ===== keys ===== */
   const K_NAME = 'venchanie_user_name';
   const K_SERVICE = 'venchanie_service_v1';
-  const K_AUDIT = 'venchanie_audit_v7'; /* v7: dropped numeric rating; comment-only */
-  const K_IDX = 'venchanie_current_idx';
+  const K_AUDIT = 'venchanie_audit_v8';  // dynamic track IDs (integer keys)
   const API_BASE = 'https://api.akoev.com';
 
-  const tracks = Array.from(document.querySelectorAll('article.track'));
+  const CATEGORIES = [
+    { key: 'Лаунж',    stage: 'Лаунж · 17:30–19:00',            context: 'Фон во время приезда гостей, винного казино и аперитива.' },
+    { key: 'LOVERS',   stage: 'LOVERS · кавер-программа',        context: 'Зажигательное, с поправкой на голос Дарьи Азиатцевой.' },
+    { key: 'Торт',     stage: 'Вынос торта · 20–40 секунд',      context: 'Взрывное и при этом романтичное, с элементами рока.' },
+    { key: 'DJ Микки', stage: 'DJ Микки · 22:30–23:00',          context: 'Атмосфера финала вечера — что подойдёт к выходу Саши.' },
+    { key: 'Юля',      stage: 'Юля Карпинская · «наши» треки',   context: 'Личные треки для сета Юли Карпинской.' },
+    { key: 'Вилла',    stage: 'Вилла · 10 июля · 17:00–23:00',   context: 'Атмосферный фон на 3-часовую вечеринку накануне.' }
+  ];
 
-  /* ===== helpers ===== */
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
   function lsGet(k, dflt) { try { const v = localStorage.getItem(k); return v == null ? dflt : v; } catch (e) { return dflt; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function fmtDate(ms) {
+    if (!ms) return '';
+    const d = new Date(ms);
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  }
 
   /* ===== state ===== */
   let userName = lsGet(K_NAME, '');
   let service = lsGet(K_SERVICE, '');
-  let currentIdx = (() => {
-    const n = parseInt(lsGet(K_IDX, '0'), 10);
-    if (isNaN(n)) return 0;
-    return Math.max(0, Math.min(tracks.length - 1, n));
-  })();
   let audit = (() => { try { return JSON.parse(lsGet(K_AUDIT, '{}')) || {}; } catch (e) { return {}; } })();
+  let allTracks = [];
+  let currentCategory = null;
+  let expandedTrackId = null;
 
   /* ===== onboarding ===== */
   const onboardingEl = document.getElementById('onboarding');
-  const appEl = document.getElementById('app');
-  const obName = document.getElementById('ob-name');
+  const homeEl = document.getElementById('home');
+  const categoryEl = document.getElementById('category');
   const obStart = document.getElementById('ob-start');
   const obLogin = document.getElementById('ob-login');
   const obLoginLink = document.getElementById('ob-login-link');
-  let obService = '';
+  let pickedUser = '';
+  let pickedService = '';
 
-  function updateObStart() {
-    const ok = obName.value.trim().length > 0 && !!obService;
-    obStart.disabled = !ok;
-  }
+  function updateObStart() { obStart.disabled = !(pickedUser && pickedService); }
   function updateLoginHint() {
-    if (!obService) { obLogin.hidden = true; return; }
+    if (!pickedService) { obLogin.hidden = true; return; }
     obLogin.hidden = false;
-    if (obService === 'apple') {
-      obLoginLink.href = 'https://music.apple.com';
-      obLoginLink.textContent = 'Apple Music';
+    if (pickedService === 'apple') {
+      obLoginLink.href = 'https://music.apple.com'; obLoginLink.textContent = 'Apple Music';
     } else {
-      obLoginLink.href = 'https://open.spotify.com';
-      obLoginLink.textContent = 'Spotify';
+      obLoginLink.href = 'https://open.spotify.com'; obLoginLink.textContent = 'Spotify';
     }
   }
-  function setObService(svc) {
-    obService = svc;
-    document.querySelectorAll('.ob-service button').forEach(b => {
-      const on = b.dataset.service === svc;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-checked', on ? 'true' : 'false');
+  document.querySelectorAll('#ob-user-pick button').forEach(b => {
+    b.addEventListener('click', () => {
+      pickedUser = b.dataset.user;
+      document.querySelectorAll('#ob-user-pick button').forEach(x => x.classList.toggle('active', x === b));
+      updateObStart();
     });
-    updateLoginHint();
-    updateObStart();
-  }
-
-  obName.addEventListener('input', updateObStart);
-  document.querySelectorAll('.ob-service button').forEach(b => {
-    b.addEventListener('click', () => setObService(b.dataset.service));
+  });
+  document.querySelectorAll('#ob-service-pick button').forEach(b => {
+    b.addEventListener('click', () => {
+      pickedService = b.dataset.service;
+      document.querySelectorAll('#ob-service-pick button').forEach(x => x.classList.toggle('active', x === b));
+      updateLoginHint();
+      updateObStart();
+    });
   });
   obStart.addEventListener('click', () => {
     if (obStart.disabled) return;
-    userName = obName.value.trim();
-    service = obService;
+    userName = pickedUser;
+    service = pickedService;
     lsSet(K_NAME, userName);
     lsSet(K_SERVICE, service);
-    showApp();
-  });
-  obName.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !obStart.disabled) obStart.click();
+    bootApp();
   });
 
   function showOnboarding() {
-    appEl.hidden = true;
+    homeEl.hidden = true; categoryEl.hidden = true;
     onboardingEl.hidden = false;
-    obName.value = userName || '';
-    setObService(service || '');
-    setTimeout(() => obName.focus(), 50);
-  }
-
-  /* ===== app structure ===== */
-  const userNameEl = document.getElementById('user-name');
-  const progressEl = document.getElementById('progress');
-  const navPrev = document.getElementById('nav-prev');
-  const navNext = document.getElementById('nav-next');
-  const navJump = document.getElementById('nav-jump');
-  const bgArtEl = document.getElementById('bg-art');
-
-  tracks.forEach(track => {
-    const stage = track.dataset.stage || track.dataset.category || '';
-    const context = track.dataset.context || '';
-    track.innerHTML = `
-      <div class="track-meta" style="text-align:center">
-        <span class="category-chip">${escapeHtml(stage)}</span>
-        ${context ? `<div class="category-context">${escapeHtml(context)}</div>` : ''}
-      </div>
-      <div class="track-header">
-        <h2 class="track-title">${escapeHtml(track.dataset.title)}</h2>
-        <div class="track-artist">${escapeHtml(track.dataset.artist)}</div>
-      </div>
-      <div class="player-embed loading"></div>
-      <div class="comment-block">
-        <div class="comment-label">Что скажешь</div>
-        <textarea class="comment" placeholder="нравится? что зацепило, что нет — короткое впечатление"></textarea>
-        <span class="saved-flag">✓ сохранено</span>
-      </div>
-    `;
-  });
-
-  /* ===== iTunes lookup (apple embed url + artwork for bg) ===== */
-  const trackDataCache = new Map();
-  async function fetchTrackData(artist, title) {
-    const term = encodeURIComponent(`${artist} ${title}`);
-    for (const c of ['us', 'ru', 'fr']) {
-      try {
-        const r = await fetch(`https://itunes.apple.com/search?term=${term}&entity=song&limit=1&media=music&country=${c}`);
-        if (!r.ok) continue;
-        const d = await r.json();
-        const hit = d.results && d.results[0];
-        if (hit && hit.trackViewUrl) {
-          return {
-            embedUrl: hit.trackViewUrl.replace(/^https?:\/\/music\.apple\.com\//, 'https://embed.music.apple.com/'),
-            artwork: hit.artworkUrl100 ? hit.artworkUrl100.replace('100x100bb', '600x600bb') : null
-          };
-        }
-      } catch (e) {}
+    // pre-fill if returning
+    if (userName) {
+      pickedUser = userName;
+      document.querySelectorAll('#ob-user-pick button').forEach(b => b.classList.toggle('active', b.dataset.user === userName));
     }
-    return null;
-  }
-  async function lookupTrack(track) {
-    const id = track.dataset.id;
-    if (trackDataCache.has(id)) return trackDataCache.get(id);
-    let data = null;
-    try { data = await fetchTrackData(track.dataset.artist, track.dataset.title); }
-    catch (e) {}
-    trackDataCache.set(id, data);
-    return data;
+    if (service) {
+      pickedService = service;
+      document.querySelectorAll('#ob-service-pick button').forEach(b => b.classList.toggle('active', b.dataset.service === service));
+      updateLoginHint();
+    }
+    updateObStart();
   }
 
-  /* ===== bg art ===== */
-  let bgArtTrackId = null;
-  function setBgArt(url, trackId) {
-    if (bgArtTrackId === trackId) return;
-    bgArtTrackId = trackId;
-    if (!url) {
-      bgArtEl.classList.remove('loaded');
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
-      if (bgArtTrackId !== trackId) return;
-      bgArtEl.style.backgroundImage = `url("${url}")`;
-      bgArtEl.classList.add('loaded');
-    };
-    img.src = url;
+  /* ===== API ===== */
+  async function apiGetTracks() {
+    try {
+      const r = await fetch(`${API_BASE}/api/tracks`);
+      if (!r.ok) return [];
+      const d = await r.json();
+      return d.tracks || [];
+    } catch (e) { return []; }
   }
-
-  /* ===== embed renderers ===== */
-  async function renderApple(track, slot) {
-    const data = await lookupTrack(track);
-    if (!track.hasAttribute('data-active')) return;
-    slot.classList.remove('loading');
-    if (!data || !data.embedUrl) {
-      slot.classList.add('error');
-      slot.textContent = 'Apple Music: трек не найден.';
-      return;
-    }
-    const iframe = document.createElement('iframe');
-    iframe.src = data.embedUrl;
-    iframe.allow = 'autoplay *; encrypted-media *;';
-    iframe.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
-    iframe.loading = 'lazy';
-    slot.appendChild(iframe);
-  }
-  function renderSpotify(track, slot) {
-    slot.classList.remove('loading');
-    const id = track.dataset.spotify;
-    if (!id) {
-      slot.classList.add('error');
-      slot.textContent = 'Spotify: трек не задан.';
-      return;
-    }
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://open.spotify.com/embed/track/${id}?utm_source=generator`;
-    iframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
-    iframe.loading = 'lazy';
-    slot.appendChild(iframe);
-    lookupTrack(track).then(data => {
-      if (track.hasAttribute('data-active') && data && data.artwork) {
-        setBgArt(data.artwork, track.dataset.id);
-      }
-    });
-  }
-  function renderTrackEmbed(track) {
-    const slot = track.querySelector('.player-embed');
-    slot.innerHTML = '';
-    slot.classList.remove('error');
-    slot.classList.add('loading');
-    if (service === 'apple') {
-      renderApple(track, slot);
-      lookupTrack(track).then(data => {
-        if (track.hasAttribute('data-active') && data && data.artwork) {
-          setBgArt(data.artwork, track.dataset.id);
-        }
+  async function apiAddTrack({ artist, title, category, spotify_id, artwork_url }) {
+    try {
+      const r = await fetch(`${API_BASE}/api/tracks/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artist, title, category, spotify_id, artwork_url, by: userName })
       });
-    } else {
-      renderSpotify(track, slot);
-    }
+      return await r.json();
+    } catch (e) { return { ok: false }; }
   }
-  function clearTrackEmbed(track) {
-    const slot = track.querySelector('.player-embed');
-    slot.innerHTML = '';
-    slot.classList.remove('error');
-    slot.classList.add('loading');
+  async function apiRemoveTrack(id) {
+    try {
+      const r = await fetch(`${API_BASE}/api/tracks/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, by: userName })
+      });
+      return await r.json();
+    } catch (e) { return { ok: false }; }
   }
-
-  /* ===== comment binding ===== */
-  function flashFlag(track) {
-    const flag = track.querySelector('.saved-flag');
-    flag.classList.add('show');
-    clearTimeout(flag._t);
-    flag._t = setTimeout(() => flag.classList.remove('show'), 1400);
-  }
-  function autoGrow(ta) {
-    ta.style.height = 'auto';
-    ta.style.height = Math.max(110, ta.scrollHeight) + 'px';
-  }
-  function applyStateToTrack(track) {
-    const id = track.dataset.id;
-    const s = audit[id] || {};
-    const ta = track.querySelector('textarea.comment');
-    if (ta) {
-      ta.value = s.comment || '';
-      autoGrow(ta);
-    }
-  }
-  function saveAudit() {
-    lsSet(K_AUDIT, JSON.stringify(audit));
-    updateProgress();
-    apiSaveDebounced();
-  }
-  tracks.forEach(track => {
-    const id = track.dataset.id;
-    const ta = track.querySelector('textarea.comment');
-    let typingTimer;
-    ta.addEventListener('input', () => {
-      autoGrow(ta);
-      if (!audit[id]) audit[id] = {};
-      audit[id].comment = ta.value;
-      clearTimeout(typingTimer);
-      typingTimer = setTimeout(() => { saveAudit(); flashFlag(track); }, 400);
-    });
-    applyStateToTrack(track);
-  });
-
-  /* ===== navigation ===== */
-  function setActive(idx) {
-    idx = Math.max(0, Math.min(tracks.length - 1, idx));
-    tracks.forEach((t, i) => {
-      if (i !== idx && t.hasAttribute('data-active')) {
-        clearTrackEmbed(t);
-        t.removeAttribute('data-active');
-      }
-    });
-    currentIdx = idx;
-    lsSet(K_IDX, String(idx));
-    const track = tracks[idx];
-    track.setAttribute('data-active', '');
-    renderTrackEmbed(track);
-    // re-grow textarea after tab in (style was set when not visible)
-    const ta = track.querySelector('textarea.comment');
-    if (ta) setTimeout(() => autoGrow(ta), 0);
-    updateNav();
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }
-  function updateNav() {
-    navPrev.disabled = currentIdx === 0;
-    navNext.disabled = currentIdx === tracks.length - 1;
-    navJump.textContent = `${currentIdx + 1} из ${tracks.length}`;
-  }
-  function updateProgress() {
-    const filled = Object.values(audit).filter(s => s && s.comment && s.comment.trim().length > 0).length;
-    progressEl.textContent = ` · ${filled} из ${tracks.length}`;
-  }
-  navPrev.addEventListener('click', () => setActive(currentIdx - 1));
-  navNext.addEventListener('click', () => setActive(currentIdx + 1));
-
-  /* ===== jump-to sheet (grouped by category/stage) ===== */
-  const sheetEl = document.getElementById('sheet');
-  const sheetBackdrop = document.getElementById('sheet-backdrop');
-  const sheetList = document.getElementById('sheet-list');
-  function openSheet() {
-    const groups = [];
-    const byCat = new Map();
-    tracks.forEach((t, i) => {
-      const cat = t.dataset.category || '—';
-      if (!byCat.has(cat)) {
-        byCat.set(cat, { stage: t.dataset.stage || cat, context: t.dataset.context || '', items: [] });
-        groups.push(cat);
-      }
-      byCat.get(cat).items.push({ track: t, idx: i });
-    });
-    let html = '';
-    for (const cat of groups) {
-      const g = byCat.get(cat);
-      html += `<div class="sheet-cat">${escapeHtml(g.stage)}${g.context ? `<div class="sheet-cat-context">${escapeHtml(g.context)}</div>` : ''}</div>`;
-      for (const { track: t, idx: i } of g.items) {
-        const s = audit[t.dataset.id] || {};
-        const has = s.comment && s.comment.trim().length > 0;
-        const mark = has ? '✓' : '○';
-        const markClass = has ? 'has' : 'empty';
-        html += `<div class="sheet-row${i === currentIdx ? ' current' : ''}" data-idx="${i}">
-          <span class="sr-num">${i + 1}.</span>
-          <span class="sr-text">
-            <div class="sr-title">${escapeHtml(t.dataset.title)}</div>
-            <div class="sr-artist">${escapeHtml(t.dataset.artist)}</div>
-          </span>
-          <span class="sr-mark ${markClass}">${mark}</span>
-        </div>`;
-      }
-    }
-    sheetList.innerHTML = html;
-    sheetEl.classList.add('show');
-    sheetBackdrop.classList.add('show');
-  }
-  function closeSheet() {
-    sheetEl.classList.remove('show');
-    sheetBackdrop.classList.remove('show');
-  }
-  navJump.addEventListener('click', openSheet);
-  sheetBackdrop.addEventListener('click', closeSheet);
-  sheetList.addEventListener('click', (e) => {
-    const row = e.target.closest('.sheet-row');
-    if (!row) return;
-    const idx = parseInt(row.dataset.idx, 10);
-    closeSheet();
-    setActive(idx);
-  });
-
-  /* ===== name edit ===== */
-  userNameEl.addEventListener('click', () => {
-    const next = window.prompt('Как тебя зовут?', userName);
-    if (next == null) return;
-    const trimmed = next.trim();
-    if (!trimmed) return;
-    userName = trimmed;
-    lsSet(K_NAME, userName);
-    userNameEl.textContent = userName;
-    apiSaveDebounced();
-  });
-
-  /* ===== backend sync ===== */
   let saveDebounceTimer;
   function apiSaveDebounced() {
     clearTimeout(saveDebounceTimer);
@@ -907,31 +709,420 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: userName, service, tracks: audit })
       });
-    } catch (e) { /* localStorage is source of truth */ }
+    } catch (e) {}
   }
   async function apiSubmit() {
     if (!userName || !service) return { ok: false };
-    const tracksMeta = tracks.map(t => ({
-      id: t.dataset.id,
-      artist: t.dataset.artist,
-      title: t.dataset.title,
-      category: t.dataset.category,
-      stage: t.dataset.stage || ''
-    }));
     try {
-      const resp = await fetch(`${API_BASE}/api/submit`, {
+      const r = await fetch(`${API_BASE}/api/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: userName, service, tracks: audit, tracksMeta })
+        body: JSON.stringify({ name: userName, service, tracks: audit })
       });
-      if (!resp.ok) return { ok: false, status: resp.status };
-      return await resp.json();
-    } catch (e) {
-      return { ok: false, error: String(e && e.message || e) };
-    }
+      if (!r.ok) return { ok: false, status: r.status };
+      return await r.json();
+    } catch (e) { return { ok: false }; }
   }
 
+  /* ===== iTunes Search (for embed url + search results) ===== */
+  async function itunesSearch(query, opts = {}) {
+    const term = encodeURIComponent(query);
+    const country = opts.country || 'us';
+    const limit = opts.limit || 12;
+    const url = `https://itunes.apple.com/search?term=${term}&entity=song&limit=${limit}&media=music&country=${country}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return [];
+      const d = await r.json();
+      return (d.results || []).map(hit => ({
+        artist: hit.artistName,
+        title: hit.trackName,
+        artworkUrl100: hit.artworkUrl100,
+        artwork: hit.artworkUrl100 ? hit.artworkUrl100.replace('100x100bb', '600x600bb') : null,
+        trackId: hit.trackId,
+        trackViewUrl: hit.trackViewUrl,
+        embedUrl: hit.trackViewUrl ? hit.trackViewUrl.replace(/^https?:\/\/music\.apple\.com\//, 'https://embed.music.apple.com/') : null
+      })).filter(t => t.artist && t.title);
+    } catch (e) { return []; }
+  }
+  // Cache per-track lookup result so we don't re-fetch on every expansion
+  const trackLookupCache = new Map();
+  async function lookupApple(track) {
+    const id = track.id;
+    if (trackLookupCache.has(id)) return trackLookupCache.get(id);
+    let result = null;
+    for (const c of ['us', 'ru', 'fr']) {
+      const hits = await itunesSearch(`${track.artist} ${track.title}`, { country: c, limit: 1 });
+      if (hits.length) { result = hits[0]; break; }
+    }
+    trackLookupCache.set(id, result);
+    return result;
+  }
+
+  /* ===== home (categories) ===== */
+  function renderHome() {
+    document.getElementById('home-user-name').textContent = userName;
+    const tiles = document.getElementById('cat-tiles');
+    const tracksByCat = new Map(CATEGORIES.map(c => [c.key, []]));
+    for (const t of allTracks) {
+      if (tracksByCat.has(t.category)) tracksByCat.get(t.category).push(t);
+    }
+    tiles.innerHTML = CATEGORIES.map(cat => {
+      const arr = tracksByCat.get(cat.key);
+      const count = arr.length;
+      const commented = arr.filter(t => (audit[t.id] && audit[t.id].comment && audit[t.id].comment.trim())).length;
+      const hasProg = commented > 0;
+      return `<button class="cat-tile${hasProg ? ' has-progress' : ''}" data-cat="${escapeHtml(cat.key)}">
+        <div class="ct-name">${escapeHtml(cat.key)}</div>
+        <div class="ct-stage">${escapeHtml(cat.stage)}</div>
+        <div class="ct-context">${escapeHtml(cat.context)}</div>
+        <div class="ct-meta">
+          <span class="ct-pill">${count} трек${count === 1 ? '' : count >= 2 && count <= 4 ? 'а' : 'ов'}</span>
+          ${commented > 0 ? `<span class="ct-pill with-comments">✓ ${commented} ${commented === 1 ? 'комментарий' : commented >= 2 && commented <= 4 ? 'комментария' : 'комментариев'}</span>` : ''}
+        </div>
+      </button>`;
+    }).join('');
+    tiles.querySelectorAll('.cat-tile').forEach(b => {
+      b.addEventListener('click', () => enterCategory(b.dataset.cat));
+    });
+  }
+  function showHome() {
+    onboardingEl.hidden = true;
+    categoryEl.hidden = true;
+    homeEl.hidden = false;
+    currentCategory = null;
+    expandedTrackId = null;
+    renderHome();
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  /* ===== category view ===== */
+  function enterCategory(catKey) {
+    const cat = CATEGORIES.find(c => c.key === catKey);
+    if (!cat) return;
+    currentCategory = catKey;
+    document.getElementById('cat-name').textContent = cat.stage;
+    document.getElementById('cat-context').textContent = cat.context;
+    homeEl.hidden = true;
+    onboardingEl.hidden = true;
+    categoryEl.hidden = false;
+    expandedTrackId = null;
+    renderCategoryTracks();
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  function renderCategoryTracks() {
+    const list = document.getElementById('track-list');
+    const items = allTracks.filter(t => t.category === currentCategory);
+    if (items.length === 0) {
+      list.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:32px 0;font-size:14px">пока пусто — нажми «+ Найти трек» сверху</div>`;
+      return;
+    }
+    list.innerHTML = items.map(t => {
+      const c = audit[t.id] || {};
+      const has = c.comment && c.comment.trim();
+      const expanded = expandedTrackId === t.id;
+      const isMine = t.added_by === userName;
+      const addedBadgeClass = t.added_by === 'Артур' ? 'added-arthur' : 'added-yula';
+      const artworkBg = t.artwork ? `style="background-image:url('${escapeHtml(t.artwork)}')"` : '';
+      return `<div class="track-card${expanded ? ' expanded' : ''}${has ? ' has-comment' : ''}" data-id="${t.id}">
+        <div class="track-card-head">
+          <div class="tc-artwork" ${artworkBg}>${t.artwork ? '' : '🎵'}</div>
+          <div class="tc-text">
+            <div class="tc-title">${escapeHtml(t.title)}</div>
+            <div class="tc-artist">${escapeHtml(t.artist)}</div>
+            <div class="tc-meta">
+              <span class="badge ${addedBadgeClass}">+ ${escapeHtml(t.added_by)} · ${fmtDate(t.added_at)}</span>
+              ${has ? '<span class="badge has-comment">✓ есть твой коммент</span>' : ''}
+            </div>
+          </div>
+          <div class="tc-actions">
+            <button type="button" class="tc-remove" data-action="remove" aria-label="Удалить">✕</button>
+          </div>
+        </div>
+        <div class="track-card-body">
+          <div class="track-card-body-inner">
+            <div class="player-embed loading" data-embed-for="${t.id}"></div>
+            <div class="comment-label">Твой комментарий</div>
+            <textarea class="comment" data-comment-for="${t.id}" placeholder="нравится? что зацепило, что нет"></textarea>
+            <span class="saved-flag" data-saved-for="${t.id}">✓ сохранено</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('.track-card').forEach(card => {
+      const id = Number(card.dataset.id);
+      const head = card.querySelector('.track-card-head');
+      head.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;  // ignore clicks on action buttons
+        toggleExpand(id);
+      });
+      const removeBtn = card.querySelector('.tc-remove');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const t = allTracks.find(x => x.id === id);
+          if (!t) return;
+          if (!window.confirm(`Удалить «${t.title}»? Это увидят все.`)) return;
+          const res = await apiRemoveTrack(id);
+          if (res.ok) {
+            showToast('✕ Удалено');
+            await reloadTracks();
+            renderCategoryTracks();
+          } else {
+            showToast('Не получилось удалить');
+          }
+        });
+      }
+      const ta = card.querySelector('textarea.comment');
+      if (ta) {
+        ta.value = (audit[id] && audit[id].comment) || '';
+        autoGrow(ta);
+        let timer;
+        ta.addEventListener('input', () => {
+          autoGrow(ta);
+          if (!audit[id]) audit[id] = {};
+          audit[id].comment = ta.value;
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            lsSet(K_AUDIT, JSON.stringify(audit));
+            apiSaveDebounced();
+            const f = card.querySelector('.saved-flag');
+            f.classList.add('show');
+            setTimeout(() => f.classList.remove('show'), 1400);
+            // update has-comment border in real-time
+            const has = ta.value && ta.value.trim();
+            card.classList.toggle('has-comment', !!has);
+            // update or add badge
+            const badgeRow = card.querySelector('.tc-meta');
+            let badge = badgeRow.querySelector('.badge.has-comment');
+            if (has && !badge) {
+              badge = document.createElement('span');
+              badge.className = 'badge has-comment';
+              badge.textContent = '✓ есть твой коммент';
+              badgeRow.appendChild(badge);
+            } else if (!has && badge) {
+              badge.remove();
+            }
+          }, 400);
+        });
+      }
+    });
+
+    if (expandedTrackId) {
+      const card = list.querySelector(`.track-card[data-id="${expandedTrackId}"]`);
+      if (card) renderEmbedInCard(card);
+    }
+  }
+  function autoGrow(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = Math.max(90, ta.scrollHeight) + 'px';
+  }
+  function toggleExpand(id) {
+    const list = document.getElementById('track-list');
+    const cards = list.querySelectorAll('.track-card');
+    if (expandedTrackId === id) {
+      // collapse
+      expandedTrackId = null;
+      cards.forEach(c => {
+        if (c.classList.contains('expanded')) {
+          const slot = c.querySelector('.player-embed');
+          slot.innerHTML = '';
+          slot.classList.remove('error');
+          slot.classList.add('loading');
+          c.classList.remove('expanded');
+        }
+      });
+      return;
+    }
+    // collapse previously-expanded
+    cards.forEach(c => {
+      if (c.classList.contains('expanded')) {
+        const slot = c.querySelector('.player-embed');
+        slot.innerHTML = '';
+        slot.classList.remove('error');
+        slot.classList.add('loading');
+        c.classList.remove('expanded');
+      }
+    });
+    expandedTrackId = id;
+    const target = list.querySelector(`.track-card[data-id="${id}"]`);
+    if (target) {
+      target.classList.add('expanded');
+      renderEmbedInCard(target);
+      // ensure visible (scroll into view if needed)
+      setTimeout(() => {
+        const rect = target.getBoundingClientRect();
+        if (rect.top < 80 || rect.bottom > window.innerHeight - 40) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 80);
+    }
+  }
+  async function renderEmbedInCard(card) {
+    const id = Number(card.dataset.id);
+    const track = allTracks.find(t => t.id === id);
+    if (!track) return;
+    const slot = card.querySelector('.player-embed');
+    slot.innerHTML = '';
+    slot.classList.remove('error');
+    slot.classList.add('loading');
+
+    if (service === 'spotify' && track.spotify_id) {
+      slot.classList.remove('loading');
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://open.spotify.com/embed/track/${track.spotify_id}?utm_source=generator`;
+      iframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+      iframe.loading = 'lazy';
+      slot.appendChild(iframe);
+      return;
+    }
+    // fallback to apple (works for both, especially when no spotify_id)
+    const data = await lookupApple(track);
+    if (expandedTrackId !== id) return;  // user collapsed/changed in the meantime
+    slot.classList.remove('loading');
+    if (!data || !data.embedUrl) {
+      slot.classList.add('error');
+      slot.textContent = 'Трек не найден в Apple Music';
+      return;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.src = data.embedUrl;
+    iframe.allow = 'autoplay *; encrypted-media *;';
+    iframe.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
+    iframe.loading = 'lazy';
+    slot.appendChild(iframe);
+  }
+
+  /* ===== Search modal ===== */
+  const modalBackdrop = document.getElementById('modal-backdrop');
+  const searchModal = document.getElementById('search-modal');
+  const smInput = document.getElementById('sm-input');
+  const smResults = document.getElementById('sm-results');
+  const smTarget = document.getElementById('sm-target');
+
+  function openSearch() {
+    if (!currentCategory) return;
+    smTarget.textContent = currentCategory;
+    smInput.value = '';
+    smResults.innerHTML = '<div class="sm-status">Введи название трека или артиста — на русском или английском.</div>';
+    searchModal.classList.add('show');
+    modalBackdrop.classList.add('show');
+    setTimeout(() => smInput.focus(), 200);
+  }
+  function closeSearch() {
+    searchModal.classList.remove('show');
+    modalBackdrop.classList.remove('show');
+  }
+  document.getElementById('open-search').addEventListener('click', openSearch);
+  modalBackdrop.addEventListener('click', closeSearch);
+
+  let searchTimer = null;
+  let searchRunId = 0;
+  smInput.addEventListener('input', () => {
+    const q = smInput.value.trim();
+    clearTimeout(searchTimer);
+    if (!q) {
+      smResults.innerHTML = '<div class="sm-status">Введи название трека или артиста — на русском или английском.</div>';
+      return;
+    }
+    smResults.innerHTML = '<div class="sm-status">⏳ ищу…</div>';
+    const myRun = ++searchRunId;
+    searchTimer = setTimeout(async () => {
+      // search in two storefronts and merge (de-dupe by artist+title)
+      const [us, ru] = await Promise.all([
+        itunesSearch(q, { country: 'us', limit: 10 }),
+        itunesSearch(q, { country: 'ru', limit: 10 })
+      ]);
+      if (myRun !== searchRunId) return;
+      const seen = new Set();
+      const merged = [];
+      for (const h of [...us, ...ru]) {
+        const key = `${h.artist.toLowerCase().trim()}|${h.title.toLowerCase().trim()}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(h);
+        if (merged.length >= 14) break;
+      }
+      if (merged.length === 0) {
+        smResults.innerHTML = '<div class="sm-status">Ничего не нашлось. Попробуй другое написание.</div>';
+        return;
+      }
+      smResults.innerHTML = merged.map((h, i) => `
+        <div class="sm-result" data-idx="${i}">
+          <div class="sm-art" style="background-image:url('${escapeHtml(h.artworkUrl100 || '')}')"></div>
+          <div class="sm-text">
+            <div class="sm-rtitle">${escapeHtml(h.title)}</div>
+            <div class="sm-rartist">${escapeHtml(h.artist)}</div>
+          </div>
+          <button class="sm-add" type="button" aria-label="Добавить">+</button>
+        </div>
+      `).join('');
+      smResults.querySelectorAll('.sm-result').forEach(row => {
+        row.addEventListener('click', async () => {
+          const idx = Number(row.dataset.idx);
+          const h = merged[idx];
+          const btn = row.querySelector('.sm-add');
+          btn.disabled = true;
+          btn.textContent = '…';
+          const res = await apiAddTrack({
+            artist: h.artist,
+            title: h.title,
+            category: currentCategory,
+            artwork_url: h.artwork || null,
+            spotify_id: null
+          });
+          if (res.ok) {
+            btn.textContent = '✓';
+            await reloadTracks();
+            renderCategoryTracks();
+            setTimeout(() => closeSearch(), 380);
+            showToast(`✓ Добавил${userName === 'Юля' ? 'а' : ''}`);
+          } else {
+            btn.textContent = '+';
+            btn.disabled = false;
+            showToast('Не получилось добавить');
+          }
+        });
+      });
+    }, 350);
+  });
+
+  /* ===== name edit ===== */
+  document.getElementById('home-user-name').addEventListener('click', () => {
+    // switch user instead of free edit
+    const next = userName === 'Юля' ? 'Артур' : 'Юля';
+    if (!window.confirm(`Переключить пользователя на ${next}?`)) return;
+    userName = next;
+    lsSet(K_NAME, userName);
+    document.getElementById('home-user-name').textContent = userName;
+    apiSaveDebounced();
+    renderHome();
+  });
+
+  /* ===== back from category ===== */
+  document.getElementById('cat-back').addEventListener('click', showHome);
+
   /* ===== send report ===== */
+  const sendBtn = document.getElementById('send-report');
+  const sendStatus = document.getElementById('send-status');
+  sendBtn.addEventListener('click', async () => {
+    if (!window.confirm('Отправить отчёт Артуру сейчас? Можно отправить ещё раз позже.')) return;
+    sendBtn.disabled = true;
+    const orig = sendBtn.textContent;
+    sendBtn.textContent = '⏳ Отправляем…';
+    const res = await apiSubmit();
+    sendBtn.disabled = false;
+    sendBtn.textContent = orig;
+    if (res && res.ok) {
+      sendStatus.textContent = `✓ Отправлено (всего: ${res.submit_count || 1})`;
+      showToast(res.emailed ? '✓ Отчёт ушёл Артуру' : '✓ Сохранено · письмо в пути');
+    } else {
+      showToast('Не получилось. Проверь интернет и попробуй ещё раз.');
+    }
+  });
+
+  /* ===== toast ===== */
   const toast = document.getElementById('toast');
   function showToast(msg) {
     toast.textContent = msg;
@@ -939,36 +1130,18 @@
     clearTimeout(toast._t);
     toast._t = setTimeout(() => toast.classList.remove('show'), 2600);
   }
-  const sendBtn = document.getElementById('send-report');
-  const sendStatus = document.getElementById('send-status');
-  sendBtn.addEventListener('click', async () => {
-    if (!window.confirm('Отправить отчёт Артуру сейчас? Можно отправить ещё раз позже.')) return;
-    sendBtn.disabled = true;
-    const origText = sendBtn.textContent;
-    sendBtn.textContent = '⏳ Отправляем…';
-    const res = await apiSubmit();
-    sendBtn.disabled = false;
-    sendBtn.textContent = origText;
-    if (res && res.ok) {
-      sendStatus.textContent = `✓ Отправлено (всего: ${res.submit_count || 1})`;
-      showToast(res.emailed ? '✓ Отчёт ушёл Артуру' : '✓ Сохранено · письмо в пути');
-      closeSheet();
-    } else {
-      showToast('Не получилось. Проверь интернет и попробуй ещё раз.');
-    }
-  });
 
   /* ===== boot ===== */
-  function showApp() {
-    onboardingEl.hidden = true;
-    appEl.hidden = false;
-    userNameEl.textContent = userName;
-    setActive(currentIdx);
-    updateProgress();
-    apiSaveDebounced();
+  async function reloadTracks() {
+    allTracks = await apiGetTracks();
+  }
+  async function bootApp() {
+    await reloadTracks();
+    apiSaveDebounced();  // ensure user record exists
+    showHome();
   }
 
-  if (userName && service) showApp();
+  if (userName && service) bootApp();
   else showOnboarding();
 })();
 </script>
