@@ -14,6 +14,7 @@
     --bg-1: #0e0e12;
     --surface: rgba(22, 22, 26, 0.7);
     --surface-2: #15151a;
+    --surface-3: rgba(255,255,255,0.04);
     --line: rgba(255, 255, 255, 0.06);
     --line-2: rgba(255, 255, 255, 0.12);
     --text: #f4f4f6;
@@ -24,11 +25,15 @@
     --gold-soft: rgba(212, 164, 92, 0.16);
     --good: #6ad06a;
     --bad: #d96666;
+    --pink: #f9a8d4;
+    --blue: #93c5fd;
+    --green: #7dd3a3;
     --radius-sm: 10px;
     --radius: 14px;
     --radius-lg: 22px;
     --ease: cubic-bezier(0.32, 0.72, 0, 1);
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
   }
   html, body { margin: 0; padding: 0; }
   html { background: var(--bg); }
@@ -45,23 +50,14 @@
   }
   [hidden] { display: none !important; }
 
-  /* Ambient color tint pulled from current track artwork */
   #ambient {
     position: fixed; inset: 0; z-index: -1;
     pointer-events: none;
     background: var(--bg);
     transition: background 0.9s var(--ease-out);
   }
-  #ambient::after {
-    content: ''; position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse 700px 500px at 50% -10%, rgba(212, 164, 92, 0.05), transparent 70%),
-      linear-gradient(180deg, rgba(8, 8, 10, 0.2) 0%, rgba(8, 8, 10, 0.85) 90%);
-  }
 
-  button, input, textarea, select {
-    font-family: inherit; font-size: inherit; color: inherit;
-  }
+  button, input, textarea { font-family: inherit; font-size: inherit; color: inherit; }
   button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible {
     outline: 2px solid var(--gold);
     outline-offset: 3px;
@@ -74,17 +70,24 @@
       animation-iteration-count: 1 !important;
     }
   }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .who-chip, .lang-toggle, .icon-btn, .ob-pick button, .ob-go,
+    .listen-btn, .cat-pill, .sheet, .search-overlay, .toast,
+    .comment-row textarea, .sm-search input, .sr-row {
+      background: rgba(20, 20, 24, 0.94) !important;
+    }
+  }
 
-  /* ===== Top utility bar (lang + user) ===== */
+  /* ===== Top utility bar ===== */
   .top-bar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between;
-    padding: calc(12px + env(safe-area-inset-top)) 16px 8px;
+    padding: calc(12px + env(safe-area-inset-top)) 14px 8px;
     pointer-events: none;
   }
   .top-bar > * { pointer-events: auto; }
   .who-chip {
-    display: inline-flex; align-items: center; gap: 6px;
+    display: inline-flex; align-items: center; gap: 7px;
     padding: 7px 12px;
     background: var(--surface);
     backdrop-filter: blur(20px) saturate(1.5);
@@ -97,7 +100,13 @@
     transition: background 0.18s, border-color 0.18s;
   }
   .who-chip:hover { background: var(--surface-2); }
-  .who-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold-bright); }
+  .who-chip .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--gold-bright);
+  }
+  .who-chip.is-yula .dot { background: var(--pink); }
+  .who-chip.is-arthur .dot { background: var(--blue); }
+  .who-chip.is-sveta .dot { background: var(--green); }
   .right-controls { display: flex; gap: 8px; align-items: center; }
   .lang-toggle {
     display: flex; gap: 2px;
@@ -134,31 +143,37 @@
   .icon-btn:active { transform: scale(0.94); }
   .icon-btn svg { width: 18px; height: 18px; }
 
-  /* ===== Onboarding ===== */
-  #onboarding {
+  /* ===== Onboarding (first time and welcome back share styles) ===== */
+  .onboard {
     min-height: 100vh; min-height: 100dvh;
     padding: 40px 22px calc(40px + env(safe-area-inset-bottom));
     display: flex; flex-direction: column; justify-content: center; align-items: center;
     position: relative;
   }
-  #onboarding::before {
+  .onboard::before {
     content: ''; position: absolute; inset: 0;
     background:
       radial-gradient(ellipse 80% 60% at 50% 35%, rgba(212, 164, 92, 0.13) 0%, transparent 60%),
       radial-gradient(ellipse 60% 40% at 80% 90%, rgba(212, 164, 92, 0.05) 0%, transparent 60%);
     pointer-events: none; z-index: -1;
   }
-  .ob-inner { width: 100%; max-width: 420px; }
-  .ob-hero { text-align: center; margin-bottom: 38px; }
+  .ob-inner {
+    width: 100%; max-width: 420px;
+    opacity: 0; transform: translateY(8px);
+    animation: obIn 0.6s var(--ease-spring) 0.05s forwards;
+  }
+  @keyframes obIn { to { opacity: 1; transform: translateY(0); } }
+  .ob-hero { text-align: center; margin-bottom: 36px; }
   .ob-hero .mark {
-    width: 56px; height: 56px;
-    margin: 0 auto 22px;
+    width: 60px; height: 60px;
+    margin: 0 auto 24px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--gold-bright), var(--gold));
-    box-shadow: 0 14px 36px -10px var(--gold);
+    box-shadow: 0 16px 40px -10px var(--gold);
     display: flex; align-items: center; justify-content: center;
+    color: #0a0a0d;
   }
-  .ob-hero .mark svg { width: 26px; height: 26px; color: #0a0a0d; }
+  .ob-hero .mark svg { width: 28px; height: 28px; }
   .ob-hero h1 {
     margin: 0;
     font-size: 30px; font-weight: 800;
@@ -167,7 +182,7 @@
   .ob-hero .sub {
     margin: 10px 0 0;
     color: var(--text-dim);
-    font-size: 14px; letter-spacing: 0.005em;
+    font-size: 14px;
   }
   .ob-block { margin-bottom: 18px; }
   .ob-label {
@@ -176,20 +191,39 @@
     margin-bottom: 10px;
     text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;
   }
-  .ob-pick { display: flex; gap: 8px; }
+  .ob-pick { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ob-pick.col { flex-direction: column; gap: 10px; }
   .ob-pick button {
-    flex: 1; appearance: none;
+    flex: 1; min-width: 90px;
+    appearance: none;
     background: var(--surface);
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     color: var(--text);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    padding: 16px 8px;
+    padding: 16px 12px;
     font-size: 14px; font-weight: 600;
-    cursor: pointer; min-height: 58px;
-    transition: background 0.2s var(--ease), border-color 0.2s, transform 0.1s;
+    cursor: pointer; min-height: 56px;
+    transition: background 0.2s var(--ease), border-color 0.2s, transform 0.1s, box-shadow 0.2s;
   }
   .ob-pick button:active { transform: scale(0.97); }
+  .ob-pick.col button {
+    flex: none; padding: 18px 22px;
+    text-align: left;
+    display: flex; align-items: center; gap: 14px;
+    font-size: 16px;
+  }
+  .ob-pick.col button .av {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .ob-pick.col button .av .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .ob-pick.col button[data-user="Юля"]   .av .dot { background: var(--pink); }
+  .ob-pick.col button[data-user="Артур"]  .av .dot { background: var(--blue); }
+  .ob-pick.col button[data-user="Света"]  .av .dot { background: var(--green); }
   .ob-pick button.active {
     background: linear-gradient(135deg, var(--gold-bright), var(--gold));
     color: #0a0a0d; border-color: var(--gold);
@@ -212,7 +246,6 @@
     border-radius: var(--radius);
     padding: 18px 22px;
     font-size: 15px; font-weight: 700;
-    letter-spacing: 0.01em;
     cursor: pointer; margin-top: 26px;
     box-shadow: 0 16px 32px -12px var(--gold);
     transition: transform 0.15s, opacity 0.15s;
@@ -220,43 +253,31 @@
   .ob-go:active { transform: scale(0.98); }
   .ob-go:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; background: var(--surface-2); color: var(--text-muted); }
 
-  /* ===== App: discovery view ===== */
+  /* ===== Stage (discovery) ===== */
   .stage {
     min-height: 100vh; min-height: 100dvh;
     padding: calc(64px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));
-    position: relative;
   }
   .progress-line {
     text-align: center;
     color: var(--text-muted);
     font-size: 11px; letter-spacing: 0.12em; font-weight: 700;
     text-transform: uppercase;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
   }
   .progress-line .n { color: var(--text); font-weight: 800; }
-
   .card {
     max-width: 520px; margin: 0 auto;
     display: flex; flex-direction: column; align-items: center;
-    opacity: 1;
-    transform: translateY(0);
-    transition: opacity 0.32s var(--ease), transform 0.32s var(--ease);
+    will-change: transform, opacity;
   }
-  .card.leaving { opacity: 0; transform: translateY(-12px); }
-  .card.entering { opacity: 0; transform: translateY(12px); }
-
   .art-wrap {
     width: min(320px, 80vw); aspect-ratio: 1/1;
     position: relative;
-    border-radius: 16px;
+    border-radius: 18px;
     overflow: hidden;
     background: var(--surface-2);
     box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.7), 0 6px 20px -8px rgba(0, 0, 0, 0.5);
-  }
-  .art-wrap::after {
-    content: ''; position: absolute; inset: 0;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    pointer-events: none;
   }
   .art-img {
     position: absolute; inset: 0;
@@ -269,15 +290,11 @@
   }
   .art-img.placeholder svg { width: 40%; height: 40%; opacity: 0.4; }
 
-  .meta {
-    margin: 28px 6px 0; text-align: center;
-    width: 100%;
-  }
+  .meta { margin: 26px 6px 0; text-align: center; width: 100%; }
   .meta .title {
     font-size: 26px; font-weight: 800;
     letter-spacing: -0.022em; line-height: 1.15;
-    color: var(--text);
-    word-wrap: break-word;
+    color: var(--text); word-wrap: break-word;
   }
   .meta .by {
     margin-top: 8px;
@@ -286,11 +303,7 @@
   }
   .meta .by .year { color: var(--text-muted); margin-left: 4px; }
 
-  .listen {
-    margin: 22px auto 0;
-    display: flex; flex-direction: column; align-items: center;
-    width: 100%; max-width: 360px;
-  }
+  .listen { margin: 22px auto 0; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 360px; }
   .listen-btn {
     appearance: none;
     background: var(--surface);
@@ -299,7 +312,7 @@
     border: 1px solid var(--line);
     border-radius: 999px;
     padding: 13px 22px;
-    font-size: 14px; font-weight: 600; letter-spacing: 0.01em;
+    font-size: 14px; font-weight: 600;
     cursor: pointer; min-height: 46px;
     display: inline-flex; align-items: center; gap: 8px;
     transition: background 0.2s, border-color 0.2s, transform 0.1s;
@@ -311,21 +324,17 @@
   .player-slot {
     width: 100%; margin-top: 14px;
     max-height: 0; overflow: hidden;
-    transition: max-height 0.34s var(--ease);
+    transition: max-height 0.4s var(--ease);
   }
   .player-slot.open { max-height: 200px; }
   .player-slot iframe {
-    width: 100%; height: 175px;
-    border: 0;
+    width: 100%; height: 175px; border: 0;
     border-radius: var(--radius);
     background: var(--surface-2);
     box-shadow: 0 16px 32px -16px rgba(0, 0, 0, 0.6);
   }
 
-  .comment-row {
-    margin: 22px auto 0;
-    width: 100%; max-width: 480px;
-  }
+  .comment-row { margin: 22px auto 0; width: 100%; max-width: 480px; }
   .comment-row textarea {
     width: 100%; min-height: 56px;
     padding: 13px 16px;
@@ -339,27 +348,15 @@
     transition: border-color 0.2s, background 0.2s;
   }
   .comment-row textarea::placeholder { color: var(--text-muted); }
-  .comment-row textarea:focus {
-    outline: none; border-color: var(--gold);
-    background: rgba(212,164,92,0.04);
-  }
+  .comment-row textarea:focus { outline: none; border-color: var(--gold); background: rgba(212,164,92,0.04); }
 
-  .cats {
-    margin: 26px auto 0;
-    width: 100%; max-width: 480px;
-  }
+  .cats { margin: 26px auto 0; width: 100%; max-width: 480px; }
   .cats-label {
-    text-align: center;
-    color: var(--text-muted);
+    text-align: center; color: var(--text-muted);
     font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 12px;
+    text-transform: uppercase; margin-bottom: 12px;
   }
-  .cats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
+  .cats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .cat-pill {
     appearance: none;
     background: var(--surface);
@@ -367,22 +364,19 @@
     color: var(--text);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    padding: 14px 14px;
+    padding: 14px;
     font-size: 14px; font-weight: 600;
     text-align: left;
     cursor: pointer;
-    transition: background 0.18s, border-color 0.18s, transform 0.1s;
+    transition: all 0.18s var(--ease-spring);
     display: flex; flex-direction: column; gap: 3px;
   }
-  .cat-pill:hover { border-color: var(--gold-soft); background: var(--surface-2); }
+  .cat-pill:hover { border-color: var(--gold-soft); background: var(--surface-2); transform: translateY(-1px); }
   .cat-pill:active { transform: scale(0.97); }
   .cat-pill .nm { font-weight: 700; }
   .cat-pill .ctx { font-size: 11px; color: var(--text-muted); font-weight: 500; }
 
-  .skip-row {
-    margin: 22px auto 0;
-    text-align: center;
-  }
+  .skip-row { margin: 22px auto 0; text-align: center; }
   .skip-btn {
     appearance: none; background: transparent; border: 0;
     color: var(--text-dim);
@@ -400,7 +394,9 @@
   .empty-state {
     max-width: 360px; margin: 40px auto 0;
     text-align: center;
+    opacity: 0; animation: fadeIn 0.5s var(--ease-out) forwards;
   }
+  @keyframes fadeIn { to { opacity: 1; } }
   .empty-state .icon {
     width: 72px; height: 72px;
     margin: 0 auto 20px;
@@ -414,13 +410,13 @@
   .empty-state h3 { margin: 0 0 8px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
   .empty-state p { margin: 0; color: var(--text-dim); font-size: 14px; line-height: 1.55; }
 
-  /* ===== Menu sheet (gear icon) ===== */
+  /* ===== Sheet (menu) ===== */
   .scrim {
     position: fixed; inset: 0; z-index: 200;
     background: rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     opacity: 0; pointer-events: none;
-    transition: opacity 0.28s var(--ease-out);
+    transition: opacity 0.32s var(--ease-out);
   }
   .scrim.open { opacity: 1; pointer-events: auto; }
   .sheet {
@@ -436,20 +432,13 @@
     border-bottom: 0;
     padding: 12px 18px calc(20px + env(safe-area-inset-bottom));
     transform: translateY(102%);
-    transition: transform 0.34s var(--ease);
+    transition: transform 0.42s var(--ease);
     box-shadow: 0 -24px 60px -12px rgba(0, 0, 0, 0.6);
   }
   .sheet.open { transform: translateY(0); }
-  .sheet-grab {
-    width: 36px; height: 4px; margin: 0 auto 14px;
-    background: var(--line-2); border-radius: 999px;
-  }
-  .sheet h3 {
-    margin: 0 0 16px;
-    font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
-    text-align: center;
-  }
-  .sheet-section { margin-bottom: 20px; }
+  .sheet-grab { width: 36px; height: 4px; margin: 0 auto 14px; background: var(--line-2); border-radius: 999px; }
+  .sheet h3 { margin: 0 0 16px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; text-align: center; }
+  .sheet-section { margin-bottom: 22px; }
   .sheet-section h4 {
     margin: 0 0 8px;
     color: var(--gold-bright);
@@ -458,7 +447,7 @@
   }
   .sheet-section .sub {
     color: var(--text-muted); font-size: 12px;
-    margin-top: -4px; margin-bottom: 8px;
+    margin: -4px 0 8px;
   }
   .sheet-action {
     width: 100%; appearance: none;
@@ -476,7 +465,7 @@
   .mine-row {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 12px;
-    background: rgba(255,255,255,0.025);
+    background: var(--surface-3);
     border-radius: var(--radius-sm);
     margin-bottom: 6px;
   }
@@ -484,12 +473,12 @@
     font-size: 10px; color: var(--gold-bright);
     font-weight: 700; letter-spacing: 0.08em;
     text-transform: uppercase;
-    flex-shrink: 0;
-    width: 70px;
+    flex-shrink: 0; width: 70px;
   }
-  .mine-row .mine-text { flex: 1; font-size: 13px; }
-  .mine-row .mine-text .t { font-weight: 600; }
-  .mine-row .mine-text .a { color: var(--text-dim); }
+  .mine-row .mine-text { flex: 1; min-width: 0; font-size: 13px; }
+  .mine-row .mine-text .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mine-row .mine-text .a { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mine-row .mine-by { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
   .mine-row .mine-remove {
     appearance: none; background: transparent;
     color: var(--text-muted);
@@ -498,11 +487,139 @@
     display: flex; align-items: center; justify-content: center;
     border-radius: 6px;
     transition: all 0.15s;
+    flex-shrink: 0;
   }
   .mine-row .mine-remove:hover { color: var(--bad); background: rgba(217, 102, 102, 0.08); }
   .mine-row .mine-remove svg { width: 14px; height: 14px; }
   .mine-empty { color: var(--text-muted); font-size: 13px; padding: 12px 0; text-align: center; }
   .send-hint { margin-top: 10px; font-size: 11px; color: var(--text-muted); text-align: center; }
+
+  /* ===== Search overlay (full-screen modal) ===== */
+  .search-overlay {
+    position: fixed; inset: 0; z-index: 250;
+    background: rgba(8, 8, 10, 0.96);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.32s var(--ease-out);
+    padding-top: env(safe-area-inset-top);
+  }
+  .search-overlay.open { opacity: 1; pointer-events: auto; }
+  .so-header {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(8, 8, 10, 0.92);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  }
+  .sm-search { flex: 1; position: relative; }
+  .sm-search-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .sm-search-icon svg { width: 16px; height: 16px; }
+  .sm-search input {
+    width: 100%;
+    padding: 12px 16px 12px 40px;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 16px; font-weight: 500;
+    -webkit-appearance: none; appearance: none;
+    transition: background 0.18s, border-color 0.18s;
+  }
+  .sm-search input:focus { outline: none; border-color: var(--gold); background: rgba(212,164,92,0.04); }
+  .sm-search input::placeholder { color: var(--text-muted); }
+  .sm-clear {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    appearance: none; background: var(--line-2); color: var(--text);
+    border: 0; cursor: pointer;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; line-height: 1;
+  }
+  .sm-clear:hover { background: var(--text-muted); color: var(--bg); }
+  .so-results {
+    flex: 1; min-height: 0;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 14px 14px calc(20px + env(safe-area-inset-bottom));
+  }
+  .so-section { margin-bottom: 18px; }
+  .so-section h5 {
+    margin: 0 0 8px; padding: 0 4px;
+    color: var(--gold-bright);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .so-status { text-align: center; color: var(--text-muted); font-size: 13px; padding: 30px 18px; line-height: 1.6; }
+  .sr-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    background: var(--surface-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    margin-bottom: 6px;
+  }
+  .sr-row:hover { background: rgba(255,255,255,0.06); border-color: var(--line); }
+  .sr-row.expanded { background: rgba(212,164,92,0.06); border-color: var(--gold-soft); }
+  .sr-row:active { transform: scale(0.99); }
+  .sr-art {
+    width: 44px; height: 44px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: var(--surface-2) center/cover no-repeat;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+  }
+  .sr-art svg { width: 20px; height: 20px; opacity: 0.5; }
+  .sr-text { flex: 1; min-width: 0; }
+  .sr-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sr-artist { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .sr-status { font-size: 11px; color: var(--gold-bright); margin-top: 2px; }
+  .sr-add {
+    appearance: none;
+    background: var(--gold);
+    color: #0a0a0d; border: 0;
+    border-radius: 999px;
+    width: 32px; height: 32px;
+    font-size: 18px; font-weight: 700; line-height: 0;
+    cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .sr-add:hover { background: var(--gold-bright); }
+  .sr-add:active { transform: scale(0.92); }
+  .sr-cats {
+    grid-column: 1 / -1;
+    width: 100%; max-height: 0; overflow: hidden;
+    transition: max-height 0.32s var(--ease);
+  }
+  .sr-row.expanded + .sr-cats { max-height: 240px; }
+  .sr-cats-inner {
+    padding: 10px 4px 4px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  }
+  .sr-cats-inner button {
+    appearance: none;
+    background: var(--surface-3);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 8px;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-height: 38px;
+  }
+  .sr-cats-inner button:hover { background: var(--gold-soft); color: var(--gold-bright); border-color: var(--gold-soft); }
+  .sr-cats-inner button:active { transform: scale(0.95); }
 
   /* ===== Toast ===== */
   .toast {
@@ -515,7 +632,7 @@
     padding: 11px 18px;
     border-radius: 999px;
     font-size: 13px; font-weight: 500;
-    z-index: 300;
+    z-index: 350;
     opacity: 0; pointer-events: none;
     transition: opacity 0.26s var(--ease-out), transform 0.26s var(--ease-out);
     max-width: calc(100% - 32px); text-align: center;
@@ -526,7 +643,7 @@
   /* ===== Tablet & desktop ===== */
   @media (min-width: 720px) {
     .stage { padding-top: calc(80px + env(safe-area-inset-top)); }
-    .progress-line { margin-bottom: 26px; }
+    .progress-line { margin-bottom: 28px; }
     .art-wrap { width: 360px; }
     .meta .title { font-size: 30px; }
     .meta .by { font-size: 15px; margin-top: 10px; }
@@ -534,6 +651,19 @@
     .cats { max-width: 460px; }
     .cat-pill { padding: 16px; }
     .ob-hero h1 { font-size: 34px; }
+    /* Search overlay: centered card on desktop */
+    .search-overlay {
+      padding: 80px 24px 24px;
+      align-items: stretch;
+    }
+    .so-header {
+      max-width: 640px; margin: 0 auto;
+      width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: rgba(20, 20, 24, 0.85);
+    }
+    .so-results { max-width: 640px; margin: 0 auto; width: 100%; }
   }
   @media (min-width: 1024px) {
     .art-wrap { width: 380px; }
@@ -547,35 +677,32 @@
 
 <!-- Top bar -->
 <div class="top-bar" id="top-bar" hidden>
-  <div class="who-chip" id="who-chip"><span class="dot"></span><span id="who-name">…</span></div>
+  <button class="who-chip" id="who-chip" type="button">
+    <span class="dot"></span>
+    <span id="who-name">…</span>
+  </button>
   <div class="right-controls">
     <div class="lang-toggle" id="lang-toggle">
       <button type="button" data-lang="ru">RU</button>
       <button type="button" data-lang="en">EN</button>
     </div>
+    <button type="button" class="icon-btn" id="search-btn" aria-label="поиск">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    </button>
     <button type="button" class="icon-btn" id="menu-btn" aria-label="меню">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
     </button>
   </div>
 </div>
 
-<!-- Onboarding -->
-<div id="onboarding" hidden>
+<!-- Onboarding: first-time (full setup) -->
+<div id="ob-first" class="onboard" hidden>
   <div class="ob-inner">
     <div class="ob-hero">
       <div class="mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
       <h1 data-i18n="ob.h1"></h1>
       <div class="sub" data-i18n="ob.sub"></div>
     </div>
-
-    <div class="ob-block">
-      <span class="ob-label" data-i18n="ob.who"></span>
-      <div class="ob-pick" id="ob-user">
-        <button type="button" data-user="Юля">Юля</button>
-        <button type="button" data-user="Артур">Артур</button>
-      </div>
-    </div>
-
     <div class="ob-block">
       <span class="ob-label" data-i18n="ob.service"></span>
       <div class="ob-pick" id="ob-service">
@@ -583,14 +710,31 @@
         <button type="button" data-service="spotify">Spotify</button>
       </div>
     </div>
-
     <div id="ob-note" class="ob-note" hidden></div>
-
-    <button type="button" id="ob-go" class="ob-go" disabled data-i18n="ob.go"></button>
+    <button type="button" id="ob-first-go" class="ob-go" disabled data-i18n="ob.next"></button>
   </div>
 </div>
 
-<!-- Discovery (card view) -->
+<!-- Onboarding: who-are-you (every session) -->
+<div id="ob-who" class="onboard" hidden>
+  <div class="ob-inner">
+    <div class="ob-hero">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+      <h1 data-i18n="welcome.h1"></h1>
+      <div class="sub" data-i18n="welcome.sub"></div>
+    </div>
+    <div class="ob-block">
+      <span class="ob-label" data-i18n="welcome.who"></span>
+      <div class="ob-pick col" id="ob-user">
+        <button type="button" data-user="Юля"><span class="av"><span class="dot"></span></span> Юля</button>
+        <button type="button" data-user="Артур"><span class="av"><span class="dot"></span></span> Артур</button>
+        <button type="button" data-user="Света"><span class="av"><span class="dot"></span></span> Света</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Discovery -->
 <div id="discovery" class="stage" hidden>
   <div class="progress-line">
     <span class="n" id="progress-n">0</span> <span data-i18n="of"></span> <span class="n" id="progress-total">0</span> <span data-i18n="tracks"></span>
@@ -598,18 +742,16 @@
   <div id="card-host"></div>
 </div>
 
-<!-- Sheet (menu / collected / send) -->
+<!-- Sheet (menu) -->
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet" role="dialog">
   <div class="sheet-grab"></div>
   <h3 data-i18n="menu.title"></h3>
-
   <div class="sheet-section">
     <h4 data-i18n="menu.collected"></h4>
     <div class="sub" data-i18n="menu.collectedSub"></div>
     <div id="mine-list"></div>
   </div>
-
   <div class="sheet-section">
     <h4 data-i18n="menu.share"></h4>
     <div class="sub" data-i18n="menu.shareSub"></div>
@@ -618,14 +760,39 @@
   </div>
 </div>
 
+<!-- Search overlay -->
+<div class="search-overlay" id="search-overlay" role="dialog">
+  <div class="so-header">
+    <button type="button" class="icon-btn" id="search-close" aria-label="закрыть">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="sm-search">
+      <span class="sm-search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>
+      <input type="text" id="sm-input" autocomplete="off" enterkeyhint="search" spellcheck="false">
+      <button type="button" class="sm-clear" id="sm-clear" hidden aria-label="очистить">×</button>
+    </div>
+  </div>
+  <div class="so-results" id="so-results">
+    <div class="so-status" id="so-status" data-i18n="search.intro"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+  // Premium animations via Motion One (CDN, ESM)
+  import('https://cdn.jsdelivr.net/npm/motion@10.18.0/+esm').then(mod => {
+    window.M = { animate: mod.animate, spring: mod.spring };
+    window.dispatchEvent(new Event('motion-ready'));
+  }).catch(() => { /* fallback to CSS only */ });
+</script>
 
 <script>
 (function () {
   'use strict';
 
-  const K_NAME = 'venchanie_user_name';
-  const K_SERVICE = 'venchanie_service_v1';
+  const K_NAME = 'venchanie_user_name';      // sessionStorage (per session)
+  const K_SERVICE = 'venchanie_service_v1';  // localStorage (once forever)
   const K_LANG = 'venchanie_lang';
   const API = 'https://api.akoev.com';
 
@@ -634,10 +801,12 @@
     ru: {
       'ob.h1': 'Музыка к венчанию',
       'ob.sub': '12 июля 2026 · Франция',
-      'ob.who': 'Кто ты',
-      'ob.service': 'Сервис',
+      'ob.service': 'Через что слушаешь',
       'ob.noteHTML': '<strong>Перед началом</strong> — открой <a href="{href}" target="_blank" rel="noopener">{name}</a> в этом Safari и войди под своим аккаунтом. Нужна подписка, чтобы играли полные треки — без неё только 30 секунд.',
-      'ob.go': 'Начнём',
+      'ob.next': 'Дальше',
+      'welcome.h1': 'С возвращением',
+      'welcome.sub': 'Кто из вас сегодня?',
+      'welcome.who': 'Выбери себя',
       'of': 'из',
       'tracks': 'треков',
       'card.listen': 'Послушать',
@@ -659,33 +828,39 @@
       'cat.Вилла.ctx': '10 июля · 17–23',
       'menu.title': 'Меню',
       'menu.collected': 'Что собрано',
-      'menu.collectedSub': 'все песни, которые отобраны в этапы (от обоих)',
+      'menu.collectedSub': 'все треки, отобранные в этапы (от всех)',
       'menu.share': 'Отправить Артуру',
       'menu.shareSub': 'на почту akotiaa02@gmail.com',
       'menu.sendBtn': 'Отправить отчёт',
+      'search.intro': 'Найди песню по названию или артисту — на русском или английском',
+      'search.typing': 'Ищу…',
+      'search.empty': 'Ничего не нашлось. Попробуй другое написание.',
+      'search.minChars': 'Введи хотя бы две буквы',
+      'search.libraryHeader': 'В нашей библиотеке',
+      'search.assignedAs': 'уже в этапе «{cat}» · {by}',
       'toast.skipped': 'Пропустила',
       'toast.assigned': 'В этап «{cat}»',
       'toast.removed': 'Убрала',
       'toast.failed': 'Не получилось — попробуй ещё раз',
       'toast.sent': '✓ Отчёт отправлен',
       'toast.savedPending': '✓ Сохранено',
-      'toast.allDone': 'Всё пройдено! Открой меню, чтобы отправить.',
       'confirmRemove': 'Убрать «{title}»?',
       'confirmSend': 'Отправить отчёт сейчас?',
-      'confirmSwitch': 'Переключиться на {next}?',
       'sending': 'Отправляем…',
       'sendStatus': '✓ Отправлено (всего: {n})',
       'allDoneTitle': 'Всё пройдено',
       'allDoneText': 'Ты прошлась по всей библиотеке. Открой меню, чтобы посмотреть собранное или отправить.',
-      'pluralTrack': (n) => ruPlural(n, 'трек', 'трека', 'треков')
+      'placeAtAria': 'Назначить «{title}» в этап'
     },
     en: {
       'ob.h1': 'Wedding music',
       'ob.sub': 'July 12, 2026 · France',
-      'ob.who': 'Who are you',
       'ob.service': 'Service',
       'ob.noteHTML': '<strong>Before you start</strong> — open <a href="{href}" target="_blank" rel="noopener">{name}</a> in this Safari and sign in. You need a subscription for full tracks — without one, only 30 seconds.',
-      'ob.go': "Let's go",
+      'ob.next': 'Next',
+      'welcome.h1': 'Welcome back',
+      'welcome.sub': 'Who is here today?',
+      'welcome.who': 'Pick yourself',
       'of': 'of',
       'tracks': 'tracks',
       'card.listen': 'Listen',
@@ -707,108 +882,144 @@
       'cat.Вилла.ctx': 'July 10 · 17–23',
       'menu.title': 'Menu',
       'menu.collected': 'Collected',
-      'menu.collectedSub': 'songs placed into stages (both users)',
+      'menu.collectedSub': 'all songs placed into stages (from everyone)',
       'menu.share': 'Send to Артур',
       'menu.shareSub': 'to akotiaa02@gmail.com',
       'menu.sendBtn': 'Send report',
+      'search.intro': 'Search by title or artist — Russian or English',
+      'search.typing': 'Searching…',
+      'search.empty': 'Nothing found. Try a different spelling.',
+      'search.minChars': 'Type at least two letters',
+      'search.libraryHeader': 'In our library',
+      'search.assignedAs': 'already in "{cat}" · {by}',
       'toast.skipped': 'Skipped',
       'toast.assigned': 'Placed in "{cat}"',
       'toast.removed': 'Removed',
       'toast.failed': "Didn't work — try again",
       'toast.sent': '✓ Report sent',
       'toast.savedPending': '✓ Saved',
-      'toast.allDone': "All done! Open menu to send.",
       'confirmRemove': 'Remove «{title}»?',
       'confirmSend': 'Send report now?',
-      'confirmSwitch': 'Switch to {next}?',
       'sending': 'Sending…',
       'sendStatus': '✓ Sent (total: {n})',
-      'allDoneTitle': "All done",
-      'allDoneText': "You've been through the whole library. Open the menu to review and send.",
-      'pluralTrack': (n) => n === 1 ? 'track' : 'tracks'
+      'allDoneTitle': 'All done',
+      'allDoneText': "You've been through the whole library. Open the menu to review or send.",
+      'placeAtAria': 'Place "{title}" into stage'
     }
   };
-  function ruPlural(n, one, few, many) {
-    const m10 = Math.abs(n) % 10, m100 = Math.abs(n) % 100;
-    if (m10 === 1 && m100 !== 11) return one;
-    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
-    return many;
-  }
   let lang = lsGet(K_LANG, 'ru'); if (!T[lang]) lang = 'ru';
   function t(key, params) {
     const v = T[lang]?.[key] ?? T.ru[key] ?? key;
-    if (typeof v === 'function') return v(params);
     if (typeof v !== 'string') return v;
     return v.replace(/\{(\w+)\}/g, (_, k) => params?.[k] ?? `{${k}}`);
   }
   function applyStaticI18n() {
     document.documentElement.lang = lang;
     document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+    const smInput = document.getElementById('sm-input');
+    if (smInput) smInput.placeholder = t('search.intro').split(' — ')[0];
   }
 
   function lsGet(k, dflt) { try { const v = localStorage.getItem(k); return v == null ? dflt : v; } catch (e) { return dflt; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function ssSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function fmt(n) { return new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : 'en-US').format(n); }
+  function fAnimate(el, kf, opts) {
+    if (window.M?.animate) {
+      try { return window.M.animate(el, kf, opts); } catch (e) {}
+    }
+  }
 
   /* ===== state ===== */
-  let userName = lsGet(K_NAME, '');
+  let userName = ssGet(K_NAME) || '';
   let service = lsGet(K_SERVICE, '');
   let currentSong = null;
-  let currentArtwork = null;
-  let progressN = 0;
-  let progressTotal = 0;
+  let progressN = 0, progressTotal = 0;
 
-  /* ===== onboarding ===== */
-  const onboardingEl = document.getElementById('onboarding');
+  /* ===== screen routing ===== */
+  const obFirst = document.getElementById('ob-first');
+  const obWho = document.getElementById('ob-who');
   const discoveryEl = document.getElementById('discovery');
   const topBarEl = document.getElementById('top-bar');
-  const obGo = document.getElementById('ob-go');
-  const obNote = document.getElementById('ob-note');
-  let pickedUser = '', pickedService = '';
 
-  function updateObGo() { obGo.disabled = !(pickedUser && pickedService); }
-  function updateObNote() {
+  function showFirst() {
+    obFirst.hidden = false; obWho.hidden = true; discoveryEl.hidden = true; topBarEl.hidden = true;
+    if (service) {
+      pickedService = service;
+      document.querySelectorAll('#ob-service button').forEach(b => b.classList.toggle('active', b.dataset.service === service));
+      updateObFirstNote();
+    }
+    updateObFirstGo();
+  }
+  function showWho() {
+    obFirst.hidden = true; obWho.hidden = false; discoveryEl.hidden = true; topBarEl.hidden = true;
+  }
+  function showDiscovery() {
+    obFirst.hidden = true; obWho.hidden = true; discoveryEl.hidden = false; topBarEl.hidden = false;
+    syncWhoChip();
+    progressN = 0; progressTotal = 0;
+    loadNext();
+    fetch(`${API}/api/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: userName, service })
+    }).catch(() => {});
+  }
+
+  function syncWhoChip() {
+    const el = document.getElementById('who-chip');
+    document.getElementById('who-name').textContent = userName;
+    el.classList.remove('is-yula', 'is-arthur', 'is-sveta');
+    if (userName === 'Юля') el.classList.add('is-yula');
+    else if (userName === 'Артур') el.classList.add('is-arthur');
+    else if (userName === 'Света') el.classList.add('is-sveta');
+  }
+
+  /* ===== onboarding: first-time ===== */
+  let pickedService = '';
+  const obFirstGo = document.getElementById('ob-first-go');
+  const obNote = document.getElementById('ob-note');
+  function updateObFirstGo() { obFirstGo.disabled = !pickedService; }
+  function updateObFirstNote() {
     if (!pickedService) { obNote.hidden = true; return; }
     obNote.hidden = false;
     const href = pickedService === 'apple' ? 'https://music.apple.com' : 'https://open.spotify.com';
     const name = pickedService === 'apple' ? 'Apple Music' : 'Spotify';
     obNote.innerHTML = t('ob.noteHTML', { href: escapeHtml(href), name: escapeHtml(name) });
   }
-  document.querySelectorAll('#ob-user button').forEach(b => {
-    b.addEventListener('click', () => {
-      pickedUser = b.dataset.user;
-      document.querySelectorAll('#ob-user button').forEach(x => x.classList.toggle('active', x === b));
-      updateObGo();
-    });
-  });
   document.querySelectorAll('#ob-service button').forEach(b => {
     b.addEventListener('click', () => {
       pickedService = b.dataset.service;
       document.querySelectorAll('#ob-service button').forEach(x => x.classList.toggle('active', x === b));
-      updateObNote(); updateObGo();
+      updateObFirstNote(); updateObFirstGo();
     });
   });
-  obGo.addEventListener('click', () => {
-    if (obGo.disabled) return;
-    userName = pickedUser; service = pickedService;
-    lsSet(K_NAME, userName); lsSet(K_SERVICE, service);
-    boot();
+  obFirstGo.addEventListener('click', () => {
+    if (obFirstGo.disabled) return;
+    service = pickedService;
+    lsSet(K_SERVICE, service);
+    showWho();  // Now ask who
   });
 
-  function showOnboarding() {
-    discoveryEl.hidden = true; topBarEl.hidden = true; onboardingEl.hidden = false;
-    if (userName) {
-      pickedUser = userName;
-      document.querySelectorAll('#ob-user button').forEach(b => b.classList.toggle('active', b.dataset.user === userName));
-    }
-    if (service) {
-      pickedService = service;
-      document.querySelectorAll('#ob-service button').forEach(b => b.classList.toggle('active', b.dataset.service === service));
-      updateObNote();
-    }
-    updateObGo();
-  }
+  /* ===== onboarding: who-are-you (every session) ===== */
+  document.querySelectorAll('#ob-user button').forEach(b => {
+    b.addEventListener('click', () => {
+      userName = b.dataset.user;
+      ssSet(K_NAME, userName);
+      // visual select then advance
+      document.querySelectorAll('#ob-user button').forEach(x => x.classList.toggle('active', x === b));
+      setTimeout(() => showDiscovery(), 220);
+    });
+  });
+
+  /* ===== top bar: who-chip switches user mid-session ===== */
+  document.getElementById('who-chip').addEventListener('click', () => {
+    // Show the welcome screen again, allow re-pick
+    sessionStorage.removeItem(K_NAME);
+    showWho();
+  });
 
   /* ===== lang toggle ===== */
   document.querySelectorAll('#lang-toggle button').forEach(b => {
@@ -818,9 +1029,7 @@
       lang = newLang; lsSet(K_LANG, lang);
       applyStaticI18n();
       document.querySelectorAll('#lang-toggle button').forEach(x => x.classList.toggle('active', x.dataset.lang === lang));
-      // re-render current card if showing
       if (currentSong) renderCard(currentSong);
-      // re-render progress label
       document.getElementById('progress-n').textContent = fmt(progressN);
       document.getElementById('progress-total').textContent = fmt(progressTotal);
     });
@@ -829,56 +1038,29 @@
     document.querySelectorAll('#lang-toggle button').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
   }
 
-  /* ===== who chip (switch user) ===== */
-  const whoNameEl = document.getElementById('who-name');
-  document.getElementById('who-chip').addEventListener('click', () => {
-    const next = userName === 'Юля' ? 'Артур' : 'Юля';
-    if (!confirm(t('confirmSwitch', { next }))) return;
-    userName = next; lsSet(K_NAME, userName);
-    whoNameEl.textContent = userName;
-    boot();
-  });
-
   /* ===== API ===== */
   async function apiNext() {
-    try {
-      const r = await fetch(`${API}/api/library/next?user=${encodeURIComponent(userName)}`);
-      if (!r.ok) return null;
-      return await r.json();
-    } catch (e) { return null; }
+    try { const r = await fetch(`${API}/api/library/next?user=${encodeURIComponent(userName)}`); if (!r.ok) return null; return await r.json(); }
+    catch (e) { return null; }
   }
   async function apiAction(payload) {
-    try {
-      const r = await fetch(`${API}/api/library/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!r.ok) return { ok: false };
-      return await r.json();
-    } catch (e) { return { ok: false }; }
+    try { const r = await fetch(`${API}/api/library/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!r.ok) return { ok: false }; return await r.json(); }
+    catch (e) { return { ok: false }; }
   }
   async function apiMine() {
-    try {
-      const r = await fetch(`${API}/api/library/mine?user=${encodeURIComponent(userName)}`);
-      if (!r.ok) return [];
-      const d = await r.json();
-      return d.songs || [];
-    } catch (e) { return []; }
+    try { const r = await fetch(`${API}/api/library/mine?user=${encodeURIComponent(userName)}`); if (!r.ok) return []; const d = await r.json(); return d.songs || []; }
+    catch (e) { return []; }
   }
   async function apiSubmit() {
-    try {
-      const r = await fetch(`${API}/api/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: userName, service })
-      });
-      if (!r.ok) return { ok: false };
-      return await r.json();
-    } catch (e) { return { ok: false }; }
+    try { const r = await fetch(`${API}/api/submit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: userName, service }) }); if (!r.ok) return { ok: false }; return await r.json(); }
+    catch (e) { return { ok: false }; }
+  }
+  async function apiSearch(q) {
+    try { const r = await fetch(`${API}/api/library/search?q=${encodeURIComponent(q)}`); if (!r.ok) return []; const d = await r.json(); return d.results || []; }
+    catch (e) { return []; }
   }
 
-  /* ===== iTunes artwork lookup (with simple in-memory cache) ===== */
+  /* ===== iTunes lookup with cache ===== */
   const artCache = new Map();
   async function lookupITunes(artist, title) {
     const key = `${artist}|${title}`.toLowerCase();
@@ -893,8 +1075,7 @@
         if (hit?.trackViewUrl) {
           result = {
             embedUrl: hit.trackViewUrl.replace(/^https?:\/\/music\.apple\.com\//, 'https://embed.music.apple.com/'),
-            artwork600: hit.artworkUrl100 ? hit.artworkUrl100.replace('100x100bb', '600x600bb') : null,
-            artwork1200: hit.artworkUrl100 ? hit.artworkUrl100.replace('100x100bb', '1200x1200bb') : null
+            artwork600: hit.artworkUrl100 ? hit.artworkUrl100.replace('100x100bb', '600x600bb') : null
           };
           break;
         }
@@ -909,9 +1090,8 @@
   const cardHost = document.getElementById('card-host');
   let cardEl = null;
 
-  async function renderCard(song) {
+  function renderCard(song) {
     currentSong = song;
-    // Build card DOM
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
     const catsHTML = CATEGORIES.map(cat => `
       <button class="cat-pill" data-cat="${escapeHtml(cat)}">
@@ -919,8 +1099,8 @@
         <span class="ctx">${escapeHtml(t(`cat.${cat}.ctx`))}</span>
       </button>
     `).join('');
-    const html = `
-      <div class="card entering" id="card">
+    cardHost.innerHTML = `
+      <div class="card" id="card">
         <div class="art-wrap">
           <div class="art-img placeholder" id="art">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -949,13 +1129,9 @@
         </div>
       </div>
     `;
-    cardHost.innerHTML = html;
     cardEl = document.getElementById('card');
-    // entering animation
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { cardEl.classList.remove('entering'); });
-    });
-    // Wire up controls
+    fAnimate(cardEl, { opacity: [0, 1], y: [16, 0] }, { duration: 0.45, easing: [0.16, 1, 0.3, 1] });
+
     const listenBtn = document.getElementById('listen-btn');
     const playerSlot = document.getElementById('player-slot');
     let isPlaying = false;
@@ -964,39 +1140,26 @@
       isPlaying = true;
       listenBtn.classList.add('playing');
       listenBtn.querySelector('span').textContent = t('card.listenAnother');
-      // load iframe
-      const iframe = document.createElement('iframe');
-      if (service === 'spotify') {
-        // Best-effort: try song.link or direct itunes-based lookup; for now use Apple Music embed (works for both subscribers)
-      }
-      // Use iTunes lookup to get apple music embed
       lookupITunes(song.artist, song.title).then(info => {
-        if (info?.embedUrl && currentSong?.id === song.id) {
+        if (currentSong?.id !== song.id) return;
+        const iframe = document.createElement('iframe');
+        if (info?.embedUrl) {
           iframe.src = info.embedUrl;
           iframe.allow = 'autoplay *; encrypted-media *;';
           iframe.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
           iframe.loading = 'lazy';
           playerSlot.appendChild(iframe);
-          playerSlot.classList.add('open');
-        } else if (currentSong?.id === song.id) {
-          playerSlot.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px">Apple Music: не найдено</div>';
-          playerSlot.classList.add('open');
+        } else {
+          playerSlot.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text-muted);font-size:13px">Apple Music: не найдено</div>';
         }
+        playerSlot.classList.add('open');
       });
     });
-    const skipBtn = document.getElementById('skip-btn');
-    skipBtn.addEventListener('click', () => act('skip'));
-    cardHost.querySelectorAll('.cat-pill').forEach(b => {
-      b.addEventListener('click', () => act('assign', b.dataset.cat));
-    });
-    // Auto-grow textarea
+    document.getElementById('skip-btn').addEventListener('click', () => act('skip'));
+    cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => act('assign', b.dataset.cat)));
     const ta = document.getElementById('comment-input');
-    ta.addEventListener('input', () => {
-      ta.style.height = 'auto';
-      ta.style.height = ta.scrollHeight + 'px';
-    });
+    ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; });
 
-    // Load artwork
     lookupITunes(song.artist, song.title).then(info => {
       if (currentSong?.id !== song.id) return;
       if (info?.artwork600) {
@@ -1006,18 +1169,10 @@
           if (currentSong?.id !== song.id) return;
           art.style.backgroundImage = `url("${info.artwork600}")`;
           art.classList.remove('placeholder');
-          // ambient tint
-          setAmbient(info.artwork600);
         };
         big.src = info.artwork600;
       }
     });
-  }
-
-  function setAmbient(url) {
-    // tint the background subtly with the artwork
-    const amb = document.getElementById('ambient');
-    amb.style.background = `radial-gradient(ellipse 1400px 800px at 50% -200px, rgba(212,164,92,0.12), transparent 60%), linear-gradient(180deg, var(--bg-1), var(--bg) 65%)`;
   }
 
   function renderEmpty() {
@@ -1029,7 +1184,6 @@
         <p>${escapeHtml(t('allDoneText'))}</p>
       </div>
     `;
-    setAmbient(null);
   }
 
   async function act(action, category) {
@@ -1039,10 +1193,9 @@
     const payload = { song_id: currentSong.id, user: userName, action };
     if (category) payload.category = category;
     if (comment) payload.comment = comment;
-    // Optimistic UI: animate out
     if (cardEl) {
-      cardEl.classList.add('leaving');
-      await new Promise(r => setTimeout(r, 320));
+      fAnimate(cardEl, { opacity: [1, 0], y: [0, -14] }, { duration: 0.28, easing: [0.32, 0.72, 0, 1] });
+      await new Promise(r => setTimeout(r, 280));
     }
     const res = await apiAction(payload);
     if (!res.ok) {
@@ -1059,57 +1212,41 @@
   async function loadNext() {
     document.getElementById('progress-n').textContent = fmt(progressN);
     const d = await apiNext();
-    if (d?.total != null) {
-      progressTotal = d.total;
-      document.getElementById('progress-total').textContent = fmt(progressTotal);
-    }
-    if (d?.processed != null) {
-      progressN = d.processed;
-      document.getElementById('progress-n').textContent = fmt(progressN);
-    }
-    if (!d || !d.song) {
-      renderEmpty();
-      return;
-    }
+    if (d?.total != null) { progressTotal = d.total; document.getElementById('progress-total').textContent = fmt(progressTotal); }
+    if (d?.processed != null) { progressN = d.processed; document.getElementById('progress-n').textContent = fmt(progressN); }
+    if (!d || !d.song) { renderEmpty(); return; }
     renderCard(d.song);
   }
 
-  /* ===== Menu (sheet) ===== */
+  /* ===== Menu sheet ===== */
   const scrim = document.getElementById('scrim');
   const sheet = document.getElementById('sheet');
   document.getElementById('menu-btn').addEventListener('click', openMenu);
   scrim.addEventListener('click', closeMenu);
-  function openMenu() {
-    renderMine();
-    scrim.classList.add('open');
-    sheet.classList.add('open');
-  }
-  function closeMenu() {
-    scrim.classList.remove('open');
-    sheet.classList.remove('open');
-  }
+  function openMenu() { renderMine(); scrim.classList.add('open'); sheet.classList.add('open'); }
+  function closeMenu() { scrim.classList.remove('open'); sheet.classList.remove('open'); }
 
   async function renderMine() {
-    const mineList = document.getElementById('mine-list');
-    mineList.innerHTML = `<div class="mine-empty">…</div>`;
+    const list = document.getElementById('mine-list');
+    list.innerHTML = `<div class="mine-empty">…</div>`;
     const songs = await apiMine();
     if (songs.length === 0) {
-      mineList.innerHTML = `<div class="mine-empty">${escapeHtml(lang === 'ru' ? 'пока пусто — отбирай треки из карточек' : 'empty — start picking from cards')}</div>`;
+      list.innerHTML = `<div class="mine-empty">${escapeHtml(lang === 'ru' ? 'пока пусто — отбирай треки из карточек' : 'empty — start picking from cards')}</div>`;
       return;
     }
-    mineList.innerHTML = songs.map(s => `
+    list.innerHTML = songs.map(s => `
       <div class="mine-row" data-song-id="${s.id}">
         <div class="mine-cat">${escapeHtml(t(`cat.${s.category}.short`))}</div>
         <div class="mine-text">
           <div class="t">${escapeHtml(s.title)}</div>
           <div class="a">${escapeHtml(s.artist)}</div>
         </div>
-        <button type="button" class="mine-remove" data-song-id="${s.id}" aria-label="убрать">
+        <button type="button" class="mine-remove" data-song-id="${s.id}" aria-label="${escapeHtml(lang === 'ru' ? 'убрать' : 'remove')}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </div>
     `).join('');
-    mineList.querySelectorAll('.mine-remove').forEach(btn => {
+    list.querySelectorAll('.mine-remove').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const id = Number(btn.dataset.songId);
@@ -1117,17 +1254,137 @@
         const title = row?.querySelector('.t')?.textContent || '';
         if (!confirm(t('confirmRemove', { title }))) return;
         const res = await apiAction({ song_id: id, user: userName, action: 'reset' });
-        if (res.ok) {
-          row.remove();
-          showToast(t('toast.removed'));
-          // refresh next-card progress since this song is now unprocessed for this user
-          loadNext();
-        } else {
-          showToast(t('toast.failed'));
-        }
+        if (res.ok) { row.remove(); showToast(t('toast.removed')); loadNext(); }
+        else { showToast(t('toast.failed')); }
       });
     });
   }
+
+  /* ===== Search overlay ===== */
+  const searchOv = document.getElementById('search-overlay');
+  const smInput = document.getElementById('sm-input');
+  const smClear = document.getElementById('sm-clear');
+  const soResults = document.getElementById('so-results');
+  document.getElementById('search-btn').addEventListener('click', openSearch);
+  document.getElementById('search-close').addEventListener('click', closeSearch);
+  function openSearch() {
+    searchOv.classList.add('open');
+    setTimeout(() => smInput.focus(), 200);
+  }
+  function closeSearch() { searchOv.classList.remove('open'); }
+
+  smClear.addEventListener('click', () => { smInput.value = ''; smInput.focus(); onSearchInput(); });
+  let searchTimer = null, searchRunId = 0;
+  smInput.addEventListener('input', onSearchInput);
+  function onSearchInput() {
+    const q = smInput.value;
+    smClear.hidden = !q;
+    clearTimeout(searchTimer);
+    if (!q.trim()) {
+      soResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.intro'))}</div>`;
+      return;
+    }
+    if (q.trim().length < 2) {
+      soResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.minChars'))}</div>`;
+      return;
+    }
+    soResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.typing'))}</div>`;
+    const myRun = ++searchRunId;
+    searchTimer = setTimeout(async () => {
+      const results = await apiSearch(q.trim());
+      if (myRun !== searchRunId) return;
+      if (results.length === 0) {
+        soResults.innerHTML = `<div class="so-status">${escapeHtml(t('search.empty'))}</div>`;
+        return;
+      }
+      soResults.innerHTML = `
+        <div class="so-section">
+          <h5>${escapeHtml(t('search.libraryHeader'))} · ${results.length}</h5>
+          <div id="sr-list"></div>
+        </div>
+      `;
+      const list = document.getElementById('sr-list');
+      list.innerHTML = results.map(s => {
+        const status = s.assigned_to ? `<div class="sr-status">${escapeHtml(t('search.assignedAs', { cat: t(`cat.${s.assigned_to}.short`), by: escapeHtml(s.assigned_by || '') }))}</div>` : '';
+        return `
+          <div class="sr-row" data-song-id="${s.id}">
+            <div class="sr-art" id="sr-art-${s.id}">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <div class="sr-text">
+              <div class="sr-title">${escapeHtml(s.title)}</div>
+              <div class="sr-artist">${escapeHtml(s.artist)}${s.year ? ` · ${s.year}` : ''}</div>
+              ${status}
+            </div>
+            <button type="button" class="sr-add" aria-label="${escapeHtml(t('placeAtAria', { title: s.title }))}">+</button>
+          </div>
+          <div class="sr-cats" data-for="${s.id}">
+            <div class="sr-cats-inner">
+              ${CATEGORIES.map(cat => `<button type="button" data-cat="${escapeHtml(cat)}" data-song-id="${s.id}">${escapeHtml(t(`cat.${cat}.short`))}</button>`).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+      // Wire row toggling and category buttons
+      list.querySelectorAll('.sr-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('.sr-add') || e.target.closest('.sr-cats')) return;
+          // Already handled by .sr-add specifically
+          toggleSearchRow(row);
+        });
+        row.querySelector('.sr-add').addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleSearchRow(row);
+        });
+      });
+      list.querySelectorAll('.sr-cats button').forEach(b => {
+        b.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const songId = Number(b.dataset.songId);
+          const cat = b.dataset.cat;
+          const result = await apiAction({ song_id: songId, user: userName, action: 'assign', category: cat });
+          if (result.ok) {
+            showToast(t('toast.assigned', { cat: t(`cat.${cat}.short`) }));
+            // collapse the row + update status
+            const row = list.querySelector(`.sr-row[data-song-id="${songId}"]`);
+            if (row) row.classList.remove('expanded');
+            const s = results.find(r => r.id === songId);
+            if (s) {
+              s.assigned_to = cat;
+              s.assigned_by = userName;
+              const statusEl = row.querySelector('.sr-status');
+              const html = t('search.assignedAs', { cat: t(`cat.${cat}.short`), by: userName });
+              if (statusEl) statusEl.innerHTML = escapeHtml(html);
+              else row.querySelector('.sr-text').insertAdjacentHTML('beforeend', `<div class="sr-status">${escapeHtml(html)}</div>`);
+            }
+          } else { showToast(t('toast.failed')); }
+        });
+      });
+      // Resolve artwork for visible rows (debounced)
+      results.forEach(s => {
+        lookupITunes(s.artist, s.title).then(info => {
+          const el = document.getElementById(`sr-art-${s.id}`);
+          if (el && info?.artwork600) {
+            const big = new Image();
+            big.onload = () => {
+              el.style.backgroundImage = `url("${info.artwork600}")`;
+              el.innerHTML = '';
+            };
+            big.src = info.artwork600;
+          }
+        });
+      });
+    }, 280);
+  }
+  function toggleSearchRow(row) {
+    const wasExpanded = row.classList.contains('expanded');
+    document.querySelectorAll('.sr-row.expanded').forEach(r => r.classList.remove('expanded'));
+    if (!wasExpanded) row.classList.add('expanded');
+  }
+  // Close search with ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && searchOv.classList.contains('open')) closeSearch();
+  });
 
   /* ===== Send report ===== */
   const sendBtn = document.getElementById('send-report');
@@ -1144,9 +1401,7 @@
       sendStatus.textContent = t('sendStatus', { n: res.submit_count || 1 });
       showToast(res.emailed ? t('toast.sent') : t('toast.savedPending'));
       closeMenu();
-    } else {
-      showToast(t('toast.failed'));
-    }
+    } else { showToast(t('toast.failed')); }
   });
 
   /* ===== Toast ===== */
@@ -1158,27 +1413,16 @@
     toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2400);
   }
 
-  /* ===== boot ===== */
-  function boot() {
-    onboardingEl.hidden = true;
-    discoveryEl.hidden = false;
-    topBarEl.hidden = false;
-    whoNameEl.textContent = userName;
-    progressN = 0; progressTotal = 0;
-    loadNext();
-    // background server-side user upsert
-    fetch(`${API}/api/save`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: userName, service })
-    }).catch(() => {});
-  }
-
-  // init
+  /* ===== Boot ===== */
   applyStaticI18n();
   updateLangUI();
-  if (userName && service) boot();
-  else showOnboarding();
+  if (!service) {
+    showFirst();
+  } else if (!userName) {
+    showWho();
+  } else {
+    showDiscovery();
+  }
 })();
 </script>
 </body>
