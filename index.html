@@ -1187,36 +1187,119 @@
     catch (e) { return []; }
   }
 
-  /* ===== Spotify OAuth + Web Playback SDK ===== */
+  /* ===== Spotify OAuth (Authorization Code with PKCE) + Web Playback SDK ===== */
+  const K_SPOTIFY_VERIFIER = 'venchanie_spotify_verifier';
+  const K_SPOTIFY_REFRESH = 'venchanie_spotify_refresh';
+
   function spotifyToken() {
     const expires = parseInt(lsGet(K_SPOTIFY_EXPIRES, '0'), 10);
     if (!expires || Date.now() > expires) {
-      localStorage.removeItem(K_SPOTIFY_TOKEN);
-      localStorage.removeItem(K_SPOTIFY_EXPIRES);
+      // Try refresh below; for now return null and caller can re-init after refresh
       return null;
     }
     return lsGet(K_SPOTIFY_TOKEN, null);
   }
-  function spotifyLogin() {
+
+  // PKCE helpers
+  function spRandomString(length) {
+    const arr = new Uint8Array(length);
+    crypto.getRandomValues(arr);
+    // base64url, trimmed
+    return btoa(String.fromCharCode.apply(null, arr))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+      .substring(0, length);
+  }
+  async function spCodeChallenge(verifier) {
+    const data = new TextEncoder().encode(verifier);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(digest)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  async function spotifyLogin() {
+    const verifier = spRandomString(96);
+    lsSet(K_SPOTIFY_VERIFIER, verifier);
+    const challenge = await spCodeChallenge(verifier);
     const params = new URLSearchParams({
       client_id: SPOTIFY_CLIENT_ID,
-      response_type: 'token',
+      response_type: 'code',
       redirect_uri: SPOTIFY_REDIRECT,
+      code_challenge_method: 'S256',
+      code_challenge: challenge,
       scope: SPOTIFY_SCOPES,
       show_dialog: 'false'
     });
     window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
   }
-  function spotifyParseCallback() {
-    if (!location.hash.startsWith('#access_token=')) return false;
-    const p = new URLSearchParams(location.hash.substring(1));
-    const tok = p.get('access_token');
-    const exp = parseInt(p.get('expires_in') || '3600', 10);
-    if (!tok) return false;
-    lsSet(K_SPOTIFY_TOKEN, tok);
-    lsSet(K_SPOTIFY_EXPIRES, String(Date.now() + exp * 1000 - 60000));
-    history.replaceState(null, '', location.pathname + location.search);
-    return true;
+
+  async function spotifyExchangeCode(code) {
+    const verifier = lsGet(K_SPOTIFY_VERIFIER, '');
+    if (!verifier) return false;
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: SPOTIFY_REDIRECT,
+      client_id: SPOTIFY_CLIENT_ID,
+      code_verifier: verifier
+    });
+    try {
+      const r = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      });
+      if (!r.ok) {
+        console.warn('Spotify token exchange failed', r.status, await r.text());
+        return false;
+      }
+      const d = await r.json();
+      lsSet(K_SPOTIFY_TOKEN, d.access_token);
+      lsSet(K_SPOTIFY_EXPIRES, String(Date.now() + d.expires_in * 1000 - 60000));
+      if (d.refresh_token) lsSet(K_SPOTIFY_REFRESH, d.refresh_token);
+      localStorage.removeItem(K_SPOTIFY_VERIFIER);
+      return true;
+    } catch (e) {
+      console.warn('Spotify exchange error', e);
+      return false;
+    }
+  }
+
+  async function spotifyRefresh() {
+    const refresh = lsGet(K_SPOTIFY_REFRESH, '');
+    if (!refresh) return false;
+    const body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refresh,
+      client_id: SPOTIFY_CLIENT_ID
+    });
+    try {
+      const r = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      });
+      if (!r.ok) return false;
+      const d = await r.json();
+      lsSet(K_SPOTIFY_TOKEN, d.access_token);
+      lsSet(K_SPOTIFY_EXPIRES, String(Date.now() + d.expires_in * 1000 - 60000));
+      if (d.refresh_token) lsSet(K_SPOTIFY_REFRESH, d.refresh_token);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  async function spotifyParseCallback() {
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    const err = params.get('error');
+    if (err) {
+      showToast(t('toast.spotifyFail') + ': ' + err);
+      history.replaceState(null, '', location.pathname);
+      return false;
+    }
+    if (!code) return false;
+    const ok = await spotifyExchangeCode(code);
+    history.replaceState(null, '', location.pathname);
+    return ok;
   }
 
   // SDK loader + player wrapper
@@ -1851,30 +1934,38 @@
 
   /* ===== Boot ===== */
   applyStaticI18n();
-  // If we returned from Spotify OAuth, harvest token from URL fragment
-  const justAuthed = spotifyParseCallback();
-  if (justAuthed) {
-    showToast(t('toast.spotifyOk'));
+
+  // Re-render current card when SDK becomes ready
+  onSpEvent(() => {
+    if (currentSong && service === 'spotify') {
+      const alreadyMounted = document.querySelector('.sp-player');
+      if (!alreadyMounted && spReady) renderCard(currentSong);
+    }
+  });
+
+  async function boot() {
+    // If we returned from Spotify OAuth, exchange the auth code for a token
+    if (location.search.includes('code=') || location.search.includes('error=')) {
+      const ok = await spotifyParseCallback();
+      if (ok) showToast(t('toast.spotifyOk'));
+    }
+    // If we already have a (still-valid) token, init SDK now
+    if (spotifyToken()) {
+      spotifyInit();
+    } else if (lsGet(K_SPOTIFY_REFRESH, '')) {
+      // Try silent refresh, then init
+      const refreshed = await spotifyRefresh();
+      if (refreshed) spotifyInit();
+    }
+    if (!service) {
+      showScreen('obService');
+    } else if (!userName) {
+      showScreen('obWho');
+    } else {
+      showDiscovery();
+    }
   }
-  // Auto-init SDK if Spotify token present
-  if (spotifyToken()) {
-    spotifyInit();
-    // Re-render current card when SDK becomes ready
-    onSpEvent(() => {
-      if (currentSong && service === 'spotify') {
-        // Only re-render if player container isn't already mounted
-        const alreadyMounted = document.querySelector('.sp-player');
-        if (!alreadyMounted && spReady) renderCard(currentSong);
-      }
-    });
-  }
-  if (!service) {
-    showScreen('obService');
-  } else if (!userName) {
-    showScreen('obWho');
-  } else {
-    showDiscovery();
-  }
+  boot();
 })();
 </script>
 </body>
