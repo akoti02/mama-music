@@ -39,6 +39,38 @@
   }
   [hidden] { display: none !important; }
 
+  /* ===== Language toggle (always-on, top-right) ===== */
+  .lang-toggle {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top));
+    right: calc(10px + env(safe-area-inset-right));
+    z-index: 250;
+    display: flex;
+    background: rgba(20, 20, 24, 0.7);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .lang-toggle button {
+    appearance: none;
+    background: transparent;
+    color: var(--text-muted);
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .lang-toggle button.active {
+    background: var(--accent);
+    color: #0a0a0d;
+  }
+
   /* ===== Onboarding ===== */
   #onboarding {
     min-height: 100vh; min-height: 100dvh;
@@ -103,25 +135,18 @@
   .ob-start:active { transform: scale(0.98); }
   .ob-start:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; background: var(--bg-card-solid); color: var(--text-muted); }
 
-  /* ===== Generic screens ===== */
   .screen { min-height: 100vh; min-height: 100dvh; padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
-  .screen-header {
-    padding: 22px 18px 16px;
-    text-align: center; position: relative;
-  }
+  .screen-header { padding: 22px 18px 16px; text-align: center; position: relative; }
   .screen-header h1 {
     margin: 0; font-size: 13px; font-weight: 600;
     letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);
   }
-  .screen-header .greeting {
-    margin: 8px 0 0; color: var(--text); font-size: 16px; font-weight: 500;
-  }
+  .screen-header .greeting { margin: 8px 0 0; color: var(--text); font-size: 16px; font-weight: 500; }
   .screen-header .greeting .name {
     color: var(--accent-bright); cursor: pointer;
     border-bottom: 1px dotted var(--accent-soft);
   }
 
-  /* Back-bar (used on category view) */
   .back-bar {
     position: sticky; top: 0; z-index: 50;
     background: rgba(8,8,10,0.75);
@@ -133,8 +158,7 @@
     min-height: 56px;
   }
   .back-btn {
-    appearance: none;
-    background: var(--bg-elev); color: var(--text);
+    appearance: none; background: var(--bg-elev); color: var(--text);
     border: 1px solid var(--border); border-radius: 10px;
     width: 40px; height: 40px;
     display: flex; align-items: center; justify-content: center;
@@ -142,7 +166,7 @@
     transition: background 0.15s, transform 0.1s;
   }
   .back-btn:active { transform: scale(0.93); }
-  .back-bar-title { flex: 1; min-width: 0; }
+  .back-bar-title { flex: 1; min-width: 0; padding-right: 80px; /* space for lang-toggle overlap */ }
   .back-bar-title .bb-name {
     font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -152,7 +176,6 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
-  /* ===== Home: category tiles ===== */
   .cat-tiles {
     padding: 8px 16px;
     display: flex; flex-direction: column; gap: 12px;
@@ -167,15 +190,13 @@
     padding: 18px 20px;
     font-family: inherit; cursor: pointer;
     transition: all 0.2s;
-    display: block;
-    width: 100%;
+    display: block; width: 100%;
   }
   .cat-tile:active { transform: scale(0.98); }
   .cat-tile:hover { border-color: var(--border-strong); }
   .cat-tile.has-progress { border-color: rgba(212, 164, 92, 0.25); }
   .cat-tile .ct-name {
-    font-size: 13px; font-weight: 700;
-    color: var(--accent-bright);
+    font-size: 13px; font-weight: 700; color: var(--accent-bright);
     text-transform: uppercase; letter-spacing: 0.08em;
   }
   .cat-tile .ct-stage {
@@ -188,25 +209,20 @@
   }
   .cat-tile .ct-meta {
     margin-top: 14px;
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     font-size: 12px; color: var(--text-muted);
   }
   .cat-tile .ct-pill {
     display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 9px;
-    background: var(--bg-elev);
-    border-radius: 999px;
-    font-weight: 600;
+    padding: 3px 9px; background: var(--bg-elev);
+    border-radius: 999px; font-weight: 600;
   }
   .cat-tile.has-progress .ct-pill.with-comments {
     background: rgba(212, 164, 92, 0.15);
     color: var(--accent-bright);
   }
 
-  .home-footer {
-    padding: 28px 16px 0;
-    max-width: 640px; margin: 0 auto;
-  }
+  .home-footer { padding: 28px 16px 0; max-width: 640px; margin: 0 auto; }
   .primary-button {
     width: 100%; appearance: none;
     background: linear-gradient(135deg, var(--accent-bright), var(--accent));
@@ -221,11 +237,7 @@
   .primary-button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
   .send-hint { margin-top: 10px; font-size: 12px; color: var(--text-muted); text-align: center; }
 
-  /* ===== Category view ===== */
-  .cat-add {
-    padding: 14px 16px 0;
-    max-width: 640px; margin: 0 auto;
-  }
+  .cat-add { padding: 14px 16px 0; max-width: 640px; margin: 0 auto; }
   .cat-add button {
     width: 100%; appearance: none;
     background: var(--bg-card);
@@ -283,15 +295,14 @@
   }
   .tc-meta {
     margin-top: 5px;
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     font-size: 11px; color: var(--text-muted);
   }
   .tc-meta .badge {
     display: inline-flex; align-items: center;
     padding: 2px 7px;
     background: var(--bg-elev);
-    border-radius: 999px;
-    font-weight: 600;
+    border-radius: 999px; font-weight: 600;
   }
   .tc-meta .badge.added-arthur { color: #93c5fd; background: rgba(147, 197, 253, 0.1); }
   .tc-meta .badge.added-yula { color: #f9a8d4; background: rgba(249, 168, 212, 0.1); }
@@ -302,8 +313,7 @@
     border: 0; cursor: pointer;
     width: 32px; height: 32px;
     display: flex; align-items: center; justify-content: center;
-    border-radius: 8px;
-    font-size: 16px;
+    border-radius: 8px; font-size: 16px;
     transition: all 0.15s;
   }
   .tc-actions button:hover { background: var(--bg-elev); color: var(--text); }
@@ -313,12 +323,9 @@
     max-height: 0; overflow: hidden;
     transition: max-height 0.3s ease;
   }
-  .track-card.expanded .track-card-body {
-    max-height: 800px;
-  }
-  .track-card-body-inner {
-    padding: 0 16px 16px;
-  }
+  .track-card.expanded .track-card-body { max-height: 800px; }
+  .track-card-body-inner { padding: 0 16px 16px; }
+
   .player-embed {
     position: relative;
     width: 100%; height: 175px;
@@ -329,10 +336,12 @@
   }
   .player-embed iframe { width: 100%; height: 100%; border: 0; background: transparent; }
   .player-embed.loading::before {
-    content: "⏳ загрузка плеера…";
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 13px;
+  }
+  .player-embed.loading[data-i18n-loading]::before {
+    content: attr(data-i18n-loading);
   }
   .player-embed.error {
     display: flex; align-items: center; justify-content: center;
@@ -349,8 +358,7 @@
   textarea.comment {
     width: 100%; min-height: 90px;
     padding: 14px 16px;
-    background: var(--bg-elev);
-    color: var(--text);
+    background: var(--bg-elev); color: var(--text);
     border: 1px solid var(--border); border-radius: 12px;
     font-family: inherit; font-size: 16px; line-height: 1.45;
     resize: none; overflow: hidden;
@@ -369,7 +377,6 @@
   }
   .saved-flag.show { opacity: 1; }
 
-  /* ===== Search modal (bottom sheet) ===== */
   .modal-backdrop {
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.6);
@@ -399,10 +406,7 @@
     border-radius: 999px;
     margin: 10px auto 4px;
   }
-  .sm-header {
-    flex-shrink: 0;
-    padding: 8px 18px 0;
-  }
+  .sm-header { flex-shrink: 0; padding: 8px 18px 0; }
   .sm-title {
     text-align: center; font-size: 14px; font-weight: 600;
     color: var(--text-dim); margin-bottom: 14px;
@@ -429,15 +433,10 @@
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     padding: 12px 18px calc(20px + env(safe-area-inset-bottom));
   }
-  .sm-status {
-    text-align: center;
-    color: var(--text-muted); font-size: 13px;
-    padding: 24px 0;
-  }
+  .sm-status { text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px 0; }
   .sm-result {
     display: flex; align-items: center; gap: 12px;
-    padding: 10px 12px;
-    border-radius: 12px;
+    padding: 10px 12px; border-radius: 12px;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
     transition: background 0.15s;
   }
@@ -471,7 +470,6 @@
   .sm-add:active { transform: scale(0.92); }
   .sm-add:disabled { background: var(--bg-elev); color: var(--text-muted); }
 
-  /* ===== Toast ===== */
   .toast {
     position: fixed; bottom: calc(28px + env(safe-area-inset-bottom));
     left: 50%; transform: translateX(-50%) translateY(20px);
@@ -491,17 +489,23 @@
 </head>
 <body>
 
+<!-- LANGUAGE TOGGLE -->
+<div class="lang-toggle" id="lang-toggle">
+  <button type="button" data-lang="ru">RU</button>
+  <button type="button" data-lang="en">EN</button>
+</div>
+
 <!-- ONBOARDING -->
 <div id="onboarding" hidden>
   <div class="ob-inner">
     <div class="ob-hero">
       <div class="ob-emoji">🎵</div>
-      <h1>Музыка к <span class="accent">венчанию</span></h1>
-      <div class="ob-sub">12 июля 2026 · Франция</div>
+      <h1><span data-i18n="ob.titlePrefix"></span><span class="accent" data-i18n="ob.titleAccent"></span></h1>
+      <div class="ob-sub" data-i18n="ob.subtitle"></div>
     </div>
 
     <div class="ob-block">
-      <span class="ob-label">Кто ты</span>
+      <span class="ob-label" data-i18n="ob.who"></span>
       <div class="ob-pick" id="ob-user-pick" role="radiogroup">
         <button type="button" data-user="Юля" role="radio">💗 Юля</button>
         <button type="button" data-user="Артур" role="radio">💙 Артур</button>
@@ -509,30 +513,28 @@
     </div>
 
     <div class="ob-block">
-      <span class="ob-label">Сервис</span>
+      <span class="ob-label" data-i18n="ob.service"></span>
       <div class="ob-pick" id="ob-service-pick" role="radiogroup">
         <button type="button" data-service="apple" role="radio">🍎 Apple Music</button>
         <button type="button" data-service="spotify" role="radio">🟢 Spotify</button>
       </div>
     </div>
 
-    <div id="ob-login" class="ob-login" hidden>
-      🎧 <strong>Перед началом</strong> — открой <a id="ob-login-link" href="https://music.apple.com" target="_blank" rel="noopener">Apple Music</a> в этом Safari и войди под своим аккаунтом. Нужна подписка — без неё треки играют только 30 секунд.
-    </div>
+    <div id="ob-login" class="ob-login" hidden></div>
 
-    <button type="button" id="ob-start" class="ob-start" disabled>Начнём →</button>
+    <button type="button" id="ob-start" class="ob-start" disabled data-i18n="ob.start"></button>
   </div>
 </div>
 
 <!-- HOME -->
 <div id="home" class="screen" hidden>
   <header class="screen-header">
-    <h1>Музыка к венчанию</h1>
-    <div class="greeting">Привет, <span id="home-user-name" class="name" role="button" title="Изменить"></span></div>
+    <h1 data-i18n="home.title"></h1>
+    <div class="greeting"><span data-i18n="home.hi"></span><span id="home-user-name" class="name" role="button"></span></div>
   </header>
   <div id="cat-tiles" class="cat-tiles"></div>
   <div class="home-footer">
-    <button id="send-report" class="primary-button">📤 Отправить отчёт Артуру</button>
+    <button id="send-report" class="primary-button" data-i18n="home.sendBtn"></button>
     <div id="send-status" class="send-hint"></div>
   </div>
 </div>
@@ -540,32 +542,30 @@
 <!-- CATEGORY -->
 <div id="category" class="screen" hidden>
   <div class="back-bar">
-    <button type="button" class="back-btn" id="cat-back" aria-label="Назад">←</button>
+    <button type="button" class="back-btn" id="cat-back" data-i18n-aria="cat.back">←</button>
     <div class="back-bar-title">
       <div class="bb-name" id="cat-name"></div>
       <div class="bb-context" id="cat-context"></div>
     </div>
   </div>
   <div class="cat-add">
-    <button type="button" id="open-search">+ Найти и добавить трек</button>
+    <button type="button" id="open-search" data-i18n="cat.addBtn"></button>
   </div>
   <div id="track-list" class="track-list"></div>
 </div>
 
 <!-- SEARCH MODAL -->
 <div id="modal-backdrop" class="modal-backdrop" aria-hidden="true"></div>
-<div id="search-modal" class="search-modal" role="dialog" aria-label="Поиск">
+<div id="search-modal" class="search-modal" role="dialog">
   <div class="sm-grab"></div>
   <div class="sm-header">
-    <div class="sm-title">в этап <span class="target" id="sm-target"></span></div>
+    <div class="sm-title"><span data-i18n="search.toPrefix"></span> <span class="target" id="sm-target"></span></div>
     <div class="sm-search">
       <span class="sm-search-icon">🔍</span>
-      <input type="text" id="sm-input" placeholder="название песни или артиста" autocomplete="off" enterkeyhint="search" spellcheck="false">
+      <input type="text" id="sm-input" autocomplete="off" enterkeyhint="search" spellcheck="false" data-i18n-placeholder="search.placeholder">
     </div>
   </div>
-  <div id="sm-results" class="sm-results">
-    <div class="sm-status">Введи название трека или артиста — на русском или английском.</div>
-  </div>
+  <div id="sm-results" class="sm-results"></div>
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -574,32 +574,173 @@
 (function () {
   'use strict';
 
+  /* ===== keys ===== */
   const K_NAME = 'venchanie_user_name';
   const K_SERVICE = 'venchanie_service_v1';
-  const K_AUDIT = 'venchanie_audit_v8';  // dynamic track IDs (integer keys)
+  const K_AUDIT = 'venchanie_audit_v8';
+  const K_LANG = 'venchanie_lang';
   const API_BASE = 'https://api.akoev.com';
 
-  const CATEGORIES = [
-    { key: 'Лаунж',    stage: 'Лаунж · 17:30–19:00',            context: 'Фон во время приезда гостей, винного казино и аперитива.' },
-    { key: 'LOVERS',   stage: 'LOVERS · кавер-программа',        context: 'Зажигательное, с поправкой на голос Дарьи Азиатцевой.' },
-    { key: 'Торт',     stage: 'Вынос торта · 20–40 секунд',      context: 'Взрывное и при этом романтичное, с элементами рока.' },
-    { key: 'DJ Микки', stage: 'DJ Микки · 22:30–23:00',          context: 'Атмосфера финала вечера — что подойдёт к выходу Саши.' },
-    { key: 'Юля',      stage: 'Юля Карпинская · «наши» треки',   context: 'Личные треки для сета Юли Карпинской.' },
-    { key: 'Вилла',    stage: 'Вилла · 10 июля · 17:00–23:00',   context: 'Атмосферный фон на 3-часовую вечеринку накануне.' }
-  ];
+  /* ===== translations ===== */
+  const T = {
+    ru: {
+      'ob.titlePrefix': 'Музыка к ',
+      'ob.titleAccent': 'венчанию',
+      'ob.subtitle': '12 июля 2026 · Франция',
+      'ob.who': 'Кто ты',
+      'ob.service': 'Сервис',
+      'ob.loginHTML': '🎧 <strong>Перед началом</strong> — открой <a href="{href}" target="_blank" rel="noopener">{name}</a> в этом Safari и войди под своим аккаунтом. Нужна подписка — без неё треки играют только 30 секунд.',
+      'ob.start': 'Начнём →',
+      'home.title': 'Музыка к венчанию',
+      'home.hi': 'Привет, ',
+      'home.sendBtn': '📤 Отправить отчёт Артуру',
+      'home.sendStatus': '✓ Отправлено (всего: {n})',
+      'cat.back': 'Назад',
+      'cat.addBtn': '+ Найти и добавить трек',
+      'cat.empty': 'пока пусто — нажми «+ Найти и добавить трек» сверху',
+      'card.commentLabel': 'Твой комментарий',
+      'card.commentPlaceholder': 'нравится? что зацепило, что нет',
+      'card.saved': '✓ сохранено',
+      'card.hasComment': '✓ есть твой коммент',
+      'card.removeAria': 'Удалить',
+      'embed.loading': '⏳ загрузка плеера…',
+      'embed.notFound': 'Трек не найден в Apple Music',
+      'embed.spotifyNotSet': 'Spotify: трек не задан',
+      'search.toPrefix': 'в этап',
+      'search.placeholder': 'название песни или артиста',
+      'search.initial': 'Введи название трека или артиста — на русском или английском.',
+      'search.searching': '⏳ ищу…',
+      'search.noResults': 'Ничего не нашлось. Попробуй другое написание.',
+      'search.add': 'Добавить',
+      'confirm.remove': 'Удалить «{title}»? Это увидят все.',
+      'confirm.send': 'Отправить отчёт Артуру сейчас? Можно отправить ещё раз позже.',
+      'confirm.switch': 'Переключить пользователя на {name}?',
+      'toast.sent': '✓ Отчёт ушёл Артуру',
+      'toast.savedPending': '✓ Сохранено · письмо в пути',
+      'toast.failed': 'Не получилось. Проверь интернет и попробуй ещё раз.',
+      'toast.removed': '✕ Удалено',
+      'toast.removeFailed': 'Не получилось удалить',
+      'toast.added': '✓ Добавлено',
+      'toast.addFailed': 'Не получилось добавить',
+      'sending': '⏳ Отправляем…',
+      'addedBy': '+ {name} · {date}',
+      'cat.Лаунж.stage':    'Лаунж · 17:30–19:00',
+      'cat.Лаунж.context':  'Фон во время приезда гостей, винного казино и аперитива.',
+      'cat.LOVERS.stage':   'LOVERS · кавер-программа',
+      'cat.LOVERS.context': 'Зажигательное, с поправкой на голос Дарьи Азиатцевой.',
+      'cat.Торт.stage':     'Вынос торта · 20–40 секунд',
+      'cat.Торт.context':   'Взрывное и при этом романтичное, с элементами рока.',
+      'cat.DJ Микки.stage':   'DJ Микки · 22:30–23:00',
+      'cat.DJ Микки.context': 'Атмосфера финала вечера — что подойдёт к выходу Саши.',
+      'cat.Юля.stage':      'Юля Карпинская · «наши» треки',
+      'cat.Юля.context':    'Личные треки для сета Юли Карпинской.',
+      'cat.Вилла.stage':    'Вилла · 10 июля · 17:00–23:00',
+      'cat.Вилла.context':  'Атмосферный фон на 3-часовую вечеринку накануне.',
+      'cat.Лаунж.short':    'Лаунж',
+      'cat.LOVERS.short':   'LOVERS',
+      'cat.Торт.short':     'Торт',
+      'cat.DJ Микки.short': 'DJ Микки',
+      'cat.Юля.short':      'Юля',
+      'cat.Вилла.short':    'Вилла',
+      pluralTrack:   (n) => ruPlural(n, 'трек', 'трека', 'треков'),
+      pluralComment: (n) => ruPlural(n, 'комментарий', 'комментария', 'комментариев'),
+      locale: 'ru-RU'
+    },
+    en: {
+      'ob.titlePrefix': 'Music for the ',
+      'ob.titleAccent': 'wedding',
+      'ob.subtitle': 'July 12, 2026 · France',
+      'ob.who': 'Who are you',
+      'ob.service': 'Service',
+      'ob.loginHTML': '🎧 <strong>Before you start</strong> — open <a href="{href}" target="_blank" rel="noopener">{name}</a> in this Safari and sign in. You need a subscription — without one, tracks play for only 30 seconds.',
+      'ob.start': "Let's go →",
+      'home.title': 'Wedding music',
+      'home.hi': 'Hi, ',
+      'home.sendBtn': '📤 Send report to Артур',
+      'home.sendStatus': '✓ Sent (total: {n})',
+      'cat.back': 'Back',
+      'cat.addBtn': '+ Find and add a track',
+      'cat.empty': 'empty — tap "+ Find and add a track" above',
+      'card.commentLabel': 'Your comment',
+      'card.commentPlaceholder': 'do you like it? what stood out, what didn\'t',
+      'card.saved': '✓ saved',
+      'card.hasComment': '✓ you commented',
+      'card.removeAria': 'Remove',
+      'embed.loading': '⏳ loading player…',
+      'embed.notFound': 'Track not found on Apple Music',
+      'embed.spotifyNotSet': 'Spotify: track not set',
+      'search.toPrefix': 'to stage',
+      'search.placeholder': 'song or artist name',
+      'search.initial': 'Type a song or artist — in Russian or English.',
+      'search.searching': '⏳ searching…',
+      'search.noResults': 'Nothing found. Try a different spelling.',
+      'search.add': 'Add',
+      'confirm.remove': 'Remove «{title}»? Everyone will see this.',
+      'confirm.send': 'Send report to Артур now? You can send again later.',
+      'confirm.switch': 'Switch user to {name}?',
+      'toast.sent': '✓ Report sent to Артур',
+      'toast.savedPending': '✓ Saved · email on the way',
+      'toast.failed': 'Failed. Check your internet and try again.',
+      'toast.removed': '✕ Removed',
+      'toast.removeFailed': 'Failed to remove',
+      'toast.added': '✓ Added',
+      'toast.addFailed': 'Failed to add',
+      'sending': '⏳ Sending…',
+      'addedBy': '+ {name} · {date}',
+      'cat.Лаунж.stage':    'Lounge · 17:30–19:00',
+      'cat.Лаунж.context':  'Background during guests\' arrival, wine casino and aperitif.',
+      'cat.LOVERS.stage':   'LOVERS · cover band',
+      'cat.LOVERS.context': 'High-energy, adjusted for Daria Aziatseva\'s high vocal range.',
+      'cat.Торт.stage':     'Cake reveal · 20–40 seconds',
+      'cat.Торт.context':   'Explosive yet romantic, with rock elements.',
+      'cat.DJ Микки.stage':   'DJ Micky · 22:30–23:00',
+      'cat.DJ Микки.context': 'Atmosphere for the night\'s finale — to match Sasha\'s set.',
+      'cat.Юля.stage':      'Yulia Karpinskaya · "our" tracks',
+      'cat.Юля.context':    'Personal tracks for Yulia Karpinskaya\'s set.',
+      'cat.Вилла.stage':    'Villa · July 10 · 17:00–23:00',
+      'cat.Вилла.context':  'Atmospheric background for the 3-hour pre-wedding party.',
+      'cat.Лаунж.short':    'Lounge',
+      'cat.LOVERS.short':   'LOVERS',
+      'cat.Торт.short':     'Cake',
+      'cat.DJ Микки.short': 'DJ Micky',
+      'cat.Юля.short':      'Yulia',
+      'cat.Вилла.short':    'Villa',
+      pluralTrack:   (n) => n === 1 ? 'track' : 'tracks',
+      pluralComment: (n) => n === 1 ? 'comment' : 'comments',
+      locale: 'en-US'
+    }
+  };
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function ruPlural(n, one, few, many) {
+    const m10 = Math.abs(n) % 10;
+    const m100 = Math.abs(n) % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+    return many;
   }
-  function lsGet(k, dflt) { try { const v = localStorage.getItem(k); return v == null ? dflt : v; } catch (e) { return dflt; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  let lang = (() => {
+    try { return localStorage.getItem(K_LANG) || 'ru'; } catch (e) { return 'ru'; }
+  })();
+  if (!T[lang]) lang = 'ru';
+
+  function t(key, params = {}) {
+    const val = T[lang]?.[key] ?? T.ru[key] ?? key;
+    if (typeof val === 'function') return val(params);
+    if (typeof val !== 'string') return val;
+    return val.replace(/\{(\w+)\}/g, (_, k) => params[k] ?? `{${k}}`);
+  }
+  function plural(n, kind) {
+    const fn = T[lang]['plural' + kind] || T.ru['plural' + kind];
+    return fn(n);
+  }
   function fmtDate(ms) {
     if (!ms) return '';
-    const d = new Date(ms);
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    return new Date(ms).toLocaleDateString(T[lang].locale, { day: 'numeric', month: 'short' });
   }
 
   /* ===== state ===== */
+  const CATEGORIES_ORDER = ['Лаунж', 'LOVERS', 'Торт', 'DJ Микки', 'Юля', 'Вилла'];
   let userName = lsGet(K_NAME, '');
   let service = lsGet(K_SERVICE, '');
   let audit = (() => { try { return JSON.parse(lsGet(K_AUDIT, '{}')) || {}; } catch (e) { return {}; } })();
@@ -607,13 +748,71 @@
   let currentCategory = null;
   let expandedTrackId = null;
 
+  function lsGet(k, dflt) { try { const v = localStorage.getItem(k); return v == null ? dflt : v; } catch (e) { return dflt; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  /* ===== translation application ===== */
+  function applyStaticTranslations() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+      el.setAttribute('aria-label', t(el.dataset.i18nAria));
+    });
+    document.querySelectorAll('[data-i18n-loading-key]').forEach(el => {
+      el.setAttribute('data-i18n-loading', t(el.dataset.i18nLoadingKey));
+    });
+    document.querySelectorAll('.player-embed.loading').forEach(el => {
+      el.setAttribute('data-i18n-loading', t('embed.loading'));
+    });
+    // login banner
+    if (pickedService) updateLoginHint();
+  }
+  function setLang(newLang) {
+    if (!T[newLang] || newLang === lang) return;
+    lang = newLang;
+    lsSet(K_LANG, lang);
+    applyStaticTranslations();
+    updateLangToggleUI();
+    // re-render dynamic views
+    if (!document.getElementById('home').hidden) renderHome();
+    if (!document.getElementById('category').hidden && currentCategory) {
+      const cat = currentCategory;
+      document.getElementById('cat-name').textContent = t(`cat.${cat}.stage`);
+      document.getElementById('cat-context').textContent = t(`cat.${cat}.context`);
+      renderCategoryTracks();
+    }
+    if (document.getElementById('search-modal').classList.contains('show')) {
+      document.getElementById('sm-target').textContent = t(`cat.${currentCategory}.short`);
+      // reset search status to initial
+      const r = document.getElementById('sm-results');
+      if (r.querySelector('.sm-status') && !r.querySelector('.sm-result')) {
+        r.innerHTML = `<div class="sm-status">${escapeHtml(t('search.initial'))}</div>`;
+      }
+    }
+  }
+  function updateLangToggleUI() {
+    document.querySelectorAll('#lang-toggle button').forEach(b => {
+      b.classList.toggle('active', b.dataset.lang === lang);
+    });
+  }
+  document.querySelectorAll('#lang-toggle button').forEach(b => {
+    b.addEventListener('click', () => setLang(b.dataset.lang));
+  });
+
   /* ===== onboarding ===== */
   const onboardingEl = document.getElementById('onboarding');
   const homeEl = document.getElementById('home');
   const categoryEl = document.getElementById('category');
   const obStart = document.getElementById('ob-start');
   const obLogin = document.getElementById('ob-login');
-  const obLoginLink = document.getElementById('ob-login-link');
   let pickedUser = '';
   let pickedService = '';
 
@@ -621,11 +820,9 @@
   function updateLoginHint() {
     if (!pickedService) { obLogin.hidden = true; return; }
     obLogin.hidden = false;
-    if (pickedService === 'apple') {
-      obLoginLink.href = 'https://music.apple.com'; obLoginLink.textContent = 'Apple Music';
-    } else {
-      obLoginLink.href = 'https://open.spotify.com'; obLoginLink.textContent = 'Spotify';
-    }
+    const href = pickedService === 'apple' ? 'https://music.apple.com' : 'https://open.spotify.com';
+    const name = pickedService === 'apple' ? 'Apple Music' : 'Spotify';
+    obLogin.innerHTML = t('ob.loginHTML', { href: escapeHtml(href), name: escapeHtml(name) });
   }
   document.querySelectorAll('#ob-user-pick button').forEach(b => {
     b.addEventListener('click', () => {
@@ -654,7 +851,6 @@
   function showOnboarding() {
     homeEl.hidden = true; categoryEl.hidden = true;
     onboardingEl.hidden = false;
-    // pre-fill if returning
     if (userName) {
       pickedUser = userName;
       document.querySelectorAll('#ob-user-pick button').forEach(b => b.classList.toggle('active', b.dataset.user === userName));
@@ -724,61 +920,55 @@
     } catch (e) { return { ok: false }; }
   }
 
-  /* ===== iTunes Search (for embed url + search results) ===== */
   async function itunesSearch(query, opts = {}) {
     const term = encodeURIComponent(query);
     const country = opts.country || 'us';
     const limit = opts.limit || 12;
-    const url = `https://itunes.apple.com/search?term=${term}&entity=song&limit=${limit}&media=music&country=${country}`;
     try {
-      const r = await fetch(url);
+      const r = await fetch(`https://itunes.apple.com/search?term=${term}&entity=song&limit=${limit}&media=music&country=${country}`);
       if (!r.ok) return [];
       const d = await r.json();
       return (d.results || []).map(hit => ({
-        artist: hit.artistName,
-        title: hit.trackName,
+        artist: hit.artistName, title: hit.trackName,
         artworkUrl100: hit.artworkUrl100,
         artwork: hit.artworkUrl100 ? hit.artworkUrl100.replace('100x100bb', '600x600bb') : null,
-        trackId: hit.trackId,
-        trackViewUrl: hit.trackViewUrl,
+        trackId: hit.trackId, trackViewUrl: hit.trackViewUrl,
         embedUrl: hit.trackViewUrl ? hit.trackViewUrl.replace(/^https?:\/\/music\.apple\.com\//, 'https://embed.music.apple.com/') : null
       })).filter(t => t.artist && t.title);
     } catch (e) { return []; }
   }
-  // Cache per-track lookup result so we don't re-fetch on every expansion
   const trackLookupCache = new Map();
   async function lookupApple(track) {
-    const id = track.id;
-    if (trackLookupCache.has(id)) return trackLookupCache.get(id);
+    if (trackLookupCache.has(track.id)) return trackLookupCache.get(track.id);
     let result = null;
     for (const c of ['us', 'ru', 'fr']) {
       const hits = await itunesSearch(`${track.artist} ${track.title}`, { country: c, limit: 1 });
       if (hits.length) { result = hits[0]; break; }
     }
-    trackLookupCache.set(id, result);
+    trackLookupCache.set(track.id, result);
     return result;
   }
 
-  /* ===== home (categories) ===== */
+  /* ===== Home ===== */
   function renderHome() {
     document.getElementById('home-user-name').textContent = userName;
     const tiles = document.getElementById('cat-tiles');
-    const tracksByCat = new Map(CATEGORIES.map(c => [c.key, []]));
-    for (const t of allTracks) {
-      if (tracksByCat.has(t.category)) tracksByCat.get(t.category).push(t);
+    const tracksByCat = new Map(CATEGORIES_ORDER.map(c => [c, []]));
+    for (const tk of allTracks) {
+      if (tracksByCat.has(tk.category)) tracksByCat.get(tk.category).push(tk);
     }
-    tiles.innerHTML = CATEGORIES.map(cat => {
-      const arr = tracksByCat.get(cat.key);
+    tiles.innerHTML = CATEGORIES_ORDER.map(cat => {
+      const arr = tracksByCat.get(cat);
       const count = arr.length;
-      const commented = arr.filter(t => (audit[t.id] && audit[t.id].comment && audit[t.id].comment.trim())).length;
+      const commented = arr.filter(tk => (audit[tk.id] && audit[tk.id].comment && audit[tk.id].comment.trim())).length;
       const hasProg = commented > 0;
-      return `<button class="cat-tile${hasProg ? ' has-progress' : ''}" data-cat="${escapeHtml(cat.key)}">
-        <div class="ct-name">${escapeHtml(cat.key)}</div>
-        <div class="ct-stage">${escapeHtml(cat.stage)}</div>
-        <div class="ct-context">${escapeHtml(cat.context)}</div>
+      return `<button class="cat-tile${hasProg ? ' has-progress' : ''}" data-cat="${escapeHtml(cat)}">
+        <div class="ct-name">${escapeHtml(t(`cat.${cat}.short`))}</div>
+        <div class="ct-stage">${escapeHtml(t(`cat.${cat}.stage`))}</div>
+        <div class="ct-context">${escapeHtml(t(`cat.${cat}.context`))}</div>
         <div class="ct-meta">
-          <span class="ct-pill">${count} трек${count === 1 ? '' : count >= 2 && count <= 4 ? 'а' : 'ов'}</span>
-          ${commented > 0 ? `<span class="ct-pill with-comments">✓ ${commented} ${commented === 1 ? 'комментарий' : commented >= 2 && commented <= 4 ? 'комментария' : 'комментариев'}</span>` : ''}
+          <span class="ct-pill">${count} ${escapeHtml(plural(count, 'Track'))}</span>
+          ${commented > 0 ? `<span class="ct-pill with-comments">✓ ${commented} ${escapeHtml(plural(commented, 'Comment'))}</span>` : ''}
         </div>
       </button>`;
     }).join('');
@@ -796,15 +986,13 @@
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
-  /* ===== category view ===== */
+  /* ===== Category ===== */
   function enterCategory(catKey) {
-    const cat = CATEGORIES.find(c => c.key === catKey);
-    if (!cat) return;
+    if (!CATEGORIES_ORDER.includes(catKey)) return;
     currentCategory = catKey;
-    document.getElementById('cat-name').textContent = cat.stage;
-    document.getElementById('cat-context').textContent = cat.context;
-    homeEl.hidden = true;
-    onboardingEl.hidden = true;
+    document.getElementById('cat-name').textContent = t(`cat.${catKey}.stage`);
+    document.getElementById('cat-context').textContent = t(`cat.${catKey}.context`);
+    homeEl.hidden = true; onboardingEl.hidden = true;
     categoryEl.hidden = false;
     expandedTrackId = null;
     renderCategoryTracks();
@@ -812,39 +1000,39 @@
   }
   function renderCategoryTracks() {
     const list = document.getElementById('track-list');
-    const items = allTracks.filter(t => t.category === currentCategory);
+    const items = allTracks.filter(tk => tk.category === currentCategory);
     if (items.length === 0) {
-      list.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:32px 0;font-size:14px">пока пусто — нажми «+ Найти трек» сверху</div>`;
+      list.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:32px 0;font-size:14px">${escapeHtml(t('cat.empty'))}</div>`;
       return;
     }
-    list.innerHTML = items.map(t => {
-      const c = audit[t.id] || {};
+    list.innerHTML = items.map(tk => {
+      const c = audit[tk.id] || {};
       const has = c.comment && c.comment.trim();
-      const expanded = expandedTrackId === t.id;
-      const isMine = t.added_by === userName;
-      const addedBadgeClass = t.added_by === 'Артур' ? 'added-arthur' : 'added-yula';
-      const artworkBg = t.artwork ? `style="background-image:url('${escapeHtml(t.artwork)}')"` : '';
-      return `<div class="track-card${expanded ? ' expanded' : ''}${has ? ' has-comment' : ''}" data-id="${t.id}">
+      const expanded = expandedTrackId === tk.id;
+      const addedBadgeClass = tk.added_by === 'Артур' ? 'added-arthur' : 'added-yula';
+      const addedLabel = t('addedBy', { name: tk.added_by, date: fmtDate(tk.added_at) });
+      const artworkBg = tk.artwork ? `style="background-image:url('${escapeHtml(tk.artwork)}')"` : '';
+      return `<div class="track-card${expanded ? ' expanded' : ''}${has ? ' has-comment' : ''}" data-id="${tk.id}">
         <div class="track-card-head">
-          <div class="tc-artwork" ${artworkBg}>${t.artwork ? '' : '🎵'}</div>
+          <div class="tc-artwork" ${artworkBg}>${tk.artwork ? '' : '🎵'}</div>
           <div class="tc-text">
-            <div class="tc-title">${escapeHtml(t.title)}</div>
-            <div class="tc-artist">${escapeHtml(t.artist)}</div>
+            <div class="tc-title">${escapeHtml(tk.title)}</div>
+            <div class="tc-artist">${escapeHtml(tk.artist)}</div>
             <div class="tc-meta">
-              <span class="badge ${addedBadgeClass}">+ ${escapeHtml(t.added_by)} · ${fmtDate(t.added_at)}</span>
-              ${has ? '<span class="badge has-comment">✓ есть твой коммент</span>' : ''}
+              <span class="badge ${addedBadgeClass}">${escapeHtml(addedLabel)}</span>
+              ${has ? `<span class="badge has-comment">${escapeHtml(t('card.hasComment'))}</span>` : ''}
             </div>
           </div>
           <div class="tc-actions">
-            <button type="button" class="tc-remove" data-action="remove" aria-label="Удалить">✕</button>
+            <button type="button" class="tc-remove" data-action="remove" aria-label="${escapeHtml(t('card.removeAria'))}">✕</button>
           </div>
         </div>
         <div class="track-card-body">
           <div class="track-card-body-inner">
-            <div class="player-embed loading" data-embed-for="${t.id}"></div>
-            <div class="comment-label">Твой комментарий</div>
-            <textarea class="comment" data-comment-for="${t.id}" placeholder="нравится? что зацепило, что нет"></textarea>
-            <span class="saved-flag" data-saved-for="${t.id}">✓ сохранено</span>
+            <div class="player-embed loading" data-i18n-loading="${escapeHtml(t('embed.loading'))}"></div>
+            <div class="comment-label">${escapeHtml(t('card.commentLabel'))}</div>
+            <textarea class="comment" placeholder="${escapeHtml(t('card.commentPlaceholder'))}"></textarea>
+            <span class="saved-flag">${escapeHtml(t('card.saved'))}</span>
           </div>
         </div>
       </div>`;
@@ -854,23 +1042,23 @@
       const id = Number(card.dataset.id);
       const head = card.querySelector('.track-card-head');
       head.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;  // ignore clicks on action buttons
+        if (e.target.closest('button')) return;
         toggleExpand(id);
       });
       const removeBtn = card.querySelector('.tc-remove');
       if (removeBtn) {
         removeBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const t = allTracks.find(x => x.id === id);
-          if (!t) return;
-          if (!window.confirm(`Удалить «${t.title}»? Это увидят все.`)) return;
+          const tk = allTracks.find(x => x.id === id);
+          if (!tk) return;
+          if (!window.confirm(t('confirm.remove', { title: tk.title }))) return;
           const res = await apiRemoveTrack(id);
           if (res.ok) {
-            showToast('✕ Удалено');
+            showToast(t('toast.removed'));
             await reloadTracks();
             renderCategoryTracks();
           } else {
-            showToast('Не получилось удалить');
+            showToast(t('toast.removeFailed'));
           }
         });
       }
@@ -890,16 +1078,14 @@
             const f = card.querySelector('.saved-flag');
             f.classList.add('show');
             setTimeout(() => f.classList.remove('show'), 1400);
-            // update has-comment border in real-time
             const has = ta.value && ta.value.trim();
             card.classList.toggle('has-comment', !!has);
-            // update or add badge
             const badgeRow = card.querySelector('.tc-meta');
             let badge = badgeRow.querySelector('.badge.has-comment');
             if (has && !badge) {
               badge = document.createElement('span');
               badge.className = 'badge has-comment';
-              badge.textContent = '✓ есть твой коммент';
+              badge.textContent = t('card.hasComment');
               badgeRow.appendChild(badge);
             } else if (!has && badge) {
               badge.remove();
@@ -908,7 +1094,6 @@
         });
       }
     });
-
     if (expandedTrackId) {
       const card = list.querySelector(`.track-card[data-id="${expandedTrackId}"]`);
       if (card) renderEmbedInCard(card);
@@ -922,26 +1107,20 @@
     const list = document.getElementById('track-list');
     const cards = list.querySelectorAll('.track-card');
     if (expandedTrackId === id) {
-      // collapse
       expandedTrackId = null;
       cards.forEach(c => {
         if (c.classList.contains('expanded')) {
           const slot = c.querySelector('.player-embed');
-          slot.innerHTML = '';
-          slot.classList.remove('error');
-          slot.classList.add('loading');
+          slot.innerHTML = ''; slot.classList.remove('error'); slot.classList.add('loading');
           c.classList.remove('expanded');
         }
       });
       return;
     }
-    // collapse previously-expanded
     cards.forEach(c => {
       if (c.classList.contains('expanded')) {
         const slot = c.querySelector('.player-embed');
-        slot.innerHTML = '';
-        slot.classList.remove('error');
-        slot.classList.add('loading');
+        slot.innerHTML = ''; slot.classList.remove('error'); slot.classList.add('loading');
         c.classList.remove('expanded');
       }
     });
@@ -950,7 +1129,6 @@
     if (target) {
       target.classList.add('expanded');
       renderEmbedInCard(target);
-      // ensure visible (scroll into view if needed)
       setTimeout(() => {
         const rect = target.getBoundingClientRect();
         if (rect.top < 80 || rect.bottom > window.innerHeight - 40) {
@@ -961,13 +1139,10 @@
   }
   async function renderEmbedInCard(card) {
     const id = Number(card.dataset.id);
-    const track = allTracks.find(t => t.id === id);
+    const track = allTracks.find(tk => tk.id === id);
     if (!track) return;
     const slot = card.querySelector('.player-embed');
-    slot.innerHTML = '';
-    slot.classList.remove('error');
-    slot.classList.add('loading');
-
+    slot.innerHTML = ''; slot.classList.remove('error'); slot.classList.add('loading');
     if (service === 'spotify' && track.spotify_id) {
       slot.classList.remove('loading');
       const iframe = document.createElement('iframe');
@@ -977,13 +1152,12 @@
       slot.appendChild(iframe);
       return;
     }
-    // fallback to apple (works for both, especially when no spotify_id)
     const data = await lookupApple(track);
-    if (expandedTrackId !== id) return;  // user collapsed/changed in the meantime
+    if (expandedTrackId !== id) return;
     slot.classList.remove('loading');
     if (!data || !data.embedUrl) {
       slot.classList.add('error');
-      slot.textContent = 'Трек не найден в Apple Music';
+      slot.textContent = t('embed.notFound');
       return;
     }
     const iframe = document.createElement('iframe');
@@ -1003,9 +1177,9 @@
 
   function openSearch() {
     if (!currentCategory) return;
-    smTarget.textContent = currentCategory;
+    smTarget.textContent = t(`cat.${currentCategory}.short`);
     smInput.value = '';
-    smResults.innerHTML = '<div class="sm-status">Введи название трека или артиста — на русском или английском.</div>';
+    smResults.innerHTML = `<div class="sm-status">${escapeHtml(t('search.initial'))}</div>`;
     searchModal.classList.add('show');
     modalBackdrop.classList.add('show');
     setTimeout(() => smInput.focus(), 200);
@@ -1017,35 +1191,31 @@
   document.getElementById('open-search').addEventListener('click', openSearch);
   modalBackdrop.addEventListener('click', closeSearch);
 
-  let searchTimer = null;
-  let searchRunId = 0;
+  let searchTimer = null, searchRunId = 0;
   smInput.addEventListener('input', () => {
     const q = smInput.value.trim();
     clearTimeout(searchTimer);
     if (!q) {
-      smResults.innerHTML = '<div class="sm-status">Введи название трека или артиста — на русском или английском.</div>';
+      smResults.innerHTML = `<div class="sm-status">${escapeHtml(t('search.initial'))}</div>`;
       return;
     }
-    smResults.innerHTML = '<div class="sm-status">⏳ ищу…</div>';
+    smResults.innerHTML = `<div class="sm-status">${escapeHtml(t('search.searching'))}</div>`;
     const myRun = ++searchRunId;
     searchTimer = setTimeout(async () => {
-      // search in two storefronts and merge (de-dupe by artist+title)
       const [us, ru] = await Promise.all([
         itunesSearch(q, { country: 'us', limit: 10 }),
         itunesSearch(q, { country: 'ru', limit: 10 })
       ]);
       if (myRun !== searchRunId) return;
-      const seen = new Set();
-      const merged = [];
+      const seen = new Set(); const merged = [];
       for (const h of [...us, ...ru]) {
         const key = `${h.artist.toLowerCase().trim()}|${h.title.toLowerCase().trim()}`;
         if (seen.has(key)) continue;
-        seen.add(key);
-        merged.push(h);
+        seen.add(key); merged.push(h);
         if (merged.length >= 14) break;
       }
       if (merged.length === 0) {
-        smResults.innerHTML = '<div class="sm-status">Ничего не нашлось. Попробуй другое написание.</div>';
+        smResults.innerHTML = `<div class="sm-status">${escapeHtml(t('search.noResults'))}</div>`;
         return;
       }
       smResults.innerHTML = merged.map((h, i) => `
@@ -1055,7 +1225,7 @@
             <div class="sm-rtitle">${escapeHtml(h.title)}</div>
             <div class="sm-rartist">${escapeHtml(h.artist)}</div>
           </div>
-          <button class="sm-add" type="button" aria-label="Добавить">+</button>
+          <button class="sm-add" type="button" aria-label="${escapeHtml(t('search.add'))}">+</button>
         </div>
       `).join('');
       smResults.querySelectorAll('.sm-result').forEach(row => {
@@ -1063,66 +1233,57 @@
           const idx = Number(row.dataset.idx);
           const h = merged[idx];
           const btn = row.querySelector('.sm-add');
-          btn.disabled = true;
-          btn.textContent = '…';
+          btn.disabled = true; btn.textContent = '…';
           const res = await apiAddTrack({
-            artist: h.artist,
-            title: h.title,
+            artist: h.artist, title: h.title,
             category: currentCategory,
-            artwork_url: h.artwork || null,
-            spotify_id: null
+            artwork_url: h.artwork || null, spotify_id: null
           });
           if (res.ok) {
             btn.textContent = '✓';
             await reloadTracks();
             renderCategoryTracks();
             setTimeout(() => closeSearch(), 380);
-            showToast(`✓ Добавил${userName === 'Юля' ? 'а' : ''}`);
+            showToast(t('toast.added'));
           } else {
-            btn.textContent = '+';
-            btn.disabled = false;
-            showToast('Не получилось добавить');
+            btn.textContent = '+'; btn.disabled = false;
+            showToast(t('toast.addFailed'));
           }
         });
       });
     }, 350);
   });
 
-  /* ===== name edit ===== */
+  /* ===== misc handlers ===== */
   document.getElementById('home-user-name').addEventListener('click', () => {
-    // switch user instead of free edit
     const next = userName === 'Юля' ? 'Артур' : 'Юля';
-    if (!window.confirm(`Переключить пользователя на ${next}?`)) return;
+    if (!window.confirm(t('confirm.switch', { name: next }))) return;
     userName = next;
     lsSet(K_NAME, userName);
     document.getElementById('home-user-name').textContent = userName;
     apiSaveDebounced();
     renderHome();
   });
-
-  /* ===== back from category ===== */
   document.getElementById('cat-back').addEventListener('click', showHome);
 
-  /* ===== send report ===== */
   const sendBtn = document.getElementById('send-report');
   const sendStatus = document.getElementById('send-status');
   sendBtn.addEventListener('click', async () => {
-    if (!window.confirm('Отправить отчёт Артуру сейчас? Можно отправить ещё раз позже.')) return;
+    if (!window.confirm(t('confirm.send'))) return;
     sendBtn.disabled = true;
-    const orig = sendBtn.textContent;
-    sendBtn.textContent = '⏳ Отправляем…';
+    const orig = t('home.sendBtn');
+    sendBtn.textContent = t('sending');
     const res = await apiSubmit();
     sendBtn.disabled = false;
     sendBtn.textContent = orig;
     if (res && res.ok) {
-      sendStatus.textContent = `✓ Отправлено (всего: ${res.submit_count || 1})`;
-      showToast(res.emailed ? '✓ Отчёт ушёл Артуру' : '✓ Сохранено · письмо в пути');
+      sendStatus.textContent = t('home.sendStatus', { n: res.submit_count || 1 });
+      showToast(res.emailed ? t('toast.sent') : t('toast.savedPending'));
     } else {
-      showToast('Не получилось. Проверь интернет и попробуй ещё раз.');
+      showToast(t('toast.failed'));
     }
   });
 
-  /* ===== toast ===== */
   const toast = document.getElementById('toast');
   function showToast(msg) {
     toast.textContent = msg;
@@ -1132,15 +1293,15 @@
   }
 
   /* ===== boot ===== */
-  async function reloadTracks() {
-    allTracks = await apiGetTracks();
-  }
+  async function reloadTracks() { allTracks = await apiGetTracks(); }
   async function bootApp() {
     await reloadTracks();
-    apiSaveDebounced();  // ensure user record exists
+    apiSaveDebounced();
     showHome();
   }
 
+  applyStaticTranslations();
+  updateLangToggleUI();
   if (userName && service) bootApp();
   else showOnboarding();
 })();
