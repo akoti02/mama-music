@@ -302,6 +302,126 @@
     text-align: center; padding: 18px;
   }
 
+  /* ===== Native Spotify player (custom controls) ===== */
+  .sp-player {
+    width: 100%;
+    background: var(--surface);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    margin-bottom: 18px;
+    box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6);
+  }
+  .sp-art-row {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 18px;
+  }
+  .sp-art {
+    width: 64px; height: 64px;
+    border-radius: 10px;
+    background: var(--surface-2) center/cover no-repeat;
+    flex-shrink: 0;
+    box-shadow: 0 8px 20px -8px rgba(0,0,0,0.5);
+  }
+  .sp-meta-row { flex: 1; min-width: 0; }
+  .sp-meta-row .sp-title { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sp-meta-row .sp-by { font-size: 13px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .sp-controls {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .sp-btn-sec {
+    appearance: none;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    color: var(--text);
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.18s, transform 0.1s;
+    font-size: 10px; font-weight: 700; letter-spacing: -0.02em;
+  }
+  .sp-btn-sec:hover { background: var(--surface-2); }
+  .sp-btn-sec:active { transform: scale(0.92); }
+  .sp-btn-play {
+    appearance: none;
+    background: var(--gold);
+    color: #0a0a0d; border: 0;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.18s, transform 0.1s;
+    box-shadow: 0 8px 20px -6px var(--gold);
+  }
+  .sp-btn-play:hover { background: var(--gold-bright); }
+  .sp-btn-play:active { transform: scale(0.94); }
+  .sp-btn-play svg { width: 22px; height: 22px; }
+
+  .sp-progress {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .sp-time { flex-shrink: 0; min-width: 36px; }
+  .sp-time.end { text-align: right; }
+  .sp-scrub {
+    flex: 1; position: relative;
+    height: 16px;
+    display: flex; align-items: center;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .sp-scrub-track {
+    position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+    height: 4px; background: var(--line-2); border-radius: 2px;
+    pointer-events: none;
+  }
+  .sp-scrub-fill {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    height: 4px; background: var(--gold);
+    border-radius: 2px;
+    pointer-events: none;
+    width: 0;
+  }
+  .sp-scrub-thumb {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 12px; height: 12px;
+    border-radius: 50%; background: var(--gold-bright);
+    pointer-events: none; left: 0;
+    box-shadow: 0 0 0 4px rgba(212,164,92,0.16);
+  }
+
+  .sp-connect-card {
+    width: 100%; margin-bottom: 18px;
+    padding: 22px 20px;
+    background: linear-gradient(135deg, rgba(29,185,84,0.10), rgba(212,164,92,0.04));
+    border: 1px solid rgba(29, 185, 84, 0.32);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+  .sp-connect-card .sp-cc-hint {
+    font-size: 14px; color: var(--text-dim);
+    margin-bottom: 14px; line-height: 1.5;
+  }
+  .sp-connect-card .sp-cc-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 26px;
+    background: #1db954; color: #ffffff;
+    border: 0; border-radius: 999px;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer;
+    transition: background 0.18s, transform 0.1s;
+    min-height: 48px;
+  }
+  .sp-connect-card .sp-cc-btn:hover { background: #1ed760; }
+  .sp-connect-card .sp-cc-btn:active { transform: scale(0.97); }
+  .sp-connect-card .sp-cc-btn svg { width: 18px; height: 18px; }
+
   .comment-row { margin-bottom: 16px; }
   .comment-row textarea {
     width: 100%; min-height: 50px;
@@ -794,7 +914,20 @@
   const K_LOGIN_CONFIRMED = 'venchanie_login_confirmed';
   const K_LANG = 'venchanie_lang';
   const K_NAME = 'venchanie_user_name'; // sessionStorage
+  const K_SPOTIFY_TOKEN = 'venchanie_spotify_token';
+  const K_SPOTIFY_EXPIRES = 'venchanie_spotify_expires';
   const API = 'https://api.akoev.com';
+
+  // Spotify OAuth (Web Playback SDK)
+  const SPOTIFY_CLIENT_ID = 'd9ecbe4c16c840749a05c987d3d0085a';
+  const SPOTIFY_REDIRECT = location.origin + '/';
+  const SPOTIFY_SCOPES = [
+    'streaming',
+    'user-read-email',
+    'user-read-private',
+    'user-modify-playback-state',
+    'user-read-playback-state'
+  ].join(' ');
 
   /* ===== i18n ===== */
   const T = {
@@ -850,6 +983,13 @@
       'toast.sent': '✓ Отчёт отправлен',
       'toast.savedPending': '✓ Сохранено',
       'toast.serviceChanged': 'Перешла на {service}',
+      'toast.spotifyOk': '✓ Spotify подключён',
+      'toast.spotifyFail': 'Не получилось подключить Spotify',
+      'sp.connect': 'Войти через Spotify',
+      'sp.needLogin': 'Чтобы играли полные треки, войди через Spotify',
+      'sp.needPremium': 'Spotify Premium нужен для нашего плеера. Без Premium можно слушать через iframe-превью.',
+      'sp.connecting': 'Подключаюсь к Spotify…',
+      'pl.play': 'Играть', 'pl.pause': 'Пауза', 'pl.back5': '−5 сек', 'pl.fwd5': '+5 сек',
       'confirmRemove': 'Убрать «{title}»?',
       'confirmSend': 'Отправить отчёт сейчас?',
       'sending': 'Отправляем…',
@@ -909,6 +1049,13 @@
       'toast.sent': '✓ Report sent',
       'toast.savedPending': '✓ Saved',
       'toast.serviceChanged': 'Switched to {service}',
+      'toast.spotifyOk': '✓ Spotify connected',
+      'toast.spotifyFail': 'Could not connect Spotify',
+      'sp.connect': 'Sign in with Spotify',
+      'sp.needLogin': 'Sign in with Spotify to play full tracks',
+      'sp.needPremium': 'Spotify Premium is required for the custom player. Without Premium you can use the iframe preview.',
+      'sp.connecting': 'Connecting to Spotify…',
+      'pl.play': 'Play', 'pl.pause': 'Pause', 'pl.back5': '−5 sec', 'pl.fwd5': '+5 sec',
       'confirmRemove': 'Remove «{title}»?',
       'confirmSend': 'Send report now?',
       'sending': 'Sending…',
@@ -969,6 +1116,8 @@
       service = b.dataset.service;
       lsSet(K_SERVICE, service);
       document.querySelectorAll('#ob-service button').forEach(x => x.classList.toggle('active', x === b));
+      // If Spotify chosen and we have a token already, start initializing the SDK ahead of time
+      if (service === 'spotify' && spotifyToken()) spotifyInit();
       // advance immediately to user-pick (or discovery if user already known)
       setTimeout(() => {
         if (userName) showDiscovery();
@@ -1038,6 +1187,141 @@
     catch (e) { return []; }
   }
 
+  /* ===== Spotify OAuth + Web Playback SDK ===== */
+  function spotifyToken() {
+    const expires = parseInt(lsGet(K_SPOTIFY_EXPIRES, '0'), 10);
+    if (!expires || Date.now() > expires) {
+      localStorage.removeItem(K_SPOTIFY_TOKEN);
+      localStorage.removeItem(K_SPOTIFY_EXPIRES);
+      return null;
+    }
+    return lsGet(K_SPOTIFY_TOKEN, null);
+  }
+  function spotifyLogin() {
+    const params = new URLSearchParams({
+      client_id: SPOTIFY_CLIENT_ID,
+      response_type: 'token',
+      redirect_uri: SPOTIFY_REDIRECT,
+      scope: SPOTIFY_SCOPES,
+      show_dialog: 'false'
+    });
+    window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
+  }
+  function spotifyParseCallback() {
+    if (!location.hash.startsWith('#access_token=')) return false;
+    const p = new URLSearchParams(location.hash.substring(1));
+    const tok = p.get('access_token');
+    const exp = parseInt(p.get('expires_in') || '3600', 10);
+    if (!tok) return false;
+    lsSet(K_SPOTIFY_TOKEN, tok);
+    lsSet(K_SPOTIFY_EXPIRES, String(Date.now() + exp * 1000 - 60000));
+    history.replaceState(null, '', location.pathname + location.search);
+    return true;
+  }
+
+  // SDK loader + player wrapper
+  let spPlayer = null;
+  let spDeviceId = null;
+  let spReady = false;
+  let spProgressTimer = null;
+  let spCurrentUri = null;
+  let spState = { paused: true, position: 0, duration: 0 };
+  const spListeners = new Set();
+  function onSpEvent(fn) { spListeners.add(fn); return () => spListeners.delete(fn); }
+  function emitSp() { for (const fn of spListeners) try { fn(spState); } catch (e) {} }
+
+  function spotifyInit() {
+    if (spReady || !spotifyToken()) return;
+    // Inject SDK script if not present
+    if (!document.querySelector('script[src*="sdk.scdn.co/spotify-player"]')) {
+      window.onSpotifyWebPlaybackSDKReady = () => { spotifyCreatePlayer(); };
+      const s = document.createElement('script');
+      s.src = 'https://sdk.scdn.co/spotify-player.js';
+      s.async = true;
+      document.head.appendChild(s);
+    } else if (window.Spotify) {
+      spotifyCreatePlayer();
+    }
+  }
+  function spotifyCreatePlayer() {
+    if (spPlayer || !window.Spotify) return;
+    spPlayer = new window.Spotify.Player({
+      name: 'Венчание · akoev.com',
+      getOAuthToken: cb => cb(spotifyToken()),
+      volume: 0.8
+    });
+    spPlayer.addListener('ready', ({ device_id }) => {
+      spDeviceId = device_id;
+      spReady = true;
+      emitSp();
+    });
+    spPlayer.addListener('not_ready', () => { spReady = false; emitSp(); });
+    spPlayer.addListener('initialization_error', e => { console.warn('sp init err', e); });
+    spPlayer.addListener('authentication_error', () => {
+      localStorage.removeItem(K_SPOTIFY_TOKEN);
+      localStorage.removeItem(K_SPOTIFY_EXPIRES);
+      spReady = false;
+      emitSp();
+    });
+    spPlayer.addListener('account_error', () => {
+      showToast(t('sp.needPremium'));
+    });
+    spPlayer.addListener('player_state_changed', state => {
+      if (!state) return;
+      spState = { paused: state.paused, position: state.position, duration: state.duration };
+      emitSp();
+      if (!state.paused) startSpProgress(); else stopSpProgress();
+    });
+    spPlayer.connect();
+  }
+  function startSpProgress() {
+    if (spProgressTimer) return;
+    spProgressTimer = setInterval(async () => {
+      if (!spPlayer) return;
+      const s = await spPlayer.getCurrentState();
+      if (s) { spState = { paused: s.paused, position: s.position, duration: s.duration }; emitSp(); }
+    }, 250);
+  }
+  function stopSpProgress() { if (spProgressTimer) { clearInterval(spProgressTimer); spProgressTimer = null; } }
+  async function spotifySearchUri(artist, title) {
+    const tk = spotifyToken();
+    if (!tk) return null;
+    const q = encodeURIComponent(`${artist} ${title}`);
+    try {
+      const r = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, { headers: { Authorization: `Bearer ${tk}` } });
+      if (!r.ok) return null;
+      const d = await r.json();
+      return d.tracks?.items?.[0]?.uri || null;
+    } catch (e) { return null; }
+  }
+  async function spotifyPlayTrack(uri) {
+    const tk = spotifyToken();
+    if (!tk || !spDeviceId) return false;
+    try {
+      const r = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${spDeviceId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${tk}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uris: [uri] })
+      });
+      if (r.ok) spCurrentUri = uri;
+      return r.ok;
+    } catch (e) { return false; }
+  }
+  async function spotifyToggle() { if (spPlayer) await spPlayer.togglePlay(); }
+  async function spotifySeekMs(ms) { if (spPlayer) await spPlayer.seek(Math.max(0, Math.round(ms))); }
+  async function spotifySeekDelta(deltaMs) {
+    if (!spPlayer) return;
+    const s = await spPlayer.getCurrentState();
+    if (s) await spPlayer.seek(Math.max(0, Math.min(s.duration, s.position + deltaMs)));
+  }
+  function fmtMs(ms) {
+    if (!ms || isNaN(ms)) return '0:00';
+    const tot = Math.floor(ms / 1000);
+    const m = Math.floor(tot / 60);
+    const s = tot % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
   /* ===== iTunes lookup with cache ===== */
   const itunesCache = new Map();
   async function lookupITunes(artist, title) {
@@ -1079,13 +1363,36 @@
       </button>
     `).join('');
     const canBack = seenIdx > 0;
+    // Decide which player to render:
+    //   spotify + token + ready → custom Spotify SDK player
+    //   spotify + no token       → "Войти через Spotify" CTA card
+    //   spotify + token + !ready → iframe fallback while SDK loads
+    //   apple                    → iframe embed (as before)
+    let playerHTML = '<div class="embed-wrap loading" id="embed-wrap"></div>';
+    if (service === 'spotify') {
+      if (!spotifyToken()) {
+        playerHTML = `
+          <div class="sp-connect-card">
+            <div class="sp-cc-hint">${escapeHtml(t('sp.needLogin'))}</div>
+            <button type="button" class="sp-cc-btn" id="sp-connect-btn">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 11-.277-1.213c3.81-.871 7.077-.496 9.713 1.114a.623.623 0 01.206.856zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.779.779 0 01-.972-.515.78.78 0 01.514-.971c3.632-1.102 8.147-.568 11.234 1.325a.78.78 0 01.261 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.542-1.79c3.532-1.072 9.404-.865 13.115 1.338a.935.935 0 01-.956 1.609z"/></svg>
+              <span>${escapeHtml(t('sp.connect'))}</span>
+            </button>
+          </div>
+        `;
+      } else if (spReady) {
+        playerHTML = `<div id="sp-player-host"></div>`;
+      } else {
+        playerHTML = '<div class="embed-wrap loading" id="embed-wrap"></div>';
+      }
+    }
     cardHost.innerHTML = `
       <div class="card" id="card">
         <div class="meta">
           <div class="title">${escapeHtml(song.title)}</div>
           <div class="by">${escapeHtml(song.artist)} ${yearStr}</div>
         </div>
-        <div class="embed-wrap loading" id="embed-wrap"></div>
+        ${playerHTML}
         <div class="comment-row">
           <textarea id="comment-input" placeholder="${escapeHtml(t('card.commentPh'))}" rows="1"></textarea>
         </div>
@@ -1116,35 +1423,138 @@
     const ta = document.getElementById('comment-input');
     ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; });
 
-    // Render the inline player
-    const wrap = document.getElementById('embed-wrap');
-    if (service === 'spotify' && song.spotify_id) {
-      wrap.classList.remove('loading');
-      const iframe = document.createElement('iframe');
-      iframe.src = `https://open.spotify.com/embed/track/${song.spotify_id}?utm_source=generator`;
-      iframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
-      iframe.loading = 'lazy';
-      wrap.appendChild(iframe);
+    // Wire Spotify CTA if shown
+    const spConnectBtn = document.getElementById('sp-connect-btn');
+    if (spConnectBtn) spConnectBtn.addEventListener('click', spotifyLogin);
+
+    // Render the inline player — custom Spotify player OR iframe fallback
+    if (service === 'spotify' && spotifyToken() && spReady) {
+      mountSpotifyPlayer(song);
     } else {
-      lookupITunes(song.artist, song.title).then(info => {
-        if (currentSong?.id !== song.id) return;
-        wrap.classList.remove('loading');
-        if (!info?.embedUrl) {
-          wrap.classList.add('error');
-          wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg><div style="margin-top:8px">${escapeHtml(t('embed.notFound'))}</div>`;
-          return;
-        }
-        const iframe = document.createElement('iframe');
-        iframe.src = info.embedUrl;
-        iframe.allow = 'autoplay *; encrypted-media *;';
-        iframe.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
-        iframe.loading = 'lazy';
-        wrap.appendChild(iframe);
-      });
+      const wrap = document.getElementById('embed-wrap');
+      if (wrap) {
+        lookupITunes(song.artist, song.title).then(info => {
+          if (currentSong?.id !== song.id) return;
+          wrap.classList.remove('loading');
+          if (!info?.embedUrl) {
+            wrap.classList.add('error');
+            wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg><div style="margin-top:8px">${escapeHtml(t('embed.notFound'))}</div>`;
+            return;
+          }
+          const iframe = document.createElement('iframe');
+          iframe.src = info.embedUrl;
+          iframe.allow = 'autoplay *; encrypted-media *;';
+          iframe.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
+          iframe.loading = 'lazy';
+          wrap.appendChild(iframe);
+        });
+      }
     }
 
     // Setup swipe gestures on the card area (excluding iframe)
     setupSwipe(cardEl);
+  }
+
+  function mountSpotifyPlayer(song) {
+    const host = document.getElementById('sp-player-host');
+    if (!host) return;
+    host.innerHTML = `
+      <div class="sp-player">
+        <div class="sp-art-row">
+          <div class="sp-art" id="sp-art-${song.id}"></div>
+          <div class="sp-meta-row">
+            <div class="sp-title">${escapeHtml(song.title)}</div>
+            <div class="sp-by">${escapeHtml(song.artist)}</div>
+          </div>
+        </div>
+        <div class="sp-controls">
+          <button type="button" class="sp-btn-sec" id="sp-back5" aria-label="${escapeHtml(t('pl.back5'))}">−5</button>
+          <button type="button" class="sp-btn-play" id="sp-toggle" aria-label="${escapeHtml(t('pl.play'))}">
+            <svg id="sp-toggle-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4l14 8-14 8z"/></svg>
+          </button>
+          <button type="button" class="sp-btn-sec" id="sp-fwd5" aria-label="${escapeHtml(t('pl.fwd5'))}">+5</button>
+        </div>
+        <div class="sp-progress">
+          <span class="sp-time" id="sp-cur">0:00</span>
+          <div class="sp-scrub" id="sp-scrub">
+            <div class="sp-scrub-track"></div>
+            <div class="sp-scrub-fill" id="sp-fill"></div>
+            <div class="sp-scrub-thumb" id="sp-thumb"></div>
+          </div>
+          <span class="sp-time end" id="sp-tot">0:00</span>
+        </div>
+      </div>
+    `;
+    // Artwork
+    lookupITunes(song.artist, song.title).then(info => {
+      if (currentSong?.id !== song.id) return;
+      if (info?.artwork600) {
+        const el = document.getElementById(`sp-art-${song.id}`);
+        if (el) el.style.backgroundImage = `url("${info.artwork600}")`;
+      }
+    });
+
+    // Load + play the track
+    spotifySearchUri(song.artist, song.title).then(async uri => {
+      if (currentSong?.id !== song.id) return;
+      if (!uri) { showToast(t('embed.notFound')); return; }
+      await spotifyPlayTrack(uri);
+    });
+
+    // Wire controls
+    const toggleBtn = document.getElementById('sp-toggle');
+    const toggleIcon = document.getElementById('sp-toggle-icon');
+    const back5 = document.getElementById('sp-back5');
+    const fwd5 = document.getElementById('sp-fwd5');
+    const scrub = document.getElementById('sp-scrub');
+    const fillEl = document.getElementById('sp-fill');
+    const thumbEl = document.getElementById('sp-thumb');
+    const curEl = document.getElementById('sp-cur');
+    const totEl = document.getElementById('sp-tot');
+
+    toggleBtn.addEventListener('click', spotifyToggle);
+    back5.addEventListener('click', () => spotifySeekDelta(-5000));
+    fwd5.addEventListener('click', () => spotifySeekDelta(5000));
+
+    // Scrubber drag (pointer events)
+    let scrubbing = false, pendingMs = 0;
+    function updateScrubFromEvent(e) {
+      const rect = scrub.getBoundingClientRect();
+      const r = Math.max(0, Math.min(1, ((e.clientX ?? (e.touches?.[0]?.clientX || 0)) - rect.left) / rect.width));
+      const ms = r * (spState.duration || 0);
+      pendingMs = ms;
+      fillEl.style.width = (r * 100) + '%';
+      thumbEl.style.left = (r * 100) + '%';
+      curEl.textContent = fmtMs(ms);
+    }
+    scrub.addEventListener('pointerdown', (e) => {
+      scrubbing = true; scrub.setPointerCapture?.(e.pointerId);
+      updateScrubFromEvent(e);
+    });
+    scrub.addEventListener('pointermove', (e) => { if (scrubbing) updateScrubFromEvent(e); });
+    scrub.addEventListener('pointerup', async (e) => {
+      if (!scrubbing) return;
+      scrubbing = false;
+      await spotifySeekMs(pendingMs);
+    });
+
+    // State subscription
+    const unsubFn = onSpEvent((s) => {
+      if (toggleIcon) {
+        toggleIcon.innerHTML = s.paused ? '<path d="M5 4l14 8-14 8z"/>' : '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>';
+      }
+      if (!scrubbing && s.duration > 0) {
+        const r = Math.max(0, Math.min(1, s.position / s.duration));
+        fillEl.style.width = (r * 100) + '%';
+        thumbEl.style.left = (r * 100) + '%';
+        curEl.textContent = fmtMs(s.position);
+        totEl.textContent = fmtMs(s.duration);
+      }
+    });
+    // Cleanup if card replaced
+    cardEl._spCleanup = () => { unsubFn?.(); };
+    // Emit initial state
+    emitSp();
   }
 
   function setupSwipe(el) {
@@ -1247,6 +1657,7 @@
       syncSegments();
       const name = service === 'spotify' ? 'Spotify' : 'Apple Music';
       showToast(t('toast.serviceChanged', { service: name }));
+      if (service === 'spotify' && spotifyToken()) spotifyInit();
       // Re-render current card with new service
       if (currentSong) renderCard(currentSong);
     });
@@ -1440,6 +1851,23 @@
 
   /* ===== Boot ===== */
   applyStaticI18n();
+  // If we returned from Spotify OAuth, harvest token from URL fragment
+  const justAuthed = spotifyParseCallback();
+  if (justAuthed) {
+    showToast(t('toast.spotifyOk'));
+  }
+  // Auto-init SDK if Spotify token present
+  if (spotifyToken()) {
+    spotifyInit();
+    // Re-render current card when SDK becomes ready
+    onSpEvent(() => {
+      if (currentSong && service === 'spotify') {
+        // Only re-render if player container isn't already mounted
+        const alreadyMounted = document.querySelector('.sp-player');
+        if (!alreadyMounted && spReady) renderCard(currentSong);
+      }
+    });
+  }
   if (!service) {
     showScreen('obService');
   } else if (!userName) {
