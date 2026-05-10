@@ -63,6 +63,33 @@
     font-weight: 600;
   }
 
+  /* Service picker (Apple Music / Spotify) */
+  .service-picker {
+    display: flex; gap: 6px;
+    margin: 16px 16px 0;
+    padding: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+  }
+  .service-picker button {
+    flex: 1;
+    appearance: none;
+    background: transparent;
+    color: var(--text-dim);
+    border: 0;
+    border-radius: 999px;
+    padding: 10px 12px;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .service-picker button.active {
+    background: var(--accent);
+    color: #0d0d0f;
+  }
+
   nav.tabs {
     position: sticky; top: 0; z-index: 50;
     background: rgba(13,13,15,0.92);
@@ -201,10 +228,12 @@
   <div class="progress">Оценено: <span id="rated-count">0</span> из <span id="total-count">6</span></div>
 </header>
 
-<div class="signin-banner">
-  🎧 <strong>Перед прослушиванием</strong> — войди в Apple Music на этом iPhone, чтобы играли полные треки (без подписки будет только 30-секундное превью).<br>
-  <a href="https://music.apple.com" target="_blank" rel="noopener">Открыть Apple Music и войти →</a>
+<div class="service-picker" role="tablist" aria-label="Музыкальный сервис">
+  <button type="button" role="tab" data-service="apple">🍎 Apple Music</button>
+  <button type="button" role="tab" data-service="spotify">🟢 Spotify</button>
 </div>
+
+<div id="signin-banner" class="signin-banner"></div>
 
 <nav class="tabs">
   <a href="#lounge">Лаунж</a>
@@ -219,37 +248,37 @@
   <section id="lounge">
     <h2>1. Лаунж 17:30–19:00</h2>
     <p class="hint">Фон во время приезда гостей, винного казино и аперитива. Спокойное, с элементами рока.</p>
-    <article class="track" data-id="t1" data-artist="Massive Attack" data-title="Teardrop" data-category="Лаунж"></article>
+    <article class="track" data-id="t1" data-artist="Massive Attack" data-title="Teardrop" data-category="Лаунж" data-spotify="67Hna13dNDkZvBpTXRIaOJ"></article>
   </section>
 
   <section id="lovers">
     <h2>2. Программа LOVERS</h2>
     <p class="hint">Зажигательное, с поправкой на высокий голос Дарьи Азиатцевой.</p>
-    <article class="track" data-id="t2" data-artist="Adele" data-title="Rolling In the Deep" data-category="LOVERS"></article>
+    <article class="track" data-id="t2" data-artist="Adele" data-title="Rolling In the Deep" data-category="LOVERS" data-spotify="1c8gk2PeTE04A1pIDH9YMk"></article>
   </section>
 
   <section id="cake">
     <h2>3. Вынос торта</h2>
     <p class="hint">20–40 секунд, взрывное и при этом романтичное, с элементами рока. На прототипе слушаем целиком — нужный кусок выберем потом.</p>
-    <article class="track" data-id="t3" data-artist="Queen" data-title="Don't Stop Me Now" data-category="Торт"></article>
+    <article class="track" data-id="t3" data-artist="Queen" data-title="Don't Stop Me Now" data-category="Торт" data-spotify="5T8EDUDqKcs6OSOwEsfqG7"></article>
   </section>
 
   <section id="dj">
     <h2>4. Референсы для DJ Саши Микки</h2>
     <p class="hint">Атмосфера для финала вечера (выход в 22:30–23:00).</p>
-    <article class="track" data-id="t4" data-artist="CamelPhat &amp; Elderbrook" data-title="Cola" data-category="DJ Микки"></article>
+    <article class="track" data-id="t4" data-artist="CamelPhat &amp; Elderbrook" data-title="Cola" data-category="DJ Микки" data-spotify="5gvGvxiMcatxFoOLGFhq37"></article>
   </section>
 
   <section id="yulia">
     <h2>5. Личные треки для Юли Карпинской</h2>
     <p class="hint">«Наши» треки — например, упомянутая мамой «Технология — Танцы вдвоём».</p>
-    <article class="track" data-id="t5" data-artist="Технология" data-title="Танцы вдвоём" data-category="Юля"></article>
+    <article class="track" data-id="t5" data-artist="Технология" data-title="Танцы вдвоём" data-category="Юля" data-spotify="5mmbea1smg4V4Pm46ua7vr"></article>
   </section>
 
   <section id="villa">
     <h2>6. Вилла 10 июля (3 часа фона)</h2>
     <p class="hint">Атмосферное на вечеринку 17–23. Соотношение нерусских/русских — 75/25.</p>
-    <article class="track" data-id="t6" data-artist="Coldplay" data-title="The Scientist" data-category="Вилла"></article>
+    <article class="track" data-id="t6" data-artist="Coldplay" data-title="The Scientist" data-category="Вилла" data-spotify="75JFxkI2RXiU7L9VXzMkle"></article>
   </section>
 </main>
 
@@ -265,7 +294,19 @@
   'use strict';
 
   const STORAGE_KEY = 'venchanie_audit_v6';
+  const STORAGE_SERVICE_KEY = 'venchanie_service_v1';
   const tracks = Array.from(document.querySelectorAll('article.track'));
+
+  let currentService = (() => {
+    try { return localStorage.getItem(STORAGE_SERVICE_KEY) || 'apple'; }
+    catch (e) { return 'apple'; }
+  })();
+  const appleCache = new Map();
+
+  const BANNERS = {
+    apple:   '🎧 <strong>Перед прослушиванием</strong> — войди в Apple Music на этом iPhone (нужна подписка), чтобы играли полные треки. Без логина — только 30-секундное превью.<br><a href="https://music.apple.com" target="_blank" rel="noopener">Открыть Apple Music и войти →</a>',
+    spotify: '🎧 <strong>Перед прослушиванием</strong> — войди в Spotify Premium на этом iPhone, чтобы играли полные треки. На бесплатном тарифе — только 30-секундное превью.<br><a href="https://open.spotify.com" target="_blank" rel="noopener">Открыть Spotify и войти →</a>'
+  };
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -320,33 +361,73 @@
     return null;
   }
 
-  async function initTrack(track) {
-    const embedSlot = track.querySelector('.apple-embed');
-    try {
-      const info = await fetchAppleEmbed(track.dataset.artist, track.dataset.title);
-      if (!info) {
-        embedSlot.classList.remove('loading');
-        embedSlot.classList.add('error');
-        embedSlot.textContent = 'Трек не найден в Apple Music. Дайте Артуру название — заменим.';
-        return;
-      }
-      embedSlot.classList.remove('loading');
-      // Insert iframe
-      const iframe = document.createElement('iframe');
-      iframe.src = info.embedUrl;
-      iframe.allow = 'autoplay *; encrypted-media *;';
-      iframe.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
-      iframe.loading = 'lazy';
-      embedSlot.appendChild(iframe);
-    } catch (e) {
-      embedSlot.classList.remove('loading');
-      embedSlot.classList.add('error');
-      embedSlot.textContent = 'Ошибка загрузки. Проверь интернет и обнови страницу.';
+  async function renderApple(track, slot) {
+    let info = appleCache.get(track.dataset.id);
+    if (info === undefined) {
+      try { info = await fetchAppleEmbed(track.dataset.artist, track.dataset.title); }
+      catch (e) { info = null; }
+      appleCache.set(track.dataset.id, info);
     }
+    if (currentService !== 'apple') return;
+    slot.classList.remove('loading');
+    if (!info) {
+      slot.classList.add('error');
+      slot.textContent = 'Apple Music: трек не найден. Скажи Артуру — заменим.';
+      return;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.src = info.embedUrl;
+    iframe.allow = 'autoplay *; encrypted-media *;';
+    iframe.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
+    iframe.loading = 'lazy';
+    slot.appendChild(iframe);
   }
 
-  // Kick off all in parallel
-  tracks.forEach(initTrack);
+  function renderSpotify(track, slot) {
+    slot.classList.remove('loading');
+    const id = track.dataset.spotify;
+    if (!id) {
+      slot.classList.add('error');
+      slot.textContent = 'Spotify: трек не задан. Скажи Артуру.';
+      return;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://open.spotify.com/embed/track/${id}?utm_source=generator`;
+    iframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+    iframe.loading = 'lazy';
+    slot.appendChild(iframe);
+  }
+
+  function renderTrack(track) {
+    const slot = track.querySelector('.apple-embed');
+    slot.innerHTML = '';
+    slot.classList.remove('error');
+    slot.classList.add('loading');
+    if (currentService === 'apple') renderApple(track, slot);
+    else renderSpotify(track, slot);
+  }
+
+  function updateServiceUI() {
+    const banner = document.getElementById('signin-banner');
+    if (banner) banner.innerHTML = BANNERS[currentService];
+    document.querySelectorAll('.service-picker button').forEach(b => {
+      b.classList.toggle('active', b.dataset.service === currentService);
+    });
+  }
+
+  function setService(svc) {
+    if (svc === currentService) return;
+    currentService = svc;
+    try { localStorage.setItem(STORAGE_SERVICE_KEY, svc); } catch (e) {}
+    updateServiceUI();
+    tracks.forEach(renderTrack);
+  }
+
+  document.querySelectorAll('.service-picker button').forEach(b => {
+    b.addEventListener('click', () => setService(b.dataset.service));
+  });
+  updateServiceUI();
+  tracks.forEach(renderTrack);
 
   /* ---------- Ratings + comments + storage ---------- */
   let state = {};
