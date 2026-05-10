@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d0d0f">
-<title>Музыка к венчанию — прослушивание</title>
+<title>Музыка к венчанию</title>
 <style>
   *,*::before,*::after { box-sizing: border-box; }
   :root {
@@ -31,129 +31,134 @@
     background: var(--bg);
     color: var(--text);
     line-height: 1.5;
-    padding-bottom: 130px;
     -webkit-tap-highlight-color: transparent;
   }
-  header {
-    padding: 28px 20px 18px;
+  [hidden] { display: none !important; }
+
+  /* ========== Onboarding ========== */
+  #onboarding {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 32px 20px calc(32px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+  }
+  .ob-inner { width: 100%; max-width: 420px; }
+  .ob-hero { text-align: center; margin-bottom: 28px; }
+  .ob-hero h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .ob-hero .ob-sub { margin: 6px 0 0; color: var(--text-dim); font-size: 14px; }
+  .ob-block { margin-bottom: 20px; }
+  .ob-label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+  .ob-name-input {
+    width: 100%; padding: 14px 16px;
+    background: var(--bg-card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    font-family: inherit; font-size: 16px;
+    -webkit-appearance: none; appearance: none;
+  }
+  .ob-name-input:focus { outline: none; border-color: var(--accent); }
+  .ob-service { display: flex; gap: 8px; }
+  .ob-service button {
+    flex: 1; appearance: none;
+    background: var(--bg-card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 8px;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    min-height: 56px;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .ob-service button.active {
+    background: var(--accent); color: #0d0d0f; border-color: var(--accent);
+  }
+  .ob-login {
+    margin-top: 16px; padding: 14px 16px;
+    background: linear-gradient(135deg, #2d2410, #1a1a1d);
+    border: 1px solid var(--warn);
+    border-radius: 12px;
+    font-size: 13px; line-height: 1.5;
+  }
+  .ob-login a {
+    color: var(--warn); font-weight: 600;
+    text-decoration: underline;
+  }
+  .ob-start {
+    width: 100%; appearance: none;
+    background: var(--accent); color: #0d0d0f; border: 0;
+    border-radius: 14px; padding: 18px 22px;
+    font-family: inherit; font-size: 16px; font-weight: 700;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    margin-top: 24px;
+    transition: opacity 0.15s;
+  }
+  .ob-start:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ========== App ========== */
+  header.app-header {
+    padding: 22px 20px 14px;
     border-bottom: 1px solid var(--border);
     text-align: center;
   }
-  header h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
-  header .subtitle { margin: 6px 0 0; color: var(--text-dim); font-size: 14px; }
-  header .progress { margin: 14px 0 0; color: var(--accent); font-size: 13px; font-weight: 500; }
+  header.app-header h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+  header.app-header .greeting { margin: 6px 0 0; color: var(--text-dim); font-size: 13px; }
+  header.app-header .greeting .name {
+    color: var(--accent); cursor: pointer;
+    border-bottom: 1px dotted var(--accent-soft);
+  }
+  header.app-header .greeting .progress { color: var(--text); font-weight: 500; }
 
-  /* Sign-in banner (sticky под шапкой) */
-  .signin-banner {
-    background: linear-gradient(135deg, #2d2410, #1a1a1d);
-    border: 1px solid var(--warn);
-    color: var(--text);
-    padding: 14px 16px;
-    margin: 16px;
-    border-radius: 12px;
-    font-size: 13px;
-    line-height: 1.5;
-  }
-  .signin-banner strong { color: var(--warn); }
-  .signin-banner a {
-    display: inline-block;
-    margin-top: 8px;
-    color: var(--warn);
-    text-decoration: underline;
-    font-weight: 600;
-  }
-
-  /* Service picker (Apple Music / Spotify) */
-  .service-picker {
-    display: flex; gap: 6px;
-    margin: 16px 16px 0;
-    padding: 4px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-  }
-  .service-picker button {
-    flex: 1;
-    appearance: none;
-    background: transparent;
-    color: var(--text-dim);
-    border: 0;
-    border-radius: 999px;
-    padding: 10px 12px;
-    font-family: inherit; font-size: 14px; font-weight: 600;
-    cursor: pointer; -webkit-tap-highlight-color: transparent;
-    min-height: 44px;
-    transition: background 0.15s, color 0.15s;
-  }
-  .service-picker button.active {
-    background: var(--accent);
-    color: #0d0d0f;
-  }
-
-  nav.tabs {
+  nav.track-nav {
     position: sticky; top: 0; z-index: 50;
     background: rgba(13,13,15,0.92);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
-    overflow-x: auto; -webkit-overflow-scrolling: touch;
-    white-space: nowrap; padding: 10px 12px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px;
   }
-  nav.tabs a {
-    display: inline-block; padding: 8px 14px; margin-right: 6px;
-    color: var(--text-dim); text-decoration: none; font-size: 13px;
-    border-radius: 999px; border: 1px solid var(--border); background: var(--bg-card);
+  nav.track-nav button {
+    appearance: none; background: var(--bg-card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    min-height: 40px;
   }
-  nav.tabs a:active { background: var(--bg-card-hover); }
-  main { padding: 16px; max-width: 720px; margin: 0 auto; }
-  section { margin-top: 28px; scroll-margin-top: 70px; }
-  section h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; color: var(--accent); }
-  section .hint { margin: 0 0 16px; font-size: 13px; color: var(--text-dim); }
+  nav.track-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+  nav.track-nav .nav-jump { flex: 1; text-align: center; font-weight: 600; }
 
-  article.track {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 14px; margin-bottom: 14px;
-  }
-  article.track .track-header {
-    margin-bottom: 12px;
-  }
-  article.track .track-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
-  article.track .track-artist { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+  main#tracks { padding: 20px 16px 140px; max-width: 640px; margin: 0 auto; }
 
-  /* Apple Music iframe wrapper */
-  .apple-embed {
-    position: relative;
-    width: 100%;
-    height: 175px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #1d1d1f;
-    margin-bottom: 12px;
+  article.track { display: none; }
+  article.track[data-active] {
+    display: block;
+    animation: fadeIn 0.25s ease;
   }
-  .apple-embed iframe {
-    width: 100%; height: 100%; border: 0;
-    background: transparent;
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
   }
-  .apple-embed.loading::before {
+  article.track .track-header { margin-bottom: 14px; text-align: center; }
+  article.track .track-title { font-size: 22px; font-weight: 600; line-height: 1.2; }
+  article.track .track-artist { font-size: 14px; color: var(--text-dim); margin-top: 4px; }
+
+  .player-embed {
+    position: relative; width: 100%; height: 175px;
+    border-radius: 14px; overflow: hidden;
+    background: #1d1d1f; margin-bottom: 18px;
+  }
+  .player-embed iframe { width: 100%; height: 100%; border: 0; background: transparent; }
+  .player-embed.loading::before {
     content: "⏳ загрузка плеера…";
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 13px;
   }
-  .apple-embed.error {
+  .player-embed.error {
     display: flex; align-items: center; justify-content: center;
-    flex-direction: column;
-    color: var(--text-dim);
-    font-size: 13px;
-    text-align: center;
-    padding: 16px;
+    flex-direction: column; color: var(--text-dim); font-size: 13px;
+    text-align: center; padding: 16px;
   }
-  .apple-embed.error::before {
-    content: "⚠️";
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
+  .player-embed.error::before { content: "⚠️"; font-size: 24px; margin-bottom: 8px; }
 
-  /* Rating: 10-point scale */
   .rating {
     display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px;
     margin-bottom: 6px;
@@ -166,13 +171,11 @@
     transition: transform 0.05s ease, background 0.15s, border-color 0.15s, color 0.15s;
   }
   .rating button:active { transform: scale(0.95); }
-  /* Inactive: 6%-alpha tint of the zone color */
   .rating button[data-value="1"], .rating button[data-value="2"]   { background: rgba(248,113,113,0.06); }
   .rating button[data-value="3"], .rating button[data-value="4"]   { background: rgba(251,146,60,0.06); }
   .rating button[data-value="5"], .rating button[data-value="6"]   { background: rgba(251,191,36,0.06); }
   .rating button[data-value="7"], .rating button[data-value="8"]   { background: rgba(132,204,22,0.06); }
   .rating button[data-value="9"], .rating button[data-value="10"]  { background: rgba(74,222,128,0.06); }
-  /* Active: full zone color */
   .rating button.active[data-value="1"], .rating button.active[data-value="2"]   { background: var(--r12);  border-color: var(--r12);  color: #0d0d0f; }
   .rating button.active[data-value="3"], .rating button.active[data-value="4"]   { background: var(--r34);  border-color: var(--r34);  color: #0d0d0f; }
   .rating button.active[data-value="5"], .rating button.active[data-value="6"]   { background: var(--r56);  border-color: var(--r56);  color: #0d0d0f; }
@@ -180,20 +183,19 @@
   .rating button.active[data-value="9"], .rating button.active[data-value="10"]  { background: var(--r910); border-color: var(--r910); color: #0d0d0f; }
   .rating-labels {
     display: flex; justify-content: space-between;
-    margin: 0 2px 12px;
-    color: var(--text-dim); font-size: 12px;
+    margin: 0 2px 14px; color: var(--text-dim); font-size: 12px;
   }
   textarea.comment {
-    width: 100%; min-height: 60px; padding: 10px 12px;
-    background: var(--bg); color: var(--text);
-    border: 1px solid var(--border); border-radius: 10px;
+    width: 100%; min-height: 70px; padding: 12px 14px;
+    background: var(--bg-card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
     font-family: inherit; font-size: 14px; resize: vertical;
   }
   textarea.comment:focus { outline: none; border-color: var(--accent); }
   .saved-flag { display: inline-block; font-size: 12px; color: var(--text-dim); margin-top: 6px; opacity: 0; transition: opacity 0.3s; }
   .saved-flag.show { opacity: 1; }
 
-  footer {
+  footer.app-footer {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: rgba(13,13,15,0.95);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -201,20 +203,58 @@
     padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
     text-align: center; z-index: 100;
   }
-  footer button {
+  footer.app-footer button {
     appearance: none; background: var(--accent); color: #0d0d0f;
     border: 0; border-radius: 12px; padding: 14px 22px;
     font-size: 15px; font-weight: 600; font-family: inherit;
     cursor: pointer; width: 100%; max-width: 360px;
     -webkit-tap-highlight-color: transparent;
   }
-  footer button:active { opacity: 0.85; }
-  footer .footer-hint { margin: 8px 0 0; color: var(--text-dim); font-size: 12px; }
+  footer.app-footer button:active { opacity: 0.85; }
+
+  /* Jump-to sheet */
+  .sheet-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    opacity: 0; transition: opacity 0.25s;
+    pointer-events: none;
+  }
+  .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    max-height: 75vh; overflow-y: auto;
+    background: var(--bg-card);
+    border-radius: 18px 18px 0 0;
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    z-index: 201;
+    transform: translateY(100%); transition: transform 0.25s ease;
+  }
+  .sheet.show { transform: translateY(0); }
+  .sheet h3 { margin: 4px 0 12px; font-size: 16px; font-weight: 600; text-align: center; }
+  .sheet-list { display: flex; flex-direction: column; gap: 4px; }
+  .sheet-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--bg);
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    min-height: 56px;
+  }
+  .sheet-row.current { border: 1px solid var(--accent); }
+  .sheet-row .sr-num { font-size: 13px; color: var(--text-dim); width: 24px; flex-shrink: 0; }
+  .sheet-row .sr-text { flex: 1; min-width: 0; font-size: 14px; }
+  .sheet-row .sr-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sheet-row .sr-artist { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sheet-row .sr-rating { font-size: 13px; color: var(--text-dim); width: 50px; text-align: right; flex-shrink: 0; }
+  .sheet-row .sr-rating.has { color: var(--accent); font-weight: 600; }
 
   .toast {
     position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%);
     background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
-    padding: 10px 16px; border-radius: 999px; font-size: 13px; z-index: 200;
+    padding: 10px 16px; border-radius: 999px; font-size: 13px; z-index: 300;
     opacity: 0; transition: opacity 0.25s ease; pointer-events: none;
     max-width: calc(100% - 32px); text-align: center;
   }
@@ -222,104 +262,174 @@
 </style>
 </head>
 <body>
-<header>
-  <h1>🎵 Музыка к венчанию</h1>
-  <div class="subtitle">12 июля 2026 · Франция · прототип на 6 треков</div>
-  <div class="progress">Оценено: <span id="rated-count">0</span> из <span id="total-count">6</span></div>
-</header>
 
-<div class="service-picker" role="tablist" aria-label="Музыкальный сервис">
-  <button type="button" role="tab" data-service="apple">🍎 Apple Music</button>
-  <button type="button" role="tab" data-service="spotify">🟢 Spotify</button>
+<!-- ONBOARDING -->
+<div id="onboarding" hidden>
+  <div class="ob-inner">
+    <div class="ob-hero">
+      <h1>🎵 Музыка к венчанию</h1>
+      <div class="ob-sub">12 июля 2026 · Франция</div>
+    </div>
+
+    <div class="ob-block">
+      <label class="ob-label" for="ob-name">Как тебя зовут?</label>
+      <input type="text" id="ob-name" class="ob-name-input" placeholder="Имя" autocomplete="given-name" autocapitalize="words" enterkeyhint="next">
+    </div>
+
+    <div class="ob-block">
+      <span class="ob-label">Через какой сервис слушаешь?</span>
+      <div class="ob-service" role="radiogroup" aria-label="Сервис">
+        <button type="button" data-service="apple" role="radio" aria-checked="false">🍎 Apple Music</button>
+        <button type="button" data-service="spotify" role="radio" aria-checked="false">🟢 Spotify</button>
+      </div>
+    </div>
+
+    <div id="ob-login" class="ob-login" hidden>
+      🎧 <strong>Прежде чем начать</strong> — открой <a id="ob-login-link" href="https://music.apple.com" target="_blank" rel="noopener">Apple Music</a> в этом Safari и войди под своим аккаунтом. Нужна подписка, чтобы играли полные треки.
+    </div>
+
+    <button type="button" id="ob-start" class="ob-start" disabled>Начнём →</button>
+  </div>
 </div>
 
-<div id="signin-banner" class="signin-banner"></div>
+<!-- APP -->
+<div id="app" hidden>
+  <header class="app-header">
+    <h1>🎵 Музыка к венчанию</h1>
+    <div class="greeting">Привет, <span id="user-name" class="name" tabindex="0" role="button" title="Изменить имя"></span> · <span id="progress" class="progress">0 из 0</span></div>
+  </header>
 
-<nav class="tabs">
-  <a href="#lounge">Лаунж</a>
-  <a href="#lovers">LOVERS</a>
-  <a href="#cake">Торт</a>
-  <a href="#dj">DJ Микки</a>
-  <a href="#yulia">Юля</a>
-  <a href="#villa">Вилла 10.07</a>
-</nav>
+  <nav class="track-nav" aria-label="Навигация по трекам">
+    <button type="button" id="nav-prev" aria-label="Назад">← назад</button>
+    <button type="button" id="nav-jump" class="nav-jump" aria-label="Все треки">1 из 6</button>
+    <button type="button" id="nav-next" aria-label="Далее">далее →</button>
+  </nav>
 
-<main>
-  <section id="lounge">
-    <h2>1. Лаунж 17:30–19:00</h2>
-    <p class="hint">Фон во время приезда гостей, винного казино и аперитива. Спокойное, с элементами рока.</p>
+  <main id="tracks">
     <article class="track" data-id="t1" data-artist="Massive Attack" data-title="Teardrop" data-category="Лаунж" data-spotify="67Hna13dNDkZvBpTXRIaOJ"></article>
-  </section>
-
-  <section id="lovers">
-    <h2>2. Программа LOVERS</h2>
-    <p class="hint">Зажигательное, с поправкой на высокий голос Дарьи Азиатцевой.</p>
     <article class="track" data-id="t2" data-artist="Adele" data-title="Rolling In the Deep" data-category="LOVERS" data-spotify="1c8gk2PeTE04A1pIDH9YMk"></article>
-  </section>
-
-  <section id="cake">
-    <h2>3. Вынос торта</h2>
-    <p class="hint">20–40 секунд, взрывное и при этом романтичное, с элементами рока. На прототипе слушаем целиком — нужный кусок выберем потом.</p>
     <article class="track" data-id="t3" data-artist="Queen" data-title="Don't Stop Me Now" data-category="Торт" data-spotify="5T8EDUDqKcs6OSOwEsfqG7"></article>
-  </section>
-
-  <section id="dj">
-    <h2>4. Референсы для DJ Саши Микки</h2>
-    <p class="hint">Атмосфера для финала вечера (выход в 22:30–23:00).</p>
     <article class="track" data-id="t4" data-artist="CamelPhat &amp; Elderbrook" data-title="Cola" data-category="DJ Микки" data-spotify="5gvGvxiMcatxFoOLGFhq37"></article>
-  </section>
-
-  <section id="yulia">
-    <h2>5. Личные треки для Юли Карпинской</h2>
-    <p class="hint">«Наши» треки — например, упомянутая мамой «Технология — Танцы вдвоём».</p>
     <article class="track" data-id="t5" data-artist="Технология" data-title="Танцы вдвоём" data-category="Юля" data-spotify="5mmbea1smg4V4Pm46ua7vr"></article>
-  </section>
-
-  <section id="villa">
-    <h2>6. Вилла 10 июля (3 часа фона)</h2>
-    <p class="hint">Атмосферное на вечеринку 17–23. Соотношение нерусских/русских — 75/25.</p>
     <article class="track" data-id="t6" data-artist="Coldplay" data-title="The Scientist" data-category="Вилла" data-spotify="75JFxkI2RXiU7L9VXzMkle"></article>
-  </section>
-</main>
+  </main>
 
-<footer>
-  <button id="send-report">📤 Отправить отчёт Артуру</button>
-  <p class="footer-hint">Откроется окно «Поделиться» — выбери WhatsApp или iMessage</p>
-</footer>
+  <footer class="app-footer">
+    <button id="send-report">📤 Отправить отчёт Артуру</button>
+  </footer>
+</div>
 
-<div id="toast" class="toast"></div>
+<!-- JUMP-TO SHEET -->
+<div id="sheet-backdrop" class="sheet-backdrop" aria-hidden="true"></div>
+<div id="sheet" class="sheet" role="dialog" aria-label="Все треки">
+  <h3>Все треки</h3>
+  <div id="sheet-list" class="sheet-list"></div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'venchanie_audit_v6';
-  const STORAGE_SERVICE_KEY = 'venchanie_service_v1';
+  /* ===== keys ===== */
+  const K_NAME = 'venchanie_user_name';
+  const K_SERVICE = 'venchanie_service_v1';
+  const K_AUDIT = 'venchanie_audit_v6';
+  const K_IDX = 'venchanie_current_idx';
+
   const tracks = Array.from(document.querySelectorAll('article.track'));
 
-  let currentService = (() => {
-    try { return localStorage.getItem(STORAGE_SERVICE_KEY) || 'apple'; }
-    catch (e) { return 'apple'; }
-  })();
-  const appleCache = new Map();
-
-  const BANNERS = {
-    apple:   '🎧 <strong>Перед прослушиванием</strong> — войди в Apple Music на этом iPhone (нужна подписка), чтобы играли полные треки. Без логина — только 30-секундное превью.<br><a href="https://music.apple.com" target="_blank" rel="noopener">Открыть Apple Music и войти →</a>',
-    spotify: '🎧 <strong>Перед прослушиванием</strong> — войди в Spotify Premium на этом iPhone, чтобы играли полные треки. На бесплатном тарифе — только 30-секундное превью.<br><a href="https://open.spotify.com" target="_blank" rel="noopener">Открыть Spotify и войти →</a>'
-  };
-
+  /* ===== helpers ===== */
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+  function lsGet(k, dflt) { try { const v = localStorage.getItem(k); return v == null ? dflt : v; } catch (e) { return dflt; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-  /* ---------- Build initial structure of each card ---------- */
+  /* ===== state ===== */
+  let userName = lsGet(K_NAME, '');
+  let service = lsGet(K_SERVICE, '');
+  let currentIdx = (() => {
+    const n = parseInt(lsGet(K_IDX, '0'), 10);
+    if (isNaN(n)) return 0;
+    return Math.max(0, Math.min(tracks.length - 1, n));
+  })();
+  let audit = (() => { try { return JSON.parse(lsGet(K_AUDIT, '{}')) || {}; } catch (e) { return {}; } })();
+
+  /* ===== onboarding ===== */
+  const onboardingEl = document.getElementById('onboarding');
+  const appEl = document.getElementById('app');
+  const obName = document.getElementById('ob-name');
+  const obStart = document.getElementById('ob-start');
+  const obLogin = document.getElementById('ob-login');
+  const obLoginLink = document.getElementById('ob-login-link');
+  let obService = '';
+
+  function updateObStart() {
+    const ok = obName.value.trim().length > 0 && !!obService;
+    obStart.disabled = !ok;
+  }
+  function updateLoginHint() {
+    if (!obService) { obLogin.hidden = true; return; }
+    obLogin.hidden = false;
+    if (obService === 'apple') {
+      obLoginLink.href = 'https://music.apple.com';
+      obLoginLink.textContent = 'Apple Music';
+    } else {
+      obLoginLink.href = 'https://open.spotify.com';
+      obLoginLink.textContent = 'Spotify';
+    }
+  }
+  function setObService(svc) {
+    obService = svc;
+    document.querySelectorAll('.ob-service button').forEach(b => {
+      const on = b.dataset.service === svc;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    updateLoginHint();
+    updateObStart();
+  }
+
+  obName.addEventListener('input', updateObStart);
+  document.querySelectorAll('.ob-service button').forEach(b => {
+    b.addEventListener('click', () => setObService(b.dataset.service));
+  });
+  obStart.addEventListener('click', () => {
+    if (obStart.disabled) return;
+    userName = obName.value.trim();
+    service = obService;
+    lsSet(K_NAME, userName);
+    lsSet(K_SERVICE, service);
+    showApp();
+  });
+  obName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !obStart.disabled) obStart.click();
+  });
+
+  function showOnboarding() {
+    appEl.hidden = true;
+    onboardingEl.hidden = false;
+    obName.value = userName || '';
+    setObService(service || '');
+    setTimeout(() => obName.focus(), 50);
+  }
+
+  /* ===== app structure ===== */
+  const userNameEl = document.getElementById('user-name');
+  const progressEl = document.getElementById('progress');
+  const navPrev = document.getElementById('nav-prev');
+  const navNext = document.getElementById('nav-next');
+  const navJump = document.getElementById('nav-jump');
+
   tracks.forEach(track => {
     track.innerHTML = `
       <div class="track-header">
         <div class="track-title">${escapeHtml(track.dataset.title)}</div>
         <div class="track-artist">${escapeHtml(track.dataset.artist)}</div>
       </div>
-      <div class="apple-embed loading"></div>
+      <div class="player-embed loading"></div>
       <div class="rating">
         ${[1,2,3,4,5,6,7,8,9,10].map(n => `<button type="button" data-value="${n}">${n}</button>`).join('')}
       </div>
@@ -329,38 +439,24 @@
     `;
   });
 
-  /* ---------- iTunes Search → Apple Music embed URL ---------- */
+  /* ===== embed renderers ===== */
+  const appleCache = new Map();
   async function fetchAppleEmbed(artist, title) {
     const term = encodeURIComponent(`${artist} ${title}`);
-    // Try a few storefronts in order: US (largest catalog), then RU (для Технология и т.п.), then FR
-    const storefronts = ['us', 'ru', 'fr'];
-    for (const country of storefronts) {
+    const sf = ['us', 'ru', 'fr'];
+    for (const c of sf) {
       try {
-        const url = `https://itunes.apple.com/search?term=${term}&entity=song&limit=1&media=music&country=${country}`;
-        const r = await fetch(url);
+        const r = await fetch(`https://itunes.apple.com/search?term=${term}&entity=song&limit=1&media=music&country=${c}`);
         if (!r.ok) continue;
-        const data = await r.json();
-        const hit = data.results && data.results[0];
+        const d = await r.json();
+        const hit = d.results && d.results[0];
         if (hit && hit.trackViewUrl) {
-          // Transform: music.apple.com → embed.music.apple.com
-          const embedUrl = hit.trackViewUrl.replace(
-            /^https?:\/\/music\.apple\.com\//,
-            'https://embed.music.apple.com/'
-          );
-          return {
-            embedUrl,
-            trackName: hit.trackName,
-            artistName: hit.artistName,
-            country
-          };
+          return { embedUrl: hit.trackViewUrl.replace(/^https?:\/\/music\.apple\.com\//, 'https://embed.music.apple.com/') };
         }
-      } catch (e) {
-        // Try next storefront
-      }
+      } catch (e) {}
     }
     return null;
   }
-
   async function renderApple(track, slot) {
     let info = appleCache.get(track.dataset.id);
     if (info === undefined) {
@@ -368,11 +464,11 @@
       catch (e) { info = null; }
       appleCache.set(track.dataset.id, info);
     }
-    if (currentService !== 'apple') return;
+    if (!track.hasAttribute('data-active')) return;
     slot.classList.remove('loading');
     if (!info) {
       slot.classList.add('error');
-      slot.textContent = 'Apple Music: трек не найден. Скажи Артуру — заменим.';
+      slot.textContent = 'Трек не найден в Apple Music.';
       return;
     }
     const iframe = document.createElement('iframe');
@@ -382,13 +478,12 @@
     iframe.loading = 'lazy';
     slot.appendChild(iframe);
   }
-
   function renderSpotify(track, slot) {
     slot.classList.remove('loading');
     const id = track.dataset.spotify;
     if (!id) {
       slot.classList.add('error');
-      slot.textContent = 'Spotify: трек не задан. Скажи Артуру.';
+      slot.textContent = 'Spotify: трек не задан.';
       return;
     }
     const iframe = document.createElement('iframe');
@@ -397,92 +492,140 @@
     iframe.loading = 'lazy';
     slot.appendChild(iframe);
   }
-
-  function renderTrack(track) {
-    const slot = track.querySelector('.apple-embed');
+  function renderTrackEmbed(track) {
+    const slot = track.querySelector('.player-embed');
     slot.innerHTML = '';
     slot.classList.remove('error');
     slot.classList.add('loading');
-    if (currentService === 'apple') renderApple(track, slot);
+    if (service === 'apple') renderApple(track, slot);
     else renderSpotify(track, slot);
   }
-
-  function updateServiceUI() {
-    const banner = document.getElementById('signin-banner');
-    if (banner) banner.innerHTML = BANNERS[currentService];
-    document.querySelectorAll('.service-picker button').forEach(b => {
-      b.classList.toggle('active', b.dataset.service === currentService);
-    });
+  function clearTrackEmbed(track) {
+    const slot = track.querySelector('.player-embed');
+    slot.innerHTML = '';
+    slot.classList.remove('error');
+    slot.classList.add('loading');
   }
 
-  function setService(svc) {
-    if (svc === currentService) return;
-    currentService = svc;
-    try { localStorage.setItem(STORAGE_SERVICE_KEY, svc); } catch (e) {}
-    updateServiceUI();
-    tracks.forEach(renderTrack);
-  }
-
-  document.querySelectorAll('.service-picker button').forEach(b => {
-    b.addEventListener('click', () => setService(b.dataset.service));
-  });
-  updateServiceUI();
-  tracks.forEach(renderTrack);
-
-  /* ---------- Ratings + comments + storage ---------- */
-  let state = {};
-  try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
-  catch (e) { state = {}; }
-
-  function save() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
-    updateRatedCount();
-  }
-  function updateRatedCount() {
-    const rated = Object.values(state).filter(s => s && s.rating != null).length;
-    document.getElementById('rated-count').textContent = rated;
-    document.getElementById('total-count').textContent = tracks.length;
-  }
+  /* ===== rating + comment binding ===== */
   function flashFlag(track) {
     const flag = track.querySelector('.saved-flag');
     flag.classList.add('show');
     clearTimeout(flag._t);
     flag._t = setTimeout(() => flag.classList.remove('show'), 1200);
   }
-  function applyState(track) {
+  function applyStateToTrack(track) {
     const id = track.dataset.id;
-    const s = state[id] || {};
+    const s = audit[id] || {};
     track.querySelectorAll('.rating button').forEach(btn => {
       btn.classList.toggle('active', s.rating === Number(btn.dataset.value));
     });
     const ta = track.querySelector('textarea.comment');
     if (ta) ta.value = s.comment || '';
   }
+  function saveAudit() {
+    lsSet(K_AUDIT, JSON.stringify(audit));
+    updateProgress();
+  }
   tracks.forEach(track => {
     const id = track.dataset.id;
     track.querySelectorAll('.rating button').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (!state[id]) state[id] = {};
+        if (!audit[id]) audit[id] = {};
         const value = Number(btn.dataset.value);
-        state[id].rating = (state[id].rating === value) ? null : value;
-        save();
-        applyState(track);
+        audit[id].rating = (audit[id].rating === value) ? null : value;
+        saveAudit();
+        applyStateToTrack(track);
         flashFlag(track);
       });
     });
     const ta = track.querySelector('textarea.comment');
     let typingTimer;
     ta.addEventListener('input', () => {
-      if (!state[id]) state[id] = {};
-      state[id].comment = ta.value;
+      if (!audit[id]) audit[id] = {};
+      audit[id].comment = ta.value;
       clearTimeout(typingTimer);
-      typingTimer = setTimeout(() => { save(); flashFlag(track); }, 350);
+      typingTimer = setTimeout(() => { saveAudit(); flashFlag(track); }, 350);
     });
-    applyState(track);
+    applyStateToTrack(track);
   });
-  updateRatedCount();
 
-  /* ---------- Report ---------- */
+  /* ===== navigation ===== */
+  function setActive(idx) {
+    idx = Math.max(0, Math.min(tracks.length - 1, idx));
+    tracks.forEach((t, i) => {
+      if (i !== idx && t.hasAttribute('data-active')) {
+        clearTrackEmbed(t);
+        t.removeAttribute('data-active');
+      }
+    });
+    currentIdx = idx;
+    lsSet(K_IDX, String(idx));
+    const track = tracks[idx];
+    track.setAttribute('data-active', '');
+    renderTrackEmbed(track);
+    updateNav();
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  function updateNav() {
+    navPrev.disabled = currentIdx === 0;
+    navNext.disabled = currentIdx === tracks.length - 1;
+    navJump.textContent = `${currentIdx + 1} из ${tracks.length}`;
+  }
+  function updateProgress() {
+    const rated = Object.values(audit).filter(s => s && s.rating != null).length;
+    progressEl.textContent = `${rated} из ${tracks.length}`;
+  }
+  navPrev.addEventListener('click', () => setActive(currentIdx - 1));
+  navNext.addEventListener('click', () => setActive(currentIdx + 1));
+
+  /* ===== jump-to sheet ===== */
+  const sheetEl = document.getElementById('sheet');
+  const sheetBackdrop = document.getElementById('sheet-backdrop');
+  const sheetList = document.getElementById('sheet-list');
+  function openSheet() {
+    sheetList.innerHTML = tracks.map((t, i) => {
+      const s = audit[t.dataset.id] || {};
+      const has = s.rating != null;
+      const rating = has ? `${s.rating}/10` : '—';
+      return `<div class="sheet-row${i === currentIdx ? ' current' : ''}" data-idx="${i}">
+        <span class="sr-num">${i + 1}.</span>
+        <span class="sr-text">
+          <div class="sr-title">${escapeHtml(t.dataset.title)}</div>
+          <div class="sr-artist">${escapeHtml(t.dataset.artist)}</div>
+        </span>
+        <span class="sr-rating ${has ? 'has' : ''}">${rating}</span>
+      </div>`;
+    }).join('');
+    sheetEl.classList.add('show');
+    sheetBackdrop.classList.add('show');
+  }
+  function closeSheet() {
+    sheetEl.classList.remove('show');
+    sheetBackdrop.classList.remove('show');
+  }
+  navJump.addEventListener('click', openSheet);
+  sheetBackdrop.addEventListener('click', closeSheet);
+  sheetList.addEventListener('click', (e) => {
+    const row = e.target.closest('.sheet-row');
+    if (!row) return;
+    const idx = parseInt(row.dataset.idx, 10);
+    closeSheet();
+    setActive(idx);
+  });
+
+  /* ===== name edit ===== */
+  userNameEl.addEventListener('click', () => {
+    const next = window.prompt('Как тебя зовут?', userName);
+    if (next == null) return;
+    const trimmed = next.trim();
+    if (!trimmed) return;
+    userName = trimmed;
+    lsSet(K_NAME, userName);
+    userNameEl.textContent = userName;
+  });
+
+  /* ===== report ===== */
   const toast = document.getElementById('toast');
   function showToast(msg) {
     toast.textContent = msg;
@@ -495,7 +638,7 @@
     tracks.forEach(track => {
       const cat = track.dataset.category;
       if (!groups[cat]) groups[cat] = [];
-      const s = state[track.dataset.id] || {};
+      const s = audit[track.dataset.id] || {};
       groups[cat].push({
         artist: track.dataset.artist,
         title: track.dataset.title,
@@ -503,7 +646,7 @@
         comment: s.comment || ''
       });
     });
-    let lines = ['🎵 Отчёт по прослушиванию (венчание 12.07)', ''];
+    const lines = [`🎵 Отчёт от ${userName || 'мамы'} (венчание 12.07)`, ''];
     for (const cat of Object.keys(groups)) {
       lines.push(`— ${cat} —`);
       groups[cat].forEach(t => {
@@ -524,11 +667,23 @@
     }
     try {
       await navigator.clipboard.writeText(text);
-      showToast('Скопировано в буфер — вставь в WhatsApp');
+      showToast('Скопировано — вставь в WhatsApp');
     } catch (e) {
       window.prompt('Скопируй текст и отправь Артуру:', text);
     }
   });
+
+  /* ===== boot ===== */
+  function showApp() {
+    onboardingEl.hidden = true;
+    appEl.hidden = false;
+    userNameEl.textContent = userName;
+    setActive(currentIdx);
+    updateProgress();
+  }
+
+  if (userName && service) showApp();
+  else showOnboarding();
 })();
 </script>
 </body>
