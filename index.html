@@ -30,12 +30,40 @@
   html, body { margin: 0; padding: 0; }
   html { background: var(--bg); }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
-    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
+    background:
+      radial-gradient(ellipse 1200px 700px at 50% -180px, rgba(212, 164, 92, 0.08), transparent 65%),
+      radial-gradient(ellipse 700px 500px at 100% 100%, rgba(212, 164, 92, 0.04), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden; min-height: 100vh;
+  }
+  /* Keyboard focus ring */
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
+  /* Reduced motion respect */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  /* Backdrop-filter fallback for old Android Chrome */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .ob-name-input, .ob-pick button, .lang-toggle,
+    .back-bar, .sheet, .search-modal, .toast,
+    .cat-tile, .cat-add button, .track-card {
+      background: rgba(20, 20, 24, 0.94);
+    }
   }
   [hidden] { display: none !important; }
 
@@ -485,6 +513,65 @@
     box-shadow: 0 12px 36px -8px rgba(0,0,0,0.6);
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== Tablet & desktop ≥720px ===== */
+  @media (min-width: 720px) {
+    .cat-tiles, .home-footer, .cat-add, .track-list { max-width: 760px; }
+    .cat-tiles {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+    .cat-tile {
+      height: 100%;
+      display: flex; flex-direction: column;
+    }
+    .cat-tile .ct-meta { margin-top: auto; }
+    .cat-tile:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+      box-shadow: 0 16px 32px -16px rgba(0, 0, 0, 0.55);
+    }
+    .ob-hero h1 { font-size: 38px; }
+    .ob-hero .ob-emoji { font-size: 44px; margin-bottom: 18px; }
+    .screen-header { padding: 30px 18px 18px; }
+    .screen-header .greeting { font-size: 18px; }
+    .lang-toggle { top: 16px; right: 16px; }
+    .lang-toggle button { padding: 7px 14px; font-size: 12px; }
+    /* Search modal: centered floating dialog on desktop */
+    .search-modal {
+      left: 0; right: 0;
+      margin-left: auto; margin-right: auto;
+      bottom: 4vh;
+      width: 92vw; max-width: 540px;
+      height: auto; max-height: 78vh;
+      transform: translateY(calc(100% + 8vh));
+      border: 1px solid var(--border-strong);
+      border-radius: 22px;
+    }
+    .search-modal.show { transform: translateY(0); }
+    .player-embed { height: 200px; }
+    .track-card-head { padding: 16px 18px; }
+    .tc-artwork { width: 60px; height: 60px; }
+    .tc-title { font-size: 16px; }
+    .tc-artist { font-size: 13.5px; }
+    .track-card:hover { border-color: var(--border-strong); }
+  }
+  /* ===== Desktop ≥1024px ===== */
+  @media (min-width: 1024px) {
+    .cat-tiles, .home-footer, .cat-add, .track-list { max-width: 920px; }
+    .ob-hero h1 { font-size: 42px; }
+    .screen-header h1 { font-size: 13px; }
+    .screen-header .greeting { font-size: 19px; }
+    .cat-tile { padding: 22px 24px; }
+    .cat-tile .ct-stage { font-size: 19px; }
+    .player-embed { height: 220px; }
+  }
+  /* ===== Wide ≥1440px ===== */
+  @media (min-width: 1440px) {
+    .screen-header { padding: 44px 18px 24px; }
+  }
 </style>
 </head>
 <body>
