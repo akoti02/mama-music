@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d0d0f">
+<title>Музыка к венчанию — прослушивание</title>
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg: #0d0d0f;
+    --bg-card: #18181c;
+    --bg-card-hover: #1f1f24;
+    --border: #2a2a30;
+    --text: #ececee;
+    --text-dim: #8e8e95;
+    --accent: #c9a062;
+    --accent-soft: #c9a06222;
+    --warn: #fbbf24;
+    --r12: #f87171;
+    --r34: #fb923c;
+    --r56: #fbbf24;
+    --r78: #84cc16;
+    --r910: #4ade80;
+  }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding-bottom: 130px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header {
+    padding: 28px 20px 18px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+  header h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  header .subtitle { margin: 6px 0 0; color: var(--text-dim); font-size: 14px; }
+  header .progress { margin: 14px 0 0; color: var(--accent); font-size: 13px; font-weight: 500; }
+
+  /* Sign-in banner (sticky под шапкой) */
+  .signin-banner {
+    background: linear-gradient(135deg, #2d2410, #1a1a1d);
+    border: 1px solid var(--warn);
+    color: var(--text);
+    padding: 14px 16px;
+    margin: 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .signin-banner strong { color: var(--warn); }
+  .signin-banner a {
+    display: inline-block;
+    margin-top: 8px;
+    color: var(--warn);
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
+  nav.tabs {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(13,13,15,0.92);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    white-space: nowrap; padding: 10px 12px;
+  }
+  nav.tabs a {
+    display: inline-block; padding: 8px 14px; margin-right: 6px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--bg-card);
+  }
+  nav.tabs a:active { background: var(--bg-card-hover); }
+  main { padding: 16px; max-width: 720px; margin: 0 auto; }
+  section { margin-top: 28px; scroll-margin-top: 70px; }
+  section h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; color: var(--accent); }
+  section .hint { margin: 0 0 16px; font-size: 13px; color: var(--text-dim); }
+
+  article.track {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px; margin-bottom: 14px;
+  }
+  article.track .track-header {
+    margin-bottom: 12px;
+  }
+  article.track .track-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
+  article.track .track-artist { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+
+  /* Apple Music iframe wrapper */
+  .apple-embed {
+    position: relative;
+    width: 100%;
+    height: 175px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #1d1d1f;
+    margin-bottom: 12px;
+  }
+  .apple-embed iframe {
+    width: 100%; height: 100%; border: 0;
+    background: transparent;
+  }
+  .apple-embed.loading::before {
+    content: "⏳ загрузка плеера…";
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 13px;
+  }
+  .apple-embed.error {
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+    padding: 16px;
+  }
+  .apple-embed.error::before {
+    content: "⚠️";
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  /* Rating: 10-point scale */
+  .rating {
+    display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px;
+    margin-bottom: 6px;
+  }
+  .rating button {
+    appearance: none; color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 0; font-size: 14px; font-weight: 600; font-family: inherit;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; min-height: 44px;
+    transition: transform 0.05s ease, background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .rating button:active { transform: scale(0.95); }
+  /* Inactive: 6%-alpha tint of the zone color */
+  .rating button[data-value="1"], .rating button[data-value="2"]   { background: rgba(248,113,113,0.06); }
+  .rating button[data-value="3"], .rating button[data-value="4"]   { background: rgba(251,146,60,0.06); }
+  .rating button[data-value="5"], .rating button[data-value="6"]   { background: rgba(251,191,36,0.06); }
+  .rating button[data-value="7"], .rating button[data-value="8"]   { background: rgba(132,204,22,0.06); }
+  .rating button[data-value="9"], .rating button[data-value="10"]  { background: rgba(74,222,128,0.06); }
+  /* Active: full zone color */
+  .rating button.active[data-value="1"], .rating button.active[data-value="2"]   { background: var(--r12);  border-color: var(--r12);  color: #0d0d0f; }
+  .rating button.active[data-value="3"], .rating button.active[data-value="4"]   { background: var(--r34);  border-color: var(--r34);  color: #0d0d0f; }
+  .rating button.active[data-value="5"], .rating button.active[data-value="6"]   { background: var(--r56);  border-color: var(--r56);  color: #0d0d0f; }
+  .rating button.active[data-value="7"], .rating button.active[data-value="8"]   { background: var(--r78);  border-color: var(--r78);  color: #0d0d0f; }
+  .rating button.active[data-value="9"], .rating button.active[data-value="10"]  { background: var(--r910); border-color: var(--r910); color: #0d0d0f; }
+  .rating-labels {
+    display: flex; justify-content: space-between;
+    margin: 0 2px 12px;
+    color: var(--text-dim); font-size: 12px;
+  }
+  textarea.comment {
+    width: 100%; min-height: 60px; padding: 10px 12px;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    font-family: inherit; font-size: 14px; resize: vertical;
+  }
+  textarea.comment:focus { outline: none; border-color: var(--accent); }
+  .saved-flag { display: inline-block; font-size: 12px; color: var(--text-dim); margin-top: 6px; opacity: 0; transition: opacity 0.3s; }
+  .saved-flag.show { opacity: 1; }
+
+  footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(13,13,15,0.95);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    text-align: center; z-index: 100;
+  }
+  footer button {
+    appearance: none; background: var(--accent); color: #0d0d0f;
+    border: 0; border-radius: 12px; padding: 14px 22px;
+    font-size: 15px; font-weight: 600; font-family: inherit;
+    cursor: pointer; width: 100%; max-width: 360px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  footer button:active { opacity: 0.85; }
+  footer .footer-hint { margin: 8px 0 0; color: var(--text-dim); font-size: 12px; }
+
+  .toast {
+    position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 16px; border-radius: 999px; font-size: 13px; z-index: 200;
+    opacity: 0; transition: opacity 0.25s ease; pointer-events: none;
+    max-width: calc(100% - 32px); text-align: center;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎵 Музыка к венчанию</h1>
+  <div class="subtitle">12 июля 2026 · Франция · прототип на 6 треков</div>
+  <div class="progress">Оценено: <span id="rated-count">0</span> из <span id="total-count">6</span></div>
+</header>
+
+<div class="signin-banner">
+  🎧 <strong>Перед прослушиванием</strong> — войди в Apple Music на этом iPhone, чтобы играли полные треки (без подписки будет только 30-секундное превью).<br>
+  <a href="https://music.apple.com" target="_blank" rel="noopener">Открыть Apple Music и войти →</a>
+</div>
+
+<nav class="tabs">
+  <a href="#lounge">Лаунж</a>
+  <a href="#lovers">LOVERS</a>
+  <a href="#cake">Торт</a>
+  <a href="#dj">DJ Микки</a>
+  <a href="#yulia">Юля</a>
+  <a href="#villa">Вилла 10.07</a>
+</nav>
+
+<main>
+  <section id="lounge">
+    <h2>1. Лаунж 17:30–19:00</h2>
+    <p class="hint">Фон во время приезда гостей, винного казино и аперитива. Спокойное, с элементами рока.</p>
+    <article class="track" data-id="t1" data-artist="Massive Attack" data-title="Teardrop" data-category="Лаунж"></article>
+  </section>
+
+  <section id="lovers">
+    <h2>2. Программа LOVERS</h2>
+    <p class="hint">Зажигательное, с поправкой на высокий голос Дарьи Азиатцевой.</p>
+    <article class="track" data-id="t2" data-artist="Adele" data-title="Rolling In the Deep" data-category="LOVERS"></article>
+  </section>
+
+  <section id="cake">
+    <h2>3. Вынос торта</h2>
+    <p class="hint">20–40 секунд, взрывное и при этом романтичное, с элементами рока. На прототипе слушаем целиком — нужный кусок выберем потом.</p>
+    <article class="track" data-id="t3" data-artist="Queen" data-title="Don't Stop Me Now" data-category="Торт"></article>
+  </section>
+
+  <section id="dj">
+    <h2>4. Референсы для DJ Саши Микки</h2>
+    <p class="hint">Атмосфера для финала вечера (выход в 22:30–23:00).</p>
+    <article class="track" data-id="t4" data-artist="CamelPhat &amp; Elderbrook" data-title="Cola" data-category="DJ Микки"></article>
+  </section>
+
+  <section id="yulia">
+    <h2>5. Личные треки для Юли Карпинской</h2>
+    <p class="hint">«Наши» треки — например, упомянутая мамой «Технология — Танцы вдвоём».</p>
+    <article class="track" data-id="t5" data-artist="Технология" data-title="Танцы вдвоём" data-category="Юля"></article>
+  </section>
+
+  <section id="villa">
+    <h2>6. Вилла 10 июля (3 часа фона)</h2>
+    <p class="hint">Атмосферное на вечеринку 17–23. Соотношение нерусских/русских — 75/25.</p>
+    <article class="track" data-id="t6" data-artist="Coldplay" data-title="The Scientist" data-category="Вилла"></article>
+  </section>
+</main>
+
+<footer>
+  <button id="send-report">📤 Отправить отчёт Артуру</button>
+  <p class="footer-hint">Откроется окно «Поделиться» — выбери WhatsApp или iMessage</p>
+</footer>
+
+<div id="toast" class="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const STORAGE_KEY = 'venchanie_audit_v6';
+  const tracks = Array.from(document.querySelectorAll('article.track'));
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  /* ---------- Build initial structure of each card ---------- */
+  tracks.forEach(track => {
+    track.innerHTML = `
+      <div class="track-header">
+        <div class="track-title">${escapeHtml(track.dataset.title)}</div>
+        <div class="track-artist">${escapeHtml(track.dataset.artist)}</div>
+      </div>
+      <div class="apple-embed loading"></div>
+      <div class="rating">
+        ${[1,2,3,4,5,6,7,8,9,10].map(n => `<button type="button" data-value="${n}">${n}</button>`).join('')}
+      </div>
+      <div class="rating-labels"><span>не очень</span><span>супер</span></div>
+      <textarea class="comment" placeholder="Комментарий (необязательно)…"></textarea>
+      <span class="saved-flag">✓ Сохранено</span>
+    `;
+  });
+
+  /* ---------- iTunes Search → Apple Music embed URL ---------- */
+  async function fetchAppleEmbed(artist, title) {
+    const term = encodeURIComponent(`${artist} ${title}`);
+    // Try a few storefronts in order: US (largest catalog), then RU (для Технология и т.п.), then FR
+    const storefronts = ['us', 'ru', 'fr'];
+    for (const country of storefronts) {
+      try {
+        const url = `https://itunes.apple.com/search?term=${term}&entity=song&limit=1&media=music&country=${country}`;
+        const r = await fetch(url);
+        if (!r.ok) continue;
+        const data = await r.json();
+        const hit = data.results && data.results[0];
+        if (hit && hit.trackViewUrl) {
+          // Transform: music.apple.com → embed.music.apple.com
+          const embedUrl = hit.trackViewUrl.replace(
+            /^https?:\/\/music\.apple\.com\//,
+            'https://embed.music.apple.com/'
+          );
+          return {
+            embedUrl,
+            trackName: hit.trackName,
+            artistName: hit.artistName,
+            country
+          };
+        }
+      } catch (e) {
+        // Try next storefront
+      }
+    }
+    return null;
+  }
+
+  async function initTrack(track) {
+    const embedSlot = track.querySelector('.apple-embed');
+    try {
+      const info = await fetchAppleEmbed(track.dataset.artist, track.dataset.title);
+      if (!info) {
+        embedSlot.classList.remove('loading');
+        embedSlot.classList.add('error');
+        embedSlot.textContent = 'Трек не найден в Apple Music. Дайте Артуру название — заменим.';
+        return;
+      }
+      embedSlot.classList.remove('loading');
+      // Insert iframe
+      const iframe = document.createElement('iframe');
+      iframe.src = info.embedUrl;
+      iframe.allow = 'autoplay *; encrypted-media *;';
+      iframe.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
+      iframe.loading = 'lazy';
+      embedSlot.appendChild(iframe);
+    } catch (e) {
+      embedSlot.classList.remove('loading');
+      embedSlot.classList.add('error');
+      embedSlot.textContent = 'Ошибка загрузки. Проверь интернет и обнови страницу.';
+    }
+  }
+
+  // Kick off all in parallel
+  tracks.forEach(initTrack);
+
+  /* ---------- Ratings + comments + storage ---------- */
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch (e) { state = {}; }
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    updateRatedCount();
+  }
+  function updateRatedCount() {
+    const rated = Object.values(state).filter(s => s && s.rating != null).length;
+    document.getElementById('rated-count').textContent = rated;
+    document.getElementById('total-count').textContent = tracks.length;
+  }
+  function flashFlag(track) {
+    const flag = track.querySelector('.saved-flag');
+    flag.classList.add('show');
+    clearTimeout(flag._t);
+    flag._t = setTimeout(() => flag.classList.remove('show'), 1200);
+  }
+  function applyState(track) {
+    const id = track.dataset.id;
+    const s = state[id] || {};
+    track.querySelectorAll('.rating button').forEach(btn => {
+      btn.classList.toggle('active', s.rating === Number(btn.dataset.value));
+    });
+    const ta = track.querySelector('textarea.comment');
+    if (ta) ta.value = s.comment || '';
+  }
+  tracks.forEach(track => {
+    const id = track.dataset.id;
+    track.querySelectorAll('.rating button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!state[id]) state[id] = {};
+        const value = Number(btn.dataset.value);
+        state[id].rating = (state[id].rating === value) ? null : value;
+        save();
+        applyState(track);
+        flashFlag(track);
+      });
+    });
+    const ta = track.querySelector('textarea.comment');
+    let typingTimer;
+    ta.addEventListener('input', () => {
+      if (!state[id]) state[id] = {};
+      state[id].comment = ta.value;
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(() => { save(); flashFlag(track); }, 350);
+    });
+    applyState(track);
+  });
+  updateRatedCount();
+
+  /* ---------- Report ---------- */
+  const toast = document.getElementById('toast');
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toast.classList.remove('show'), 2400);
+  }
+  function buildReport() {
+    const groups = {};
+    tracks.forEach(track => {
+      const cat = track.dataset.category;
+      if (!groups[cat]) groups[cat] = [];
+      const s = state[track.dataset.id] || {};
+      groups[cat].push({
+        artist: track.dataset.artist,
+        title: track.dataset.title,
+        rating: s.rating,
+        comment: s.comment || ''
+      });
+    });
+    let lines = ['🎵 Отчёт по прослушиванию (венчание 12.07)', ''];
+    for (const cat of Object.keys(groups)) {
+      lines.push(`— ${cat} —`);
+      groups[cat].forEach(t => {
+        const rating = (t.rating != null) ? `${t.rating}/10` : '⏳ не оценено';
+        let line = `${t.artist} — ${t.title}: ${rating}`;
+        if (t.comment) line += ` — «${t.comment}»`;
+        lines.push(line);
+      });
+      lines.push('');
+    }
+    return lines.join('\n').trim();
+  }
+  document.getElementById('send-report').addEventListener('click', async () => {
+    const text = buildReport();
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Музыка к венчанию — отчёт', text }); return; }
+      catch (e) {}
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('Скопировано в буфер — вставь в WhatsApp');
+    } catch (e) {
+      window.prompt('Скопируй текст и отправь Артуру:', text);
+    }
+  });
+})();
+</script>
+</body>
+</html>
