@@ -1237,9 +1237,7 @@
   </div>
   <div class="ao-sort">
     <button type="button" class="sort-chip active" data-sort="alpha" data-i18n="sort.alpha"></button>
-    <button type="button" class="sort-chip" data-sort="year" data-i18n="sort.year"></button>
-    <button type="button" class="sort-chip" data-sort="title" data-i18n="sort.title"></button>
-    <button type="button" class="sort-chip" data-sort="added" data-i18n="sort.added"></button>
+    <button type="button" class="sort-chip" data-sort="genre" data-i18n="sort.genre"></button>
   </div>
   <div class="ov-body" id="all-results"></div>
 </div>
@@ -1384,7 +1382,8 @@
       'search.assignedAs': 'В категории «{cat}» (от {by})',
       'search.addNew': 'Не нашёл нужный? Добавь свой трек',
       'allTracks.title': 'Все треки',
-      'sort.alpha': 'По артисту', 'sort.year': 'По году', 'sort.title': 'По названию', 'sort.added': 'Новые',
+      'sort.alpha': 'По артисту', 'sort.genre': 'По жанру',
+      'sort.uncat': 'Без категории',
       'mine.title': 'Моё', 'mine.sub': 'собрано',
       'mine.picks': 'Собрано', 'mine.rated': 'Оценки', 'mine.added': 'Добавил', 'mine.removed': 'Удалил', 'mine.activity': 'Активность',
       'mine.noPicks': 'Пока ничего не выбрано',
@@ -1472,7 +1471,8 @@
       'search.assignedAs': 'In «{cat}» (by {by})',
       'search.addNew': 'Can\'t find it? Add your own track',
       'allTracks.title': 'All tracks',
-      'sort.alpha': 'By artist', 'sort.year': 'By year', 'sort.title': 'By title', 'sort.added': 'New',
+      'sort.alpha': 'By artist', 'sort.genre': 'By genre',
+      'sort.uncat': 'Uncategorised',
       'mine.title': 'My', 'mine.sub': 'picked',
       'mine.picks': 'Picked', 'mine.rated': 'Ratings', 'mine.added': 'Added', 'mine.removed': 'Removed', 'mine.activity': 'Activity',
       'mine.noPicks': 'Nothing picked yet',
@@ -2293,6 +2293,7 @@
       aoSort = c.dataset.sort;
       aoOffset = 0;
       aoDone = false;
+      aoLastCat = null;
       document.querySelectorAll('.sort-chip').forEach(x => x.classList.toggle('active', x.dataset.sort === aoSort));
       aoResults.innerHTML = `<div class="ov-status">…</div>`;
       loadAllPage();
@@ -2302,6 +2303,7 @@
     if (aoLoading || aoDone) return;
     if (aoResults.scrollTop + aoResults.clientHeight > aoResults.scrollHeight - 200) loadAllPage();
   });
+  let aoLastCat = null; // track the last group header rendered for sort=genre
   async function loadAllPage() {
     if (aoLoading || aoDone) return;
     aoLoading = true;
@@ -2309,15 +2311,46 @@
     aoLoading = false;
     if (!d) return;
     document.getElementById('ao-counter').textContent = fmt(d.total);
-    if (aoOffset === 0) aoResults.innerHTML = '';
+    if (aoOffset === 0) { aoResults.innerHTML = ''; aoLastCat = null; }
     if (d.results.length === 0) {
       if (aoOffset === 0) aoResults.innerHTML = `<div class="ov-status">${escapeHtml(t('search.empty'))}</div>`;
       aoDone = true;
       return;
     }
-    const wrap = document.createElement('div');
-    aoResults.appendChild(wrap);
-    renderRows(wrap, d.results);
+    if (aoSort === 'genre') {
+      // Insert a section header each time the assigned_to category changes
+      const wrap = document.createElement('div');
+      aoResults.appendChild(wrap);
+      let bufferStart = 0;
+      for (let i = 0; i < d.results.length; i++) {
+        const cat = d.results[i].assigned_to || null;
+        if (cat !== aoLastCat) {
+          // Flush previous buffer
+          if (i > bufferStart) {
+            const sub = document.createElement('div');
+            wrap.appendChild(sub);
+            renderRows(sub, d.results.slice(bufferStart, i));
+          }
+          const head = document.createElement('div');
+          head.className = 'mine-group-head';
+          head.style.cssText = 'margin: 18px 0 10px';
+          head.innerHTML = `<div class="mine-group-name">${escapeHtml(cat ? t(`cat.${cat}.short`) : t('sort.uncat'))}</div>`;
+          wrap.appendChild(head);
+          aoLastCat = cat;
+          bufferStart = i;
+        }
+      }
+      // Final buffer
+      if (bufferStart < d.results.length) {
+        const sub = document.createElement('div');
+        wrap.appendChild(sub);
+        renderRows(sub, d.results.slice(bufferStart));
+      }
+    } else {
+      const wrap = document.createElement('div');
+      aoResults.appendChild(wrap);
+      renderRows(wrap, d.results);
+    }
     aoOffset += d.results.length;
     if (aoOffset >= d.total) aoDone = true;
   }
