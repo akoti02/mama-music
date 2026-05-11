@@ -509,6 +509,9 @@
     text-transform: uppercase; margin-bottom: 14px;
   }
   .cats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .cat-pill.shared { border-color: rgba(249,168,212,0.35); }
+  .cat-pill.shared .nm { color: var(--pink); }
+  .cat-pill.shared.selected { background: rgba(249,168,212,0.18); border-color: rgba(249,168,212,0.55); }
   .cat-pill {
     appearance: none;
     background:
@@ -553,6 +556,18 @@
   .cat-pill.selected .nm { color: var(--gold-bright); }
 
   /* ===== Nav row (skip / back / remove) ===== */
+  .nav-hint {
+    margin: 14px 0 6px;
+    text-align: center;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-muted); font-weight: 700;
+  }
+  .nav-hint-mobile { display: inline; }
+  .nav-hint-desktop { display: none; }
+  @media (hover: hover) and (pointer: fine) {
+    .nav-hint-mobile { display: none; }
+    .nav-hint-desktop { display: inline; }
+  }
   .nav-row {
     display: flex; align-items: center; justify-content: space-between;
     margin-top: 14px;
@@ -1539,6 +1554,9 @@
   <div class="ao-sort">
     <button type="button" class="sort-chip active" data-sort="alpha" data-i18n="sort.alpha"></button>
     <button type="button" class="sort-chip" data-sort="genre" data-i18n="sort.genre"></button>
+    <button type="button" class="sort-chip" data-filter="mine-commented">Я · с коммом</button>
+    <button type="button" class="sort-chip" data-filter="yula-commented">Юля · с коммом</button>
+    <button type="button" class="sort-chip" data-filter="any-commented">Любой · с коммом</button>
   </div>
   <div class="ov-body" id="all-results"></div>
 </div>
@@ -2268,6 +2286,13 @@
       return await r.json();
     } catch (e) { console.warn('all', e?.message); return null; }
   }
+  async function apiCommentedSongs(who, offset, limit) {
+    try {
+      const r = await fetchWithRetry(`${API}/api/library/commented?by=${encodeURIComponent(who)}&user=${encodeURIComponent(userName)}&offset=${offset}&limit=${limit}`);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) { console.warn('commented', e?.message); return null; }
+  }
   async function apiYouTube(songId) {
     try {
       const r = await fetchWithRetry(`${API}/api/youtube?song_id=${songId}`, undefined, 1, 15000);
@@ -2445,6 +2470,18 @@
     loadNext();
   }
 
+  // Keyboard navigation on desktop: arrow-right = commit+advance, arrow-left = back.
+  // Ignore when focus is in a text field so typing inside the comment doesn't
+  // walk the deck.
+  document.addEventListener('keydown', (e) => {
+    if (screens.discovery?.hidden) return;
+    const tag = (e.target?.tagName || '').toLowerCase();
+    if (tag === 'textarea' || tag === 'input') return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); commitAndAdvance(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); goBack(); }
+  });
+
   /* ===== Card render ===== */
   const cardHost = document.getElementById('card-host');
   let cardEl = null;
@@ -2467,9 +2504,10 @@
     currentSong = song;
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля' || song.added_by === 'Света') ? 'а' : '')}</div>` : '';
-    // LOVERS and DJ Микки are external shared workspaces — not card pills here.
-    const inCardCategories = CATEGORIES.filter(c => c !== 'LOVERS' && c !== 'DJ Микки');
-    const catsHTML = inCardCategories.map(c => `<button type="button" class="cat-pill" data-cat="${escapeHtml(c)}"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
+    // All 6 categories are pills on the card. LOVERS / DJ Микки tags here are
+    // propagated to the lovers_songs / dj_songs tables on the server so the
+    // shared workspaces stay in sync automatically.
+    const catsHTML = CATEGORIES.map(c => `<button type="button" class="cat-pill${(c === 'LOVERS' || c === 'DJ Микки') ? ' shared' : ''}" data-cat="${escapeHtml(c)}"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
     const ratingHTML = Array.from({length: 10}, (_, i) => `<button type="button" class="rating-btn" data-r="${i+1}">${i+1}</button>`).join('');
     const canBack = seenIdx > 0;
     const savedComment = drafts[song.id] || '';
@@ -2502,15 +2540,9 @@
           <div class="cats-grid">${catsHTML}</div>
         </div>
         </details>
-        <div class="nav-row">
-          <button type="button" class="nav-btn" id="back-btn" ${canBack ? '' : 'disabled'}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            <span>${escapeHtml(t('card.back'))}</span>
-          </button>
-          <button type="button" class="nav-btn primary" id="skip-btn">
-            <span id="skip-label">${escapeHtml(t('card.skip'))}</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
+        <div class="nav-hint">
+          <span class="nav-hint-mobile">← смахни вправо назад · вперёд смахни влево →</span>
+          <span class="nav-hint-desktop">← клавиша назад · вперёд клавиша →</span>
         </div>
         <button class="remove-link" id="remove-link" type="button">${escapeHtml(t('card.remove'))}</button>
       </div>
@@ -2589,24 +2621,8 @@
     // Expose flush so overlay-open / unload handlers can force a save.
     window.__flushCardSave = () => persistNow().catch(() => {});
 
-    document.getElementById('skip-btn').addEventListener('click', () => {
-      // 'Дальше' commits ONLY if the user actually engaged with this card
-      // (typed a comment, or toggled a category). Otherwise the song is
-      // skipped without a record so it stays in rotation for later review.
-      if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-      const ta = document.getElementById('comment-input');
-      const commentEdited = ta && ta.dataset.edited === '1';
-      const comment = ta ? ta.value.trim() : '';
-      const cats = [...selectedCategories].join(',');
-      if (!cardDirty) {
-        // Bare skip — no commit. Just advance.
-        advanceWithoutSave();
-        return;
-      }
-      const action = cats ? 'assign' : (currentRating ? 'rate' : 'skip');
-      act(action, cats || null, currentRating || null);
-    });
-    document.getElementById('back-btn').addEventListener('click', () => goBack());
+    // Skip / back buttons removed — navigation is swipe (mobile) + arrow keys
+    // (desktop). The 'Удалить из списка' link stays.
     document.getElementById('remove-link').addEventListener('click', () => onRemoveCurrent());
 
     cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => {
@@ -2639,15 +2655,6 @@
       persistCard();
     }));
     const ta = document.getElementById('comment-input');
-    const skipBtnEl = document.getElementById('skip-btn');
-    const skipLabelEl = document.getElementById('skip-label');
-    function refreshSkipLabel() {
-      const hasText = ta.value.trim().length > 0;
-      if (skipBtnEl && skipLabelEl) {
-        skipBtnEl.classList.toggle('has-note', hasText);
-        skipLabelEl.textContent = hasText ? t('card.skipWithNote') : t('card.skip');
-      }
-    }
     let commentServerTimer = null;
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
@@ -2656,10 +2663,7 @@
       setDirty(true);
       saveDraft(song.id, ta.value);
       snapshotSet(song.id, { comment: ta.value });
-      refreshSkipLabel();
-      // Debounce server-side draft push by 800ms so we don't flood the API
-      // (and so a packet-reorder race can't have draft overwrite the more
-      // recent committed comment).
+      // Debounce server-side draft push by 800ms so we don't flood the API.
       if (commentServerTimer) clearTimeout(commentServerTimer);
       commentServerTimer = setTimeout(() => apiDraftPush(song.id, ta.value).catch(() => {}), 800);
       if (currentRating > 0 || selectedCategories.size > 0) {
@@ -2671,7 +2675,6 @@
     ta.dataset.edited = '0';
     if (ta.value) {
       setTimeout(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
-      refreshSkipLabel();
     }
 
     // Swipe gestures: left = skip, right = back
@@ -2740,16 +2743,8 @@
       if (dt > 700) return;
       if (Math.abs(dx) < 70) return;
       if (Math.abs(dy) > 60) return;
-      if (dx < 0) {
-        // swipe left → next; respects a pre-tagged category
-        const pillSel = cardHost.querySelector('.cat-pill.selected');
-        if (pillSel) act('assign', pillSel.dataset.cat);
-        else if (cardDirtyFlag()) act('skip');
-        else advanceWithoutSave();
-      } else {
-        // swipe right → back
-        goBack();
-      }
+      if (dx < 0) commitAndAdvance();
+      else goBack();
     }, { passive: true });
     // Android Chrome / Samsung Internet can interrupt a touch with a system
     // gesture (pull-to-refresh, back-swipe). Make sure we don't leave the
@@ -2760,6 +2755,17 @@
   // closure). The latest cardDirty is mirrored onto cardEl.dataset for swipe.
   function cardDirtyFlag() {
     return cardEl?.dataset?.dirty === '1';
+  }
+  // Commit whatever state the user has on the current card and advance to the
+  // next. Used by swipe-left and right-arrow-key (no Дальше button anymore).
+  // Reads ALL .cat-pill.selected, so a song tagged into multiple categories
+  // (e.g. LOVERS + DJ Микки) gets stored with all of them in one shot.
+  function commitAndAdvance() {
+    if (!cardEl) return;
+    const cats = [...cardHost.querySelectorAll('.cat-pill.selected')].map(p => p.dataset.cat).filter(Boolean);
+    if (cats.length) act('assign', cats.join(','));
+    else if (cardDirtyFlag()) act('skip');
+    else advanceWithoutSave();
   }
 
   function renderEmpty() {
@@ -3218,6 +3224,7 @@
 
   /* ===== All-tracks overlay ===== */
   let aoSort = 'alpha';
+  let aoFilter = null; // null = no filter, otherwise 'mine-commented' | 'yula-commented' | 'any-commented'
   let aoOffset = 0;
   let aoLoading = false;
   let aoDone = false;
@@ -3225,20 +3232,27 @@
   function openAll() {
     openOv('all-overlay');
     aoSort = 'alpha';
+    aoFilter = null;
     aoOffset = 0;
     aoDone = false;
     aoResults.innerHTML = `<div class="ov-status">…</div>`;
-    document.querySelectorAll('.sort-chip').forEach(c => c.classList.toggle('active', c.dataset.sort === aoSort));
+    document.querySelectorAll('.sort-chip').forEach(c => c.classList.toggle('active', c.dataset.sort === aoSort && !c.dataset.filter));
     loadAllPage();
   }
   document.querySelectorAll('.sort-chip').forEach(c => {
     c.addEventListener('click', () => {
-      aoSort = c.dataset.sort;
+      if (c.dataset.filter) {
+        aoFilter = c.dataset.filter;
+        aoSort = 'alpha';
+      } else {
+        aoSort = c.dataset.sort;
+        aoFilter = null;
+      }
       aoOffset = 0;
       aoDone = false;
       aoLastCat = null;
-      document.querySelectorAll('.sort-chip').forEach(x => x.classList.toggle('active', x.dataset.sort === aoSort));
-      aoResults.innerHTML = `<div class="ov-status">…</div>`;
+      document.querySelectorAll('.sort-chip').forEach(x => x.classList.toggle('active', c === x));
+      aoResults.innerHTML = `<div class="ov-status">Загружаю…</div>`;
       loadAllPage();
     });
   });
@@ -3250,13 +3264,23 @@
   async function loadAllPage() {
     if (aoLoading || aoDone) return;
     aoLoading = true;
-    const d = await apiAllTracks(aoSort, aoOffset, 50);
+    // Filter mode hits the commented-songs endpoint instead of the catalog.
+    let d;
+    if (aoFilter) {
+      const who = aoFilter === 'mine-commented' ? userName
+                : aoFilter === 'yula-commented' ? 'Юля'
+                : 'ANY';
+      d = await apiCommentedSongs(who, aoOffset, 100);
+    } else {
+      d = await apiAllTracks(aoSort, aoOffset, 50);
+    }
     aoLoading = false;
     if (!d) return;
     document.getElementById('ao-counter').textContent = fmt(d.total);
     if (aoOffset === 0) { aoResults.innerHTML = ''; aoLastCat = null; }
     if (d.results.length === 0) {
-      if (aoOffset === 0) aoResults.innerHTML = `<div class="ov-status">${escapeHtml(t('search.empty'))}</div>`;
+      const empty = aoFilter ? 'Пока нет песен с комментариями' : t('search.empty');
+      if (aoOffset === 0) aoResults.innerHTML = `<div class="ov-status">${escapeHtml(empty)}</div>`;
       aoDone = true;
       return;
     }
