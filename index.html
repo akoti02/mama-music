@@ -338,6 +338,32 @@
     aspect-ratio: 16 / 9;
   }
   .yt-wrap.error svg { width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.6; }
+  .player-fallback {
+    margin-top: 8px;
+    display: flex; justify-content: center;
+    gap: 8px; flex-wrap: wrap;
+  }
+  .player-fallback button {
+    appearance: none;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 34px;
+  }
+  .player-fallback button:hover { color: var(--text); background: var(--surface-2); border-color: var(--line-2); }
+  .player-fallback button.active {
+    background: rgba(var(--art-r), var(--art-g), var(--art-b), 0.18);
+    border-color: rgba(var(--art-r), var(--art-g), var(--art-b), 0.5);
+    color: var(--gold-bright);
+  }
+  .player-fallback .svc-ico { width: 13px; height: 13px; }
 
   /* ===== Meta (title + artist) ===== */
   .meta {
@@ -1388,6 +1414,9 @@
       'card.commentPh': 'Заметка к треку (необязательно)',
       'card.skip': 'Дальше', 'card.skipWithNote': 'Сохранить и дальше', 'card.back': 'Назад',
       'card.remove': 'Удалить из списка',
+      'player.notWorking': 'Не работает? Найти другое',
+      'player.searching': 'Ищу…',
+      'player.noAlts': 'Других вариантов не нашлось',
       'rating.label': 'Оцени от 1 до 10',
       'rating.hint.empty': 'Тапни цифру, чтобы перейти к следующей',
       'rating.hint.with_cat': 'Тапни цифру — сохраню с выбранной категорией',
@@ -1478,6 +1507,9 @@
       'card.commentPh': 'Note for this track (optional)',
       'card.skip': 'Next', 'card.skipWithNote': 'Save & next', 'card.back': 'Back',
       'card.remove': 'Remove from list',
+      'player.notWorking': 'Doesn\'t work? Try another',
+      'player.searching': 'Searching…',
+      'player.noAlts': 'No other sources found',
       'rating.label': 'Rate from 1 to 10',
       'rating.hint.empty': 'Tap a number to go to the next track',
       'rating.hint.with_cat': 'Tap a number — saves with your selected category',
@@ -1860,6 +1892,7 @@
         <div class="yt-wrap loading" id="yt-wrap">
           <div id="yt-host"></div>
         </div>
+        <div class="player-fallback" id="player-fallback" hidden></div>
         <div class="meta">
           <div class="title">${escapeHtml(song.title)}</div>
           <div class="by">${escapeHtml(song.artist)} ${yearStr}</div>
@@ -2028,24 +2061,36 @@
     document.getElementById('empty-add').addEventListener('click', openAdd);
   }
 
-  /* ===== YouTube embed ===== */
+  /* ===== Player mount: YouTube primary + Spotify/SoundCloud/Apple fallbacks ===== */
   async function mountYouTube(song) {
     const wrap = document.getElementById('yt-wrap');
+    const fb = document.getElementById('player-fallback');
     if (!wrap) return;
     let videoId = song.youtube_id;
     if (!videoId) {
       const r = await apiYouTube(song.id);
-      if (currentSong?.id !== song.id) return; // card changed
+      if (currentSong?.id !== song.id) return;
       videoId = r?.youtube_id;
     }
     if (currentSong?.id !== song.id) return;
     wrap.classList.remove('loading');
-    if (!videoId) {
+    if (videoId) {
+      mountYTIframe(wrap, videoId);
+      extractAlbumColor(`https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`);
+    } else {
       wrap.classList.add('error');
-      wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>${escapeHtml(lang === 'ru' ? 'Видео не нашлось на YouTube' : 'No video found on YouTube')}</div>`;
+      wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>${escapeHtml(lang === 'ru' ? 'Не нашлось на YouTube' : 'Not on YouTube')}</div>`;
       resetAlbumColor();
-      return;
     }
+    // Always wire a "Не работает?" button — Apple/Spotify/SoundCloud probe is cheap.
+    if (fb) {
+      fb.hidden = false;
+      fb.innerHTML = `<button type="button" id="fb-try" data-svc="alt">${escapeHtml(t('player.notWorking'))}</button>`;
+      const btn = document.getElementById('fb-try');
+      if (btn) btn.addEventListener('click', () => loadAlternatives(song));
+    }
+  }
+  function mountYTIframe(wrap, videoId) {
     const iframe = document.createElement('iframe');
     iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1`;
     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
@@ -2054,8 +2099,79 @@
     wrap.innerHTML = '';
     wrap.appendChild(iframe);
     wrap.classList.add('playing');
-    // Extract album color from YT thumbnail
-    extractAlbumColor(`https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`);
+    wrap.classList.remove('error');
+    wrap.dataset.svc = 'yt';
+  }
+  function mountSpotifyIframe(wrap, spotifyId) {
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://open.spotify.com/embed/track/${spotifyId}?utm_source=embed`;
+    iframe.allow = 'autoplay; clipboard-write; encrypted-media; picture-in-picture';
+    iframe.loading = 'lazy';
+    wrap.innerHTML = '';
+    wrap.appendChild(iframe);
+    wrap.classList.add('playing');
+    wrap.classList.remove('error');
+    wrap.dataset.svc = 'spotify';
+  }
+  function mountSoundCloudIframe(wrap, scUrl) {
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(scUrl)}&color=%23${'d4a45c'}&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=true`;
+    iframe.allow = 'autoplay';
+    iframe.loading = 'lazy';
+    wrap.innerHTML = '';
+    wrap.appendChild(iframe);
+    wrap.classList.add('playing');
+    wrap.classList.remove('error');
+    wrap.dataset.svc = 'soundcloud';
+  }
+  function mountAppleIframe(wrap, appleEmbedUrl) {
+    const iframe = document.createElement('iframe');
+    iframe.src = appleEmbedUrl;
+    iframe.allow = 'autoplay *; encrypted-media *;';
+    iframe.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
+    iframe.loading = 'lazy';
+    wrap.innerHTML = '';
+    wrap.appendChild(iframe);
+    wrap.classList.add('playing');
+    wrap.classList.remove('error');
+    wrap.dataset.svc = 'apple';
+  }
+
+  async function loadAlternatives(song) {
+    const fb = document.getElementById('player-fallback');
+    if (!fb) return;
+    fb.innerHTML = `<button type="button" disabled>${escapeHtml(t('player.searching'))}</button>`;
+    let alts;
+    try {
+      const r = await fetchWithRetry(`${API}/api/song/fallback?song_id=${song.id}`, undefined, 1, 15000);
+      alts = await r.json();
+    } catch (e) { alts = {}; }
+    if (currentSong?.id !== song.id) return;
+    const wrap = document.getElementById('yt-wrap');
+    const buttons = [];
+    if (song.youtube_id) buttons.push({ svc: 'yt', label: 'YouTube', handler: () => mountYTIframe(wrap, song.youtube_id) });
+    if (alts.spotify_id) buttons.push({ svc: 'spotify', label: 'Spotify', handler: () => mountSpotifyIframe(wrap, alts.spotify_id) });
+    if (alts.soundcloud_url) buttons.push({ svc: 'soundcloud', label: 'SoundCloud', handler: () => mountSoundCloudIframe(wrap, alts.soundcloud_url) });
+    if (alts.apple_embed) buttons.push({ svc: 'apple', label: 'Apple Music', handler: () => mountAppleIframe(wrap, alts.apple_embed) });
+    if (buttons.length <= 1) {
+      // Nothing new found
+      fb.innerHTML = `<button type="button" disabled>${escapeHtml(t('player.noAlts'))}</button>`;
+      return;
+    }
+    const currentSvc = wrap.dataset.svc || 'yt';
+    fb.innerHTML = buttons.map(b => `<button type="button" data-svc="${b.svc}" class="${b.svc === currentSvc ? 'active' : ''}">${escapeHtml(b.label)}</button>`).join('');
+    fb.querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => {
+        const svc = b.dataset.svc;
+        const target = buttons.find(x => x.svc === svc);
+        if (!target) return;
+        fb.querySelectorAll('button').forEach(x => x.classList.toggle('active', x.dataset.svc === svc));
+        target.handler();
+      });
+    });
+    // Auto-switch: if current was YouTube and we have an Apple/Spotify alternative,
+    // proactively switch to the most-reliable one when user clicks "Не работает".
+    // (We already rendered the bar; user will tap whichever they want.)
   }
 
   /* ===== Actions ===== */
