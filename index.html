@@ -2442,6 +2442,11 @@
       if (ta) ta.value = song.my_comment;
     }
 
+    // Dirty flag — set when the user actively touches the card (cat pill or
+    // comment input). Pre-filled state from server/snapshot does NOT count as
+    // dirty. We use it to decide whether 'Дальше' should commit a record or
+    // just skip the song (letting it return later for review).
+    let cardDirty = false;
     // Persist current card state (rating/categories/comment) without advancing.
     // Rating/category taps fire IMMEDIATELY — no debounce — so brief navigations
     // never lose data. Comment typing is debounced (800ms) to batch keystrokes.
@@ -2477,12 +2482,19 @@
     window.__flushCardSave = () => persistNow().catch(() => {});
 
     document.getElementById('skip-btn').addEventListener('click', () => {
-      // 'Дальше' just advances. State should already be saved; flush any pending save first.
+      // 'Дальше' commits ONLY if the user actually engaged with this card
+      // (typed a comment, or toggled a category). Otherwise the song is
+      // skipped without a record so it stays in rotation for later review.
       if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
       const ta = document.getElementById('comment-input');
       const commentEdited = ta && ta.dataset.edited === '1';
       const comment = ta ? ta.value.trim() : '';
       const cats = [...selectedCategories].join(',');
+      if (!cardDirty) {
+        // Bare skip — no commit. Just advance.
+        advanceWithoutSave();
+        return;
+      }
       const action = cats ? 'assign' : (currentRating ? 'rate' : 'skip');
       act(action, cats || null, currentRating || null);
     });
@@ -2490,6 +2502,7 @@
     document.getElementById('remove-link').addEventListener('click', () => onRemoveCurrent());
 
     cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => {
+      cardDirty = true;
       const cat = b.dataset.cat;
       if (selectedCategories.has(cat)) { selectedCategories.delete(cat); b.classList.remove('selected'); }
       else { selectedCategories.add(cat); b.classList.add('selected'); }
@@ -2532,6 +2545,7 @@
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
       ta.dataset.edited = '1';
+      cardDirty = true;
       saveDraft(song.id, ta.value);
       snapshotSet(song.id, { comment: ta.value });
       refreshSkipLabel();
@@ -2750,6 +2764,21 @@
   }
 
   /* ===== Actions ===== */
+  // Bare 'Дальше' tap (no comment, no category change). Doesn't write to the
+  // server — the song stays eligible to appear again later for review.
+  async function advanceWithoutSave() {
+    if (!currentSong || actInFlight) return;
+    actInFlight = true;
+    if (cardEl) {
+      cardEl.style.opacity = '0';
+      cardEl.style.transform = 'scale(0.97)';
+      cardEl.style.transition = 'opacity 0.22s, transform 0.22s';
+      await new Promise(r => setTimeout(r, 220));
+    }
+    actInFlight = false;
+    await loadNext();
+  }
+
   async function act(action, category, rating) {
     if (!currentSong || actInFlight) return;
     actInFlight = true;
