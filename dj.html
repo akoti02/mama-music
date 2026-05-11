@@ -455,11 +455,14 @@
   function lsGetJSON(k, d) { try { const v = lsGet(k, null); return v ? JSON.parse(v) : d; } catch { return d; } }
   function lsSetJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
-  // Identity: prefer the main app's name (Юля/Артур/Света from akoev.com),
-  // otherwise default to "Lovers" — never prompt.
+  // Identity: prefer the main app's name (Юля/Артур/Света from akoev.com).
+  // If the main name isn't set yet AND a per-tab identity was picked here,
+  // use that. Otherwise default to the guest label.
+  const TAB_NAME = sessionStorage.getItem('lovers_dj_identity_v1') || '';
   let myName = (() => {
     const mainName = (lsGet(MAIN_USER_KEY, '') || '').trim();
     if (mainName && OWNER_NAMES.has(mainName)) return mainName;
+    if (TAB_NAME && (OWNER_NAMES.has(TAB_NAME) || TAB_NAME === DEFAULT_GUEST)) return TAB_NAME;
     return DEFAULT_GUEST;
   })();
 
@@ -547,15 +550,52 @@
     throw lastErr || new Error('fetch failed');
   }
 
-  /* ===== Identity (no prompt — derived automatically) ===== */
+  /* ===== Identity =====
+     Auto-detected from main app. If a stranger opens the link straight
+     (no name in main-app storage) we show a small "это я" picker so an
+     owner (Артур/Юля/Света) can claim ownership for this tab. Otherwise
+     default to the group guest label. */
   function applyIdentity() {
-    const ob = document.getElementById('ob-overlay'); if (ob) ob.remove();
     const strip = document.getElementById('me-strip');
     const fab = document.getElementById('add-fab');
-    const changeBtn = document.getElementById('change-name');
-    if (changeBtn) changeBtn.remove();
     if (strip) { strip.hidden = false; document.getElementById('me-name').textContent = myName; }
     if (fab) fab.hidden = false;
+    // Wire the small "I'm actually..." control so an owner visiting from a
+    // device that doesn't have the main app's identity can claim it here.
+    const ob = document.getElementById('ob-overlay'); if (ob) ob.remove();
+    const change = document.getElementById('change-name');
+    if (change) {
+      change.textContent = (myName === DEFAULT_GUEST) ? 'это я: Артур / Юля / Света' : 'сменить';
+      change.onclick = () => openIdentityPicker();
+    }
+  }
+  function openIdentityPicker() {
+    if (document.getElementById('id-picker')) return;
+    const el = document.createElement('div');
+    el.id = 'id-picker';
+    el.className = 'ob-overlay';
+    el.innerHTML = `<div class="ob-card">
+      <h2>Кто ты?</h2>
+      <p>Артур/Юля/Света — у вас полный доступ. Остальные участвуют как «${escapeHtml(DEFAULT_GUEST)}».</p>
+      <button class="primary" data-pick="Юля">Юля</button>
+      <button class="primary" data-pick="Артур" style="margin-top:8px">Артур</button>
+      <button class="primary" data-pick="Света" style="margin-top:8px">Света</button>
+      <button class="primary" data-pick="${escapeHtml(DEFAULT_GUEST)}" style="margin-top:8px;background:var(--surface-3);color:var(--text);border:1px solid var(--line-2)">${escapeHtml(DEFAULT_GUEST)}</button>
+    </div>`;
+    document.body.appendChild(el);
+    el.querySelectorAll('button[data-pick]').forEach(b => {
+      b.addEventListener('click', () => {
+        const picked = b.dataset.pick;
+        sessionStorage.setItem('lovers_dj_identity_v1', picked);
+        // Owners also write to the main-app key so any other open tab uses
+        // the same identity. Guests don't touch the shared key.
+        if (OWNER_NAMES.has(picked)) lsSet(MAIN_USER_KEY, picked);
+        myName = picked;
+        el.remove();
+        applyIdentity();
+        loadSongs();
+      });
+    });
   }
 
   /* ===== Songs list ===== */
@@ -653,7 +693,17 @@
       b.addEventListener('click', () => deleteComment(cid));
     });
     document.querySelectorAll('button.flag-btn[data-flag]').forEach(b => {
-      b.addEventListener('click', () => toggleFlag(parseInt(b.dataset.flag, 10), b.classList.contains('active')));
+      b.addEventListener('click', async () => {
+        if (b.disabled) return;
+        b.disabled = true;
+        // Optimistic UI flip
+        const wasActive = b.classList.contains('active');
+        b.classList.toggle('active', !wasActive);
+        b.textContent = !wasActive ? '✓ Помечено как не подходит' : '🚫 Не подходит';
+        await toggleFlag(parseInt(b.dataset.flag, 10), wasActive);
+        // loadSongs() will re-render and re-wire; if not yet, leave disabled
+        // so the user can't double-click before drain finishes.
+      });
     });
   }
   function deleteComment(commentId) {
@@ -712,7 +762,7 @@
     try {
       const r = await fetchWithRetry(`${API}/api/dj/add`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artist, title, by: myName })
+        body: JSON.stringify({ artist, title, by: myName, comment })
       }, 2, 25000);
       const d = await r.json();
       if (!r.ok && r.status !== 409) {
@@ -721,26 +771,28 @@
         btn.disabled = false;
         return;
       }
-      // If 409 → already exists. We still add the comment if any.
       if (r.status === 409) {
         document.getElementById('add-status').textContent = 'Эта песня уже в подборке.';
         document.getElementById('add-status').classList.add('error');
-      }
-      // Add the comment if provided
-      if (comment && d.song_id) {
-        qPush({ kind: '/api/dj/comment', payload: { song_id: d.song_id, by: myName, comment } });
-        qDrain();
+        // For an existing song the server didn't save the new comment.
+        // Queue it as a separate comment so it lands.
+        if (comment && d.song_id) {
+          qPush({ kind: '/api/dj/comment', payload: { song_id: d.song_id, by: myName, comment } });
+          qDrain();
+        }
       }
       modal.classList.remove('open');
       showToast(r.status === 409 ? 'Уже было — открыл' : 'Добавлено');
       btn.disabled = false;
       loadSongs();
     } catch (e) {
-      document.getElementById('add-status').textContent = 'Нет связи. Попробую позже.';
+      document.getElementById('add-status').textContent = 'Нет связи. Сохраню в очередь — отправится когда сеть появится.';
       document.getElementById('add-status').classList.add('error');
       btn.disabled = false;
-      // Still queue the add so it goes when network returns
-      qPush({ kind: '/api/dj/add', payload: { artist, title, by: myName, _local_comment: comment } });
+      // Queue the add with the comment in the same payload — server handles
+      // both fields, so the comment lands together with the song.
+      qPush({ kind: '/api/dj/add', payload: { artist, title, by: myName, comment } });
+      modal.classList.remove('open');
     }
   });
 

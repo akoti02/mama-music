@@ -2175,21 +2175,22 @@
       const serverRating = server?.rating || 0;
       const serverCats = server?.category || '';
       const serverComment = (server?.comment || '').trim();
-      // What's missing on the server? Resend whenever ANY local field differs.
-      // Special case: comment-only snapshot (no rating, no cats) should also
-      // resend, but as a 'comment' action (server stores it via drafts path,
-      // not as a fake skip row that drops the song out of discovery).
+      // Server-authoritative window: if the server has a row that was written
+      // AFTER our local snapshot's ts, trust the server completely (another
+      // device made a fresher change). Drop the snapshot and skip resend.
+      if (server && server.created_at && snap.ts && server.created_at > snap.ts) {
+        delete localSnaps[sidStr];
+        continue;
+      }
       const ratingMismatch = (localRating > 0 && serverRating !== localRating);
       const catsMismatch = (cats && serverCats !== cats);
       const commentMismatch = (localComment && serverComment !== localComment);
       const hasAnyDelta = ratingMismatch || catsMismatch || commentMismatch;
       if (hasAnyDelta) {
-        // Pick action based on what the user actually has, NOT a default
-        // 'skip' that would silently drop the song from discovery.
         let action;
         if (cats) action = 'assign';
         else if (localRating > 0) action = 'rate';
-        else action = 'comment'; // comment-only — server stores via drafts path
+        else action = 'comment';
         const payload = { song_id: sid, user: userName, action };
         if (cats) payload.category = cats;
         if (localRating > 0) payload.rating = localRating;
@@ -2197,7 +2198,6 @@
         qEnqueue(payload);
         resent++;
       }
-      // Clear snapshot if server has caught up.
       const allMatch = (localRating === serverRating) && ((cats || '') === (serverCats || '')) && (localComment === serverComment);
       if (!hasAnyDelta && allMatch) delete localSnaps[sidStr];
     }
@@ -2535,6 +2535,9 @@
     // dirty. We use it to decide whether 'Дальше' should commit a record or
     // just skip the song (letting it return later for review).
     let cardDirty = false;
+    // Mirror dirty state onto the card element so the swipe handler (outside
+    // this closure) can read it. Keeps the source of truth here.
+    function setDirty(v) { cardDirty = v; if (cardEl) cardEl.dataset.dirty = v ? '1' : '0'; }
     // Persist current card state (rating/categories/comment) without advancing.
     // Rating/category taps fire IMMEDIATELY — no debounce — so brief navigations
     // never lose data. Comment typing is debounced (800ms) to batch keystrokes.
@@ -2590,7 +2593,7 @@
     document.getElementById('remove-link').addEventListener('click', () => onRemoveCurrent());
 
     cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => {
-      cardDirty = true;
+      setDirty(true);
       const cat = b.dataset.cat;
       if (selectedCategories.has(cat)) { selectedCategories.delete(cat); b.classList.remove('selected'); }
       else { selectedCategories.add(cat); b.classList.add('selected'); }
@@ -2633,11 +2636,15 @@
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
       ta.dataset.edited = '1';
-      cardDirty = true;
+      setDirty(true);
       saveDraft(song.id, ta.value);
       snapshotSet(song.id, { comment: ta.value });
       refreshSkipLabel();
-      apiDraftPush(song.id, ta.value).catch(() => {});
+      // Debounce server-side draft push by 800ms so we don't flood the API
+      // (and so a packet-reorder race can't have draft overwrite the more
+      // recent committed comment).
+      if (commentServerTimer) clearTimeout(commentServerTimer);
+      commentServerTimer = setTimeout(() => apiDraftPush(song.id, ta.value).catch(() => {}), 800);
       if (currentRating > 0 || selectedCategories.size > 0) {
         persistCardDebounced();
       } else {
@@ -2720,32 +2727,53 @@
         // swipe left → next; respects a pre-tagged category
         const pillSel = cardHost.querySelector('.cat-pill.selected');
         if (pillSel) act('assign', pillSel.dataset.cat);
-        else act('skip');
+        else if (cardDirtyFlag()) act('skip');
+        else advanceWithoutSave();
       } else {
         // swipe right → back
         goBack();
       }
     }, { passive: true });
+    // Android Chrome / Samsung Internet can interrupt a touch with a system
+    // gesture (pull-to-refresh, back-swipe). Make sure we don't leave the
+    // tracker dangling — that would mis-fire the next legitimate touch.
+    el.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+  }
+  // Read cardDirty without exposing it globally (it lives inside the renderCard
+  // closure). The latest cardDirty is mirrored onto cardEl.dataset for swipe.
+  function cardDirtyFlag() {
+    return cardEl?.dataset?.dirty === '1';
   }
 
   function renderEmpty() {
     currentSong = null;
     resetAlbumColor();
+    // Distinguish "category has zero songs" from "you've processed everything".
+    const inCat = currentCat;
+    const isEmptyCat = inCat && progressTotal === 0;
+    const isAllDone = !isEmptyCat && progressTotal > 0 && progressN >= progressTotal;
+    const heading = isEmptyCat
+      ? `В разделе «${escapeHtml(inCat)}» пока пусто`
+      : escapeHtml(t('empty.h'));
+    const subBody = isEmptyCat
+      ? `Сюда попадают только песни, отнесённые к этому разделу. Перейди в «Общий» и помечай оттуда.`
+      : (isAllDone ? escapeHtml(tGender('empty.body')) : escapeHtml(tGender('empty.body')));
     cardHost.innerHTML = `
       <div class="empty-state">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
-        <h2>${escapeHtml(t('empty.h'))}</h2>
-        <p>${escapeHtml(tGender('empty.body'))}</p>
+        <h2>${heading}</h2>
+        <p>${subBody}</p>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px">
-          <button class="empty-cta" type="button" id="empty-mine">${escapeHtml(t('empty.mine'))}</button>
-          <button class="empty-cta" type="button" id="empty-all" style="background:transparent;color:var(--text);border:1px solid var(--line-2);box-shadow:none">${escapeHtml(t('empty.all'))}</button>
-          <button class="empty-cta" type="button" id="empty-add" style="background:transparent;color:var(--text-dim);border:1px dashed var(--line-2);box-shadow:none">${escapeHtml(t('empty.add'))}</button>
+          ${isEmptyCat ? `<button class="empty-cta" type="button" id="empty-go-general">Перейти в Общий</button>` : ''}
+          <button class="empty-cta" type="button" id="empty-pick" style="background:transparent;color:var(--text);border:1px solid var(--line-2);box-shadow:none">Сменить раздел</button>
+          <button class="empty-cta" type="button" id="empty-all" style="background:transparent;color:var(--text-dim);border:1px dashed var(--line-2);box-shadow:none">${escapeHtml(t('empty.all'))}</button>
         </div>
       </div>
     `;
-    document.getElementById('empty-mine').addEventListener('click', openMine);
+    const goGeneral = document.getElementById('empty-go-general');
+    if (goGeneral) goGeneral.addEventListener('click', () => { setCat(''); enterDiscovery(); });
+    document.getElementById('empty-pick').addEventListener('click', () => showCatPicker());
     document.getElementById('empty-all').addEventListener('click', openAll);
-    document.getElementById('empty-add').addEventListener('click', openAdd);
   }
 
   /* ===== Player mount: YouTube primary + Spotify/SoundCloud/Apple fallbacks ===== */
@@ -2777,9 +2805,17 @@
       if (btn) btn.addEventListener('click', () => loadAlternatives(song));
     }
   }
+  // Track whether the user has interacted at all this session. iOS Safari and
+  // some Android browsers block iframe autoplay until first gesture; sending
+  // autoplay=1 then doesn't help and just looks broken. Enable autoplay only
+  // once we've seen a real tap.
+  let hasUserGesture = false;
+  window.addEventListener('pointerdown', () => { hasUserGesture = true; }, { once: false, capture: true });
+  window.addEventListener('touchstart', () => { hasUserGesture = true; }, { once: false, capture: true, passive: true });
   function mountYTIframe(wrap, videoId) {
     const iframe = document.createElement('iframe');
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1`;
+    const ap = hasUserGesture ? '1' : '0';
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=${ap}&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1`;
     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
     iframe.allowFullscreen = true;
     iframe.loading = 'lazy';
@@ -3686,14 +3722,24 @@
     for (const sid of songIds) {
       const s = pendingSnap[sid];
       if (!s) continue;
-      // Build a payload from whatever the snapshot has
-      if (!s.rating && !s.categories && !s.comment) { snapshotClear(sid); continue; }
+      // Skip totally empty snapshots — nothing to recover.
+      const hasState = s.rating || s.categories || (s.comment !== undefined && s.comment !== null);
+      if (!hasState) { snapshotClear(sid); continue; }
       const cats = (s.categories || '').split(',').filter(Boolean).join(',');
-      const action = cats ? 'assign' : (s.rating ? 'rate' : 'skip');
+      // Comment-only snapshots use 'comment' action (server stores via drafts).
+      // Anything with rating or category uses 'assign'/'rate' so it lands in
+      // library_actions and counts toward progress.
+      let action;
+      if (cats) action = 'assign';
+      else if (s.rating) action = 'rate';
+      else if (s.comment !== undefined && s.comment !== null) action = 'comment';
+      else action = 'skip';
       const payload = { song_id: parseInt(sid, 10), user: userName, action };
       if (cats) payload.category = cats;
       if (s.rating) payload.rating = s.rating;
-      if (s.comment) payload.comment = s.comment;
+      // Include comment even if it's an empty string — that signals "user
+      // explicitly cleared the note" and the server needs to propagate it.
+      if (s.comment !== undefined && s.comment !== null) payload.comment = s.comment;
       qEnqueue(payload);
     }
     await qDrain();
