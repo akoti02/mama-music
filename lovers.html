@@ -581,7 +581,7 @@
     el.className = 'ob-overlay';
     el.innerHTML = `<div class="ob-card">
       <h2>Кто ты?</h2>
-      <p>Артур/Юля/Света — у вас полный доступ. Остальные участвуют как «${escapeHtml(DEFAULT_GUEST)}».</p>
+      <p>Юля и Артур — полный доступ (могут удалять песни). Света и остальные участвуют как «${escapeHtml(DEFAULT_GUEST)}».</p>
       <button class="primary" data-pick="Юля">Юля</button>
       <button class="primary" data-pick="Артур" style="margin-top:8px">Артур</button>
       <button class="primary" data-pick="Света" style="margin-top:8px">Света</button>
@@ -674,8 +674,8 @@
         ${flagBtn}
         <div class="comments">${comments}</div>
         <div class="add-comment">
-          <input type="text" placeholder="Коммент от ${escapeHtml(myName)}..." data-cmt-sid="${s.id}" maxlength="500">
-          <button data-cmt-send="${s.id}">Отправить</button>
+          <input type="text" placeholder="Коммент от ${escapeHtml(myName)}..." aria-label="Комментарий: ${escapeHtml(s.artist)} — ${escapeHtml(s.title)}" data-cmt-sid="${s.id}" maxlength="500">
+          <button data-cmt-send="${s.id}" aria-label="Отправить комментарий">Отправить</button>
         </div>
       </div>
     </div>`;
@@ -750,12 +750,41 @@
     qDrain().then(() => loadSongs());
   }
 
-  /* ===== Remove song (Юля only) ===== */
+  /* ===== Remove song (Юля / Артур only) ===== */
   function removeSong(songId) {
     if (myName !== 'Юля' && myName !== 'Артур') return;
+    // Find the song before removal so we can re-add on undo.
+    const songEl = document.querySelector(`.song[data-sid="${songId}"]`);
+    const titleEl = songEl?.querySelector('.song-title');
+    const artistEl = songEl?.querySelector('.song-artist');
+    const title = titleEl?.textContent || '';
+    const artist = artistEl?.textContent || '';
     if (!confirm('Точно удалить эту песню из общего LOVERS?')) return;
     qPush({ kind: '/api/lovers/remove', payload: { song_id: songId, by: myName } });
+    showUndoToast(`Удалено: ${title}`, () => {
+      // Re-create the song. Server's add endpoint accepts a removed song and
+      // restores it (UPDATE removed_at = NULL).
+      if (artist && title) {
+        qPush({ kind: '/api/lovers/add', payload: { artist, title, by: myName } });
+        qDrain().then(loadSongs);
+      }
+    });
     qDrain().then(() => loadSongs());
+  }
+  // Toast with an "Отменить" link. Disappears after 6 seconds.
+  let undoTimer = null;
+  function showUndoToast(text, onUndo) {
+    if (undoTimer) clearTimeout(undoTimer);
+    const el = toastEl;
+    el.innerHTML = `<span>${escapeHtml(text)}</span> · <a href="#" style="color:#fff;text-decoration:underline;margin-left:4px" id="toast-undo">Отменить</a>`;
+    el.classList.add('show');
+    el.classList.remove('error');
+    document.getElementById('toast-undo').addEventListener('click', e => {
+      e.preventDefault();
+      el.classList.remove('show');
+      onUndo();
+    });
+    undoTimer = setTimeout(() => el.classList.remove('show'), 6000);
   }
 
   /* ===== Add song ===== */
@@ -820,7 +849,7 @@
   const player = document.getElementById('player');
   function openPlayer(ytId) {
     if (!ytId) return;
-    document.getElementById('player-inner').innerHTML = `<iframe src="https://www.youtube.com/embed/${ytId}?autoplay=1&modestbranding=1&rel=0&playsinline=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    document.getElementById('player-inner').innerHTML = `<iframe title="YouTube плеер" src="https://www.youtube.com/embed/${ytId}?autoplay=1&modestbranding=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
     player.classList.add('open');
   }
   function closePlayer() {

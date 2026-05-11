@@ -2039,13 +2039,21 @@
   const Q_KEY = 'venchanie_pending_actions_v1';
   function qGet() { return lsGetJSON(Q_KEY, []); }
   function qSet(arr) { lsSetJSON(Q_KEY, arr); }
+  const Q_CAP = 500; // Pathological-growth guard for localStorage (iOS ~5MB).
   function qEnqueue(payload) {
     const q = qGet();
     // Idempotency: collapse consecutive entries for the same (song_id, user, action) — last write wins.
     const key = `${payload.song_id}|${payload.user}|${payload.action}|${payload.category||''}`;
     const idx = q.findIndex(x => `${x.song_id}|${x.user}|${x.action}|${x.category||''}` === key);
     const item = Object.assign({}, payload, { _id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), _t: Date.now() });
-    if (idx >= 0) q[idx] = item; else q.push(item);
+    if (idx >= 0) q[idx] = item;
+    else if (q.length < Q_CAP) q.push(item);
+    else {
+      // Cap reached — drop oldest entry (FIFO) so new writes still land.
+      diag('queue_cap_drop_oldest', { dropped: q[0]?.song_id, action: q[0]?.action });
+      q.shift();
+      q.push(item);
+    }
     qSet(q);
     return item._id;
   }
@@ -2819,13 +2827,15 @@
   // autoplay=1 then doesn't help and just looks broken. Enable autoplay only
   // once we've seen a real tap.
   let hasUserGesture = false;
-  window.addEventListener('pointerdown', () => { hasUserGesture = true; }, { once: false, capture: true });
-  window.addEventListener('touchstart', () => { hasUserGesture = true; }, { once: false, capture: true, passive: true });
+  // Once we've seen ONE gesture, the flag stays true; no need to keep listening.
+  window.addEventListener('pointerdown', () => { hasUserGesture = true; }, { once: true, capture: true });
+  window.addEventListener('touchstart', () => { hasUserGesture = true; }, { once: true, capture: true, passive: true });
   function mountYTIframe(wrap, videoId) {
     const iframe = document.createElement('iframe');
     const ap = hasUserGesture ? '1' : '0';
     iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=${ap}&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1`;
     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    iframe.title = 'YouTube плеер';
     iframe.allowFullscreen = true;
     iframe.loading = 'lazy';
     wrap.innerHTML = '';
