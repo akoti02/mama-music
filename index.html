@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#08080a">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2037,26 +2040,38 @@
     }
 
     // Persist current card state (rating/categories/comment) without advancing.
+    // Rating/category taps fire IMMEDIATELY — no debounce — so brief navigations
+    // never lose data. Comment typing is debounced (800ms) to batch keystrokes.
     let saveTimer = null;
-    function persistCard() {
-      if (saveTimer) clearTimeout(saveTimer);
-      saveTimer = setTimeout(async () => {
-        if (currentSong?.id !== song.id) return;
-        const ta = document.getElementById('comment-input');
-        const commentEdited = ta && ta.dataset.edited === '1';
-        const comment = ta ? ta.value.trim() : '';
-        const cats = [...selectedCategories].join(',');
-        const action = cats ? 'assign' : (currentRating ? 'rate' : 'skip');
-        const payload = { song_id: song.id, user: userName, action };
-        if (cats) payload.category = cats;
-        if (currentRating) payload.rating = currentRating;
-        if (commentEdited || comment) payload.comment = comment;
-        showSaveIndicator('saving');
-        const res = await apiAction(payload);
-        if (res.ok) showSaveIndicator('saved');
-        else showSaveIndicator('error');
-      }, 350);
+    async function persistNow() {
+      if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+      if (currentSong?.id !== song.id) return false;
+      const ta = document.getElementById('comment-input');
+      const commentEdited = ta && ta.dataset.edited === '1';
+      const comment = ta ? ta.value.trim() : '';
+      const cats = [...selectedCategories].join(',');
+      const action = cats ? 'assign' : (currentRating ? 'rate' : 'skip');
+      // Skip if there is nothing to save — but ALWAYS save when there's any state
+      const hasState = currentRating > 0 || selectedCategories.size > 0 || (commentEdited && (comment || ta?.dataset.edited === '1'));
+      if (!hasState && action === 'skip') return true;
+      const payload = { song_id: song.id, user: userName, action };
+      if (cats) payload.category = cats;
+      if (currentRating) payload.rating = currentRating;
+      if (commentEdited) payload.comment = comment;
+      else if (comment) payload.comment = comment;
+      showSaveIndicator('saving');
+      const res = await apiAction(payload);
+      if (res.ok) { showSaveIndicator('saved'); return true; }
+      showSaveIndicator('error');
+      return false;
     }
+    function persistCard() { return persistNow(); } // rating/category callers
+    function persistCardDebounced() {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => persistNow(), 800);
+    }
+    // Expose flush so overlay-open / unload handlers can force a save.
+    window.__flushCardSave = () => persistNow().catch(() => {});
 
     document.getElementById('skip-btn').addEventListener('click', () => {
       // 'Дальше' just advances. State should already be saved; flush any pending save first.
@@ -2118,14 +2133,13 @@
       // We rely on the fact that rating-tap or cat-tap will create the row;
       // comment-only typing stays as a localStorage draft until those happen.
       // Once a row exists (rating or cat clicked), debounced server save kicks in.
+      // Always push the draft to the server safety-net (separate from library_actions)
+      apiDraftPush(song.id, ta.value).catch(() => {});
       if (currentRating > 0 || selectedCategories.size > 0) {
-        if (commentServerTimer) clearTimeout(commentServerTimer);
-        commentServerTimer = setTimeout(() => {
-          if (currentSong?.id !== song.id) return;
-          persistCard();
-        }, 800);
+        // Once a row already exists for this song, debounce-save comment alongside.
+        persistCardDebounced();
       } else {
-        showSaveIndicator('saved'); // local-only
+        showSaveIndicator('saved'); // local + server-draft only
       }
     });
     ta.dataset.edited = '0';
@@ -2410,8 +2424,9 @@
     if (seenStack.length < 30) seenIdx = seenStack.length - 1;
     renderCard(d.song);
   }
-  function goBack() {
+  async function goBack() {
     if (seenIdx <= 0) return;
+    if (typeof window.__flushCardSave === 'function') await window.__flushCardSave();
     seenIdx--;
     renderCard(seenStack[seenIdx]);
   }
@@ -2439,8 +2454,21 @@
   document.getElementById('share-fab').addEventListener('click', doShare);
 
   /* ===== Overlay open/close ===== */
-  function openOv(id) { document.getElementById(id).classList.add('open'); }
+  function openOv(id) {
+    // Flush any pending card save before navigating away — never lose state.
+    if (typeof window.__flushCardSave === 'function') window.__flushCardSave();
+    document.getElementById(id).classList.add('open');
+  }
   function closeOv(id) { document.getElementById(id).classList.remove('open'); }
+  // Also flush on tab hide / page unload — covers iOS Safari swipe-up, lock-screen, etc.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && typeof window.__flushCardSave === 'function') {
+      window.__flushCardSave();
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    if (typeof window.__flushCardSave === 'function') window.__flushCardSave();
+  });
   document.getElementById('search-close').addEventListener('click', () => closeOv('search-overlay'));
   document.getElementById('all-close').addEventListener('click', () => closeOv('all-overlay'));
   document.getElementById('mine-close').addEventListener('click', () => closeOv('mine-overlay'));
@@ -2583,9 +2611,10 @@
   }
 
   /* ===== Jump to song in player (from overlay rows) ===== */
-  function openSongInPlayer(song) {
+  async function openSongInPlayer(song) {
     if (!song) return;
-    // Push to history so back works
+    // Flush any pending state on the PREVIOUS card before navigating to a different song.
+    if (typeof window.__flushCardSave === 'function') await window.__flushCardSave();
     seenStack.push(song);
     if (seenStack.length > 30) seenStack.splice(0, seenStack.length - 30);
     seenIdx = seenStack.length - 1;
