@@ -9,6 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<!-- build: 2026-05-11T13:45 -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1040,6 +1041,26 @@
     color: var(--text);
   }
 
+  /* ===== Unsaved-changes badge (global, floats near top) ===== */
+  .unsaved-badge {
+    position: fixed; top: 12px; left: 50%; transform: translate(-50%, -8px);
+    z-index: 1500;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: rgba(217, 102, 102, 0.95);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 6px 20px rgba(217, 102, 102, 0.35);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s var(--ease-out);
+    cursor: pointer;
+    max-width: calc(100vw - 32px);
+  }
+  .unsaved-badge.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .unsaved-badge .unsaved-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 1.4s ease-in-out infinite; }
+  .unsaved-badge:active { transform: translate(-50%, 1px); }
+
   /* ===== Save indicator on card comment ===== */
   .save-indicator {
     display: inline-flex; align-items: center; gap: 6px;
@@ -1433,6 +1454,12 @@
 <!-- Toast -->
 <div class="toast" id="toast" role="status"></div>
 
+<!-- Unsaved-changes badge (shows if queue has items) -->
+<button class="unsaved-badge" id="unsaved-badge" type="button" aria-live="polite">
+  <span class="unsaved-dot"></span>
+  <span class="unsaved-label">Не отправлено</span>
+</button>
+
 <script>
 (function() {
   'use strict';
@@ -1672,6 +1699,18 @@
   let ytPlayer = null;
   let ytReady = false;
   const drafts = lsGetJSON(K_DRAFTS, {}); // { song_id: comment }
+  // Per-song card snapshot — survives reload so half-finished state isn't lost.
+  // Shape: { [song_id]: { rating, categories: 'a,b', comment, ts } }
+  const K_SNAPSHOTS = 'venchanie_card_snapshots_v1';
+  const snapshots = lsGetJSON(K_SNAPSHOTS, {});
+  function snapshotSet(songId, partial) {
+    const cur = snapshots[songId] || {};
+    snapshots[songId] = Object.assign(cur, partial, { ts: Date.now() });
+    lsSetJSON(K_SNAPSHOTS, snapshots);
+  }
+  function snapshotClear(songId) {
+    if (snapshots[songId]) { delete snapshots[songId]; lsSetJSON(K_SNAPSHOTS, snapshots); }
+  }
 
   /* ===== Toast ===== */
   const toastEl = document.getElementById('toast');
@@ -1764,22 +1803,38 @@
     img.src = imgUrl;
   }
 
-  /* ===== fetch with retry + timeout ===== */
-  async function fetchWithRetry(url, opts, retries = 2, timeoutMs = 6000) {
+  /* ===== fetch with retry + timeout =====
+     20s timeout (was 6s) — iPhone on weak cellular can take that long to
+     complete an HTTPS POST after waking from background. 3 retries with
+     exponential backoff. */
+  async function fetchWithRetry(url, opts, retries = 3, timeoutMs = 20000) {
     let lastErr = null;
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const ctrl = new AbortController();
         const tm = setTimeout(() => ctrl.abort(), timeoutMs);
-        const r = await fetch(url, Object.assign({}, opts || {}, { signal: ctrl.signal }));
+        const r = await fetch(url, Object.assign({}, opts || {}, { signal: ctrl.signal, cache: 'no-store' }));
         clearTimeout(tm);
         return r;
       } catch (e) {
         lastErr = e;
-        if (attempt < retries) await new Promise(r => setTimeout(r, 250 * Math.pow(2, attempt)));
+        if (attempt < retries) await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt)));
       }
     }
     throw lastErr || new Error('fetch failed');
+  }
+  /* ===== Diag: silent telemetry for chasing save failures =====
+     Sent fire-and-forget. Logged into D1 `diag` table. */
+  function diag(kind, payload) {
+    try {
+      const body = JSON.stringify({ user: userName || null, kind, payload: payload || null });
+      if (navigator.sendBeacon) {
+        const blob = new Blob([body], { type: 'text/plain' });
+        navigator.sendBeacon(`${API}/api/diag`, blob);
+      } else {
+        fetch(`${API}/api/diag`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(()=>{});
+      }
+    } catch (e) { /* ignore */ }
   }
 
   /* ===== API helpers ===== */
@@ -1793,12 +1848,195 @@
     if (!r.ok) throw new Error('next-failed');
     return await r.json();
   }
-  async function apiAction(payload) {
+  /* ===== Bulletproof action queue =====
+     Every state change is first written to a localStorage queue, then sent
+     to the server. If the network fails (or iOS Safari aborts the fetch
+     mid-flight when the tab is backgrounded), the entry stays in the queue
+     and is drained on next boot, 'online' event, or visibilitychange-visible.
+     On visibilitychange-hidden we ALSO fire-and-forget every pending entry
+     via navigator.sendBeacon — the browser guarantees delivery even after
+     the tab is hidden / closed. */
+  const Q_KEY = 'venchanie_pending_actions_v1';
+  function qGet() { return lsGetJSON(Q_KEY, []); }
+  function qSet(arr) { lsSetJSON(Q_KEY, arr); }
+  function qEnqueue(payload) {
+    const q = qGet();
+    // Idempotency: collapse consecutive entries for the same (song_id, user, action) — last write wins.
+    const key = `${payload.song_id}|${payload.user}|${payload.action}|${payload.category||''}`;
+    const idx = q.findIndex(x => `${x.song_id}|${x.user}|${x.action}|${x.category||''}` === key);
+    const item = Object.assign({}, payload, { _id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), _t: Date.now() });
+    if (idx >= 0) q[idx] = item; else q.push(item);
+    qSet(q);
+    return item._id;
+  }
+  function qRemove(itemId) {
+    const q = qGet().filter(x => x._id !== itemId);
+    qSet(q);
+  }
+  let draining = false;
+  async function qDrain() {
+    if (draining) return;
+    draining = true;
     try {
-      const r = await fetchWithRetry(`${API}/api/library/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!r.ok) return { ok: false };
-      return await r.json();
-    } catch (e) { console.warn('action', e?.message); return { ok: false }; }
+      let q = qGet();
+      while (q.length > 0) {
+        const item = q[0];
+        const { _id, _t, _attempts, ...payload } = item;
+        let r = null;
+        let networkErr = null;
+        try {
+          r = await fetchWithRetry(`${API}/api/library/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }, 3, 20000);
+        } catch (e) {
+          networkErr = e;
+        }
+        if (networkErr) {
+          // Network failure — keep item in queue, retry later. Bump attempts.
+          const cur = qGet();
+          const idx = cur.findIndex(x => x._id === _id);
+          if (idx >= 0) { cur[idx]._attempts = (cur[idx]._attempts || 0) + 1; qSet(cur); }
+          diag('drain_network_err', { song_id: payload.song_id, action: payload.action, attempts: (_attempts || 0) + 1, err: String(networkErr?.message || networkErr) });
+          break;
+        }
+        if (r.ok) {
+          qRemove(_id);
+          q = qGet();
+          continue;
+        }
+        // Non-2xx response. 4xx = client error, won't succeed on retry → drop with diag.
+        // 5xx = server error, keep for retry.
+        const status = r.status;
+        let bodyText = '';
+        try { bodyText = await r.text(); } catch {}
+        if (status >= 400 && status < 500) {
+          diag('drain_4xx_drop', { song_id: payload.song_id, action: payload.action, status, body: bodyText.slice(0, 300) });
+          qRemove(_id);
+          q = qGet();
+        } else {
+          // 5xx — keep, retry later
+          const cur = qGet();
+          const idx = cur.findIndex(x => x._id === _id);
+          if (idx >= 0) { cur[idx]._attempts = (cur[idx]._attempts || 0) + 1; qSet(cur); }
+          diag('drain_5xx_keep', { song_id: payload.song_id, action: payload.action, status, body: bodyText.slice(0, 300), attempts: (_attempts || 0) + 1 });
+          break;
+        }
+      }
+    } finally {
+      draining = false;
+      refreshUnsavedBadge();
+    }
+  }
+  function qFlushBeacon() {
+    // Fire-and-forget every queued item via navigator.sendBeacon.
+    // Use a Blob with text/plain so the browser does NOT require a CORS preflight
+    // (the Worker still parses the body as JSON via req.json()).
+    const q = qGet();
+    if (!q.length || !navigator.sendBeacon) return;
+    for (const item of q) {
+      const { _id, _t, ...payload } = item;
+      try {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain' });
+        navigator.sendBeacon(`${API}/api/library/action`, blob);
+      } catch (e) { /* fire-and-forget */ }
+    }
+    // Don't clear queue — drain on next boot will confirm via fetch and remove.
+  }
+
+  async function apiAction(payload) {
+    // 1) ALWAYS enqueue first — this is the durable write.
+    qEnqueue(payload);
+    refreshUnsavedBadge();
+    // 2) Try to drain immediately (sync the queue to server).
+    await qDrain();
+    // 3) Tell the caller whether the queue is empty (i.e. our write reached the server)
+    return { ok: qGet().length === 0 };
+  }
+  /* ===== Reconciliation =====
+     Periodically (and on boot/visibility-visible) pull what the server thinks
+     it has saved for this user, and compare against our local snapshots. If a
+     local snapshot has rating/category/comment that the server is MISSING,
+     re-queue the action. Belt-and-suspenders against silent save failures. */
+  async function reconcileWithServer() {
+    if (!userName || !ALLOWED_USERS.has(userName)) return;
+    let serverState;
+    try {
+      const r = await fetchWithRetry(`${API}/api/state?user=${encodeURIComponent(userName)}`, {}, 2, 20000);
+      if (!r.ok) { diag('recon_fetch_bad', { status: r.status }); return; }
+      serverState = await r.json();
+    } catch (e) {
+      diag('recon_fetch_err', { err: String(e?.message || e) });
+      return;
+    }
+    const byId = new Map();
+    for (const a of (serverState.actions || [])) byId.set(a.song_id, a);
+    const draftsById = new Map();
+    for (const d of (serverState.drafts || [])) draftsById.set(d.song_id, d);
+    let resent = 0;
+    const localSnaps = lsGetJSON(K_SNAPSHOTS, {});
+    for (const sidStr of Object.keys(localSnaps)) {
+      const sid = parseInt(sidStr, 10);
+      if (!sid) continue;
+      const snap = localSnaps[sidStr] || {};
+      const server = byId.get(sid);
+      const cats = (snap.categories || '').split(',').filter(Boolean).join(',');
+      // What we expect the server to have:
+      const localRating = snap.rating || 0;
+      const localComment = (snap.comment || '').trim();
+      const serverRating = server?.rating || 0;
+      const serverCats = server?.category || '';
+      const serverComment = (server?.comment || '').trim();
+      const needsResend =
+        (localRating > 0 && serverRating !== localRating) ||
+        (cats && serverCats !== cats) ||
+        (localComment && serverComment !== localComment && (server || localRating > 0 || cats));
+      if (needsResend) {
+        const action = cats ? 'assign' : (localRating > 0 ? 'rate' : 'skip');
+        const payload = { song_id: sid, user: userName, action };
+        if (cats) payload.category = cats;
+        if (localRating > 0) payload.rating = localRating;
+        if (localComment) payload.comment = localComment;
+        qEnqueue(payload);
+        resent++;
+      }
+      // Clear snapshot if server has caught up (rating + cats + comment all match)
+      if (!needsResend && (localRating === serverRating) && ((cats || '') === (serverCats || '')) && (localComment === serverComment)) {
+        delete localSnaps[sidStr];
+      }
+    }
+    lsSetJSON(K_SNAPSHOTS, localSnaps);
+    // Also push any local drafts that the server doesn't have yet
+    const localDrafts = lsGetJSON(K_DRAFTS, {});
+    for (const sidStr of Object.keys(localDrafts)) {
+      const sid = parseInt(sidStr, 10);
+      const txt = (localDrafts[sidStr] || '').trim();
+      if (!txt) continue;
+      const sd = draftsById.get(sid);
+      if (!sd || (sd.comment || '') !== txt) {
+        apiDraftPush(sid, txt).catch(() => {});
+      }
+    }
+    if (resent > 0) {
+      diag('recon_resent', { count: resent });
+      refreshUnsavedBadge();
+      qDrain();
+    }
+  }
+  /* ===== Unsaved-changes badge =====
+     A small pill near the top showing how many actions are queued. Tapping
+     it forces a drain. Gives mom immediate visibility on save state. */
+  function refreshUnsavedBadge() {
+    const el = document.getElementById('unsaved-badge');
+    if (!el) return;
+    const n = qGet().length;
+    if (n === 0) { el.classList.remove('show'); return; }
+    const lbl = el.querySelector('.unsaved-label');
+    if (lbl) lbl.textContent = (lang === 'en')
+      ? `${n} unsaved — tap to retry`
+      : `Не отправлено: ${n} · нажми, чтобы повторить`;
+    el.classList.add('show');
   }
   async function apiMine() {
     try {
@@ -1928,7 +2166,7 @@
       userName = u;
       lsSet(K_NAME, u);
       apiSaveName();
-      await bootstrapDrafts();
+      await bootstrapAndRecover();
       startSyncLoop();
       enterDiscovery();
     });
@@ -2013,17 +2251,18 @@
 
     // Pre-fill state from prior user actions OR from the song's suggested categories.
     // Multi-category: selectedCategories is a Set of canonical category names.
+    // ALSO honour any pending localStorage snapshot for this song (last-write-wins).
+    const snap = snapshots[song.id] || {};
     const selectedCategories = new Set();
-    const myCats = (song.my_category || '').split(',').filter(Boolean);
+    const myCats = (snap.categories != null ? snap.categories : (song.my_category || '')).split(',').filter(Boolean);
     const suggested = (song.suggested_categories || '').split(',').filter(Boolean);
-    // If the user has not yet picked any category, pre-select the suggestions.
-    const initial = myCats.length ? myCats : suggested;
+    const initial = myCats.length ? myCats : (snap.rating ? [] : suggested);
     for (const c of initial) if (CATEGORIES.includes(c)) selectedCategories.add(c);
     for (const c of selectedCategories) {
       const pill = cardHost.querySelector(`.cat-pill[data-cat="${c.replace(/"/g, '\\"')}"]`);
       if (pill) pill.classList.add('selected');
     }
-    let currentRating = song.my_rating || 0;
+    let currentRating = snap.rating || song.my_rating || 0;
     if (currentRating) {
       cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= currentRating));
     }
@@ -2090,6 +2329,8 @@
       const cat = b.dataset.cat;
       if (selectedCategories.has(cat)) { selectedCategories.delete(cat); b.classList.remove('selected'); }
       else { selectedCategories.add(cat); b.classList.add('selected'); }
+      // Local snapshot first — survives reload even if server save fails
+      snapshotSet(song.id, { categories: [...selectedCategories].join(','), rating: currentRating });
       const hint = document.getElementById('rating-hint');
       if (hint) {
         if (currentRating) hint.textContent = t('rating.hint.set', { n: currentRating });
@@ -2099,7 +2340,6 @@
     }));
     cardHost.querySelectorAll('.rating-btn').forEach(b => b.addEventListener('click', () => {
       const r = parseInt(b.dataset.r, 10);
-      // Tap same rating again to clear it
       if (currentRating === r) {
         currentRating = 0;
         cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.remove('filled'));
@@ -2107,6 +2347,8 @@
         currentRating = r;
         cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= r));
       }
+      // Local snapshot FIRST — guarantees survival even if network fails or tab is killed
+      snapshotSet(song.id, { rating: currentRating, categories: [...selectedCategories].join(',') });
       const hint = document.getElementById('rating-hint');
       if (hint) hint.textContent = currentRating ? t('rating.hint.set', { n: currentRating }) : (selectedCategories.size ? t('rating.hint.with_cat') : t('rating.hint.empty'));
       persistCard();
@@ -2127,19 +2369,13 @@
       ta.style.height = ta.scrollHeight + 'px';
       ta.dataset.edited = '1';
       saveDraft(song.id, ta.value);
+      snapshotSet(song.id, { comment: ta.value });
       refreshSkipLabel();
-      // Server-side persist: only if there's already a record for this song
-      // (avoids creating a 'skip' placeholder for an untouched song).
-      // We rely on the fact that rating-tap or cat-tap will create the row;
-      // comment-only typing stays as a localStorage draft until those happen.
-      // Once a row exists (rating or cat clicked), debounced server save kicks in.
-      // Always push the draft to the server safety-net (separate from library_actions)
       apiDraftPush(song.id, ta.value).catch(() => {});
       if (currentRating > 0 || selectedCategories.size > 0) {
-        // Once a row already exists for this song, debounce-save comment alongside.
         persistCardDebounced();
       } else {
-        showSaveIndicator('saved'); // local + server-draft only
+        showSaveIndicator('saved');
       }
     });
     ta.dataset.edited = '0';
@@ -2378,6 +2614,7 @@
       return;
     }
     saveDraft(songRef.id, '');
+    snapshotClear(songRef.id);
     apiDraftClear(songRef.id).catch(() => {});
     if (action === 'assign') {
       const r = rating ? ` · ★${rating}` : '';
@@ -2460,15 +2697,25 @@
     document.getElementById(id).classList.add('open');
   }
   function closeOv(id) { document.getElementById(id).classList.remove('open'); }
-  // Also flush on tab hide / page unload — covers iOS Safari swipe-up, lock-screen, etc.
+  // iOS Safari lifecycle handling. visibilitychange is the most reliable signal on iOS;
+  // pagehide is supplemental for bfcache. On hide we (a) flush pending card state and
+  // (b) fire sendBeacon for every queued action — the browser guarantees delivery even
+  // after the tab is hidden or terminated.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && typeof window.__flushCardSave === 'function') {
-      window.__flushCardSave();
+    if (document.visibilityState === 'hidden') {
+      if (typeof window.__flushCardSave === 'function') window.__flushCardSave();
+      qFlushBeacon();
+    } else if (document.visibilityState === 'visible') {
+      // Coming back — drain any unsent entries
+      qDrain();
+      if (currentSong) loadOthersComments(currentSong.id);
     }
   });
   window.addEventListener('pagehide', () => {
     if (typeof window.__flushCardSave === 'function') window.__flushCardSave();
+    qFlushBeacon();
   });
+  window.addEventListener('online', () => { qDrain(); });
   document.getElementById('search-close').addEventListener('click', () => closeOv('search-overlay'));
   document.getElementById('all-close').addEventListener('click', () => closeOv('all-overlay'));
   document.getElementById('mine-close').addEventListener('click', () => closeOv('mine-overlay'));
@@ -3076,6 +3323,11 @@
   let lastVersionState = null;
   async function periodicSync() {
     if (!userName || !ALLOWED_USERS.has(userName)) return;
+    // 0) Drain anything queued, then reconcile with server (catches silent losses)
+    await qDrain();
+    await reconcileWithServer();
+    await qDrain();
+    refreshUnsavedBadge();
     // 1) Push any localStorage drafts that haven't been server-saved yet
     for (const sid of Object.keys(drafts)) {
       const text = drafts[sid];
@@ -3129,11 +3381,47 @@
   window.addEventListener('online', () => { periodicSync(); });
 
   /* ===== Boot ===== */
+  async function bootstrapAndRecover() {
+    diag('boot', { ua: navigator.userAgent, queue: qGet().length, snapshots: Object.keys(lsGetJSON(K_SNAPSHOTS, {})).length });
+    // 1) Drain any pending action queue from a previous session
+    await qDrain();
+    // 2) Recover any standalone card snapshots that never made it to a commit
+    //    (rating/category set but the tab was closed before send). Each snapshot
+    //    is replayed against the server.
+    const pendingSnap = lsGetJSON(K_SNAPSHOTS, {});
+    const songIds = Object.keys(pendingSnap);
+    for (const sid of songIds) {
+      const s = pendingSnap[sid];
+      if (!s) continue;
+      // Build a payload from whatever the snapshot has
+      if (!s.rating && !s.categories && !s.comment) { snapshotClear(sid); continue; }
+      const cats = (s.categories || '').split(',').filter(Boolean).join(',');
+      const action = cats ? 'assign' : (s.rating ? 'rate' : 'skip');
+      const payload = { song_id: parseInt(sid, 10), user: userName, action };
+      if (cats) payload.category = cats;
+      if (s.rating) payload.rating = s.rating;
+      if (s.comment) payload.comment = s.comment;
+      qEnqueue(payload);
+    }
+    await qDrain();
+    // 3) Pull server-side comment drafts (in case mom switched devices)
+    await bootstrapDrafts();
+    // 4) Reconcile with server: anything locally-believed-saved but missing on
+    //    server gets re-queued. Catches the case where iOS Safari silently
+    //    failed past sends.
+    await reconcileWithServer();
+    await qDrain();
+    refreshUnsavedBadge();
+  }
+  // Manual retry: tap the badge to force a drain
+  const _ub = document.getElementById('unsaved-badge');
+  if (_ub) _ub.addEventListener('click', () => { diag('manual_retry', { count: qGet().length }); qDrain().then(refreshUnsavedBadge); });
+
   applyStaticI18n();
   if (!userName || !ALLOWED_USERS.has(userName)) {
     showScreen('ob');
   } else {
-    bootstrapDrafts().then(() => enterDiscovery());
+    bootstrapAndRecover().then(() => enterDiscovery());
     startSyncLoop();
   }
 })();
