@@ -758,7 +758,7 @@
   .mine-item .mi-artist { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
   .mine-item .mi-comment {
     margin-top: 8px;
-    padding: 8px 10px;
+    padding: 8px 10px 8px 12px;
     background: rgba(var(--art-r), var(--art-g), var(--art-b), 0.08);
     border-left: 2px solid rgba(var(--art-r), var(--art-g), var(--art-b), 0.6);
     border-radius: 6px;
@@ -766,8 +766,105 @@
     font-size: 15px; line-height: 1.4;
     font-style: italic;
     color: var(--text);
+    cursor: text;
+    transition: background 0.18s;
+    position: relative;
   }
+  .mine-item .mi-comment:hover { background: rgba(var(--art-r), var(--art-g), var(--art-b), 0.14); }
+  .mine-item .mi-comment-add {
+    margin-top: 8px;
+    appearance: none;
+    background: transparent;
+    border: 1px dashed var(--line-2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: inline-flex; align-items: center; gap: 6px;
+    text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;
+  }
+  .mine-item .mi-comment-add:hover {
+    border-color: rgba(var(--art-r), var(--art-g), var(--art-b), 0.5);
+    color: var(--gold-bright);
+  }
+  .mine-item .mi-comment-add svg { width: 12px; height: 12px; }
+  .mine-comment-editor {
+    margin-top: 8px;
+    padding: 10px;
+    background: rgba(var(--art-r), var(--art-g), var(--art-b), 0.06);
+    border: 1px solid rgba(var(--art-r), var(--art-g), var(--art-b), 0.35);
+    border-radius: 8px;
+  }
+  .mine-comment-editor textarea {
+    width: 100%; min-height: 60px;
+    padding: 10px;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 16px; font-style: italic; line-height: 1.4;
+    resize: vertical;
+    outline: none;
+  }
+  .mine-comment-editor .mce-actions {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 8px;
+    gap: 8px;
+  }
+  .mine-comment-editor .mce-left { display: flex; gap: 8px; }
+  .mine-comment-editor button {
+    appearance: none;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .mine-comment-editor .mce-save {
+    background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+    color: #0a0a0d;
+    border: 0;
+  }
+  .mine-comment-editor .mce-save:hover { transform: translateY(-1px); }
+  .mine-comment-editor .mce-cancel {
+    background: transparent; color: var(--text-dim);
+    border: 1px solid var(--line);
+  }
+  .mine-comment-editor .mce-cancel:hover { color: var(--text); border-color: var(--line-2); }
+  .mine-comment-editor .mce-delete {
+    background: transparent; color: var(--bad);
+    border: 1px solid rgba(217, 102, 102, 0.3);
+  }
+  .mine-comment-editor .mce-delete:hover { background: rgba(217, 102, 102, 0.08); }
   .mine-item .mi-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+
+  /* ===== Save indicator on card comment ===== */
+  .save-indicator {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 6px;
+    padding: 4px 10px 4px 8px;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    font-weight: 700;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.3s var(--ease-out), background 0.3s, color 0.3s, border-color 0.3s;
+  }
+  .save-indicator.show { opacity: 1; }
+  .save-indicator.saving { color: var(--gold-bright); border-color: rgba(var(--art-r), var(--art-g), var(--art-b), 0.4); }
+  .save-indicator.saving .dot { animation: pulse 1s ease-in-out infinite; }
+  .save-indicator.saved { color: var(--green); border-color: rgba(125, 211, 163, 0.35); }
+  .save-indicator.error { color: var(--bad); border-color: rgba(217, 102, 102, 0.35); }
+  .save-indicator .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
 
   /* ===== Activity feed ===== */
   .activity-list {}
@@ -1061,6 +1158,7 @@
   <div class="mine-tabs">
     <button type="button" class="mine-tab active" data-tab="picks"><span data-i18n="mine.picks"></span> <span class="count" id="tc-picks">0</span></button>
     <button type="button" class="mine-tab" data-tab="added"><span data-i18n="mine.added"></span> <span class="count" id="tc-added">0</span></button>
+    <button type="button" class="mine-tab" data-tab="removed"><span data-i18n="mine.removed"></span> <span class="count" id="tc-removed">0</span></button>
     <button type="button" class="mine-tab" data-tab="activity"><span data-i18n="mine.activity"></span></button>
   </div>
   <div class="ov-body" id="mine-body"></div>
@@ -1184,10 +1282,20 @@
       'allTracks.title': 'Все треки',
       'sort.alpha': 'По артисту', 'sort.year': 'По году', 'sort.title': 'По названию', 'sort.added': 'Новые',
       'mine.title': 'Моё', 'mine.sub': 'собрано',
-      'mine.picks': 'Что собрано', 'mine.added': 'Я добавил', 'mine.activity': 'Активность',
+      'mine.picks': 'Что собрано', 'mine.added': 'Я добавил', 'mine.removed': 'Я удалил', 'mine.activity': 'Активность',
       'mine.noPicks': 'Пока ничего не выбрано',
       'mine.noAdded': 'Ничего не добавил{a}',
+      'mine.noRemoved': 'Ничего не удалял{a}',
       'mine.noActivity': 'Пока без изменений',
+      'mine.editComment': 'Изменить заметку',
+      'mine.addComment': 'Добавить заметку',
+      'mine.commentPh': 'Заметка к этой песне',
+      'mine.commentSave': 'Сохранить',
+      'mine.commentCancel': 'Отмена',
+      'mine.commentDelete': 'Удалить заметку',
+      'save.saved': 'Сохранено',
+      'save.saving': 'Сохраняю…',
+      'save.error': 'Не сохранилось — повторю',
       'activity.added': '<strong>{by}</strong> добавил{a}',
       'activity.removed': '<strong>{by}</strong> удалил{a}',
       'activity.undo': 'Вернуть',
@@ -1255,10 +1363,20 @@
       'allTracks.title': 'All tracks',
       'sort.alpha': 'By artist', 'sort.year': 'By year', 'sort.title': 'By title', 'sort.added': 'New',
       'mine.title': 'My', 'mine.sub': 'picked',
-      'mine.picks': 'Picked', 'mine.added': 'I added', 'mine.activity': 'Activity',
+      'mine.picks': 'Picked', 'mine.added': 'I added', 'mine.removed': 'I removed', 'mine.activity': 'Activity',
       'mine.noPicks': 'Nothing picked yet',
       'mine.noAdded': 'You haven\'t added anything',
+      'mine.noRemoved': 'You haven\'t removed anything',
       'mine.noActivity': 'No changes yet',
+      'mine.editComment': 'Edit note',
+      'mine.addComment': 'Add a note',
+      'mine.commentPh': 'Note for this song',
+      'mine.commentSave': 'Save',
+      'mine.commentCancel': 'Cancel',
+      'mine.commentDelete': 'Delete note',
+      'save.saved': 'Saved',
+      'save.saving': 'Saving…',
+      'save.error': 'Save failed — retrying',
       'activity.added': '<strong>{by}</strong> added',
       'activity.removed': '<strong>{by}</strong> removed',
       'activity.undo': 'Undo',
@@ -1341,6 +1459,17 @@
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
+  }
+  let saveIndHideTimer = null;
+  function showSaveIndicator(state) {
+    const el = document.getElementById('save-indicator');
+    if (!el) return;
+    const txt = el.querySelector('#save-indicator-text');
+    el.classList.remove('saving', 'saved', 'error', 'show');
+    el.classList.add('show', state);
+    if (txt) txt.textContent = t(state === 'saving' ? 'save.saving' : state === 'saved' ? 'save.saved' : 'save.error');
+    if (saveIndHideTimer) clearTimeout(saveIndHideTimer);
+    if (state !== 'saving') saveIndHideTimer = setTimeout(() => { el.classList.remove('show'); }, state === 'saved' ? 1600 : 3200);
   }
 
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1595,6 +1724,7 @@
         </div>
         <div class="comment-row">
           <textarea id="comment-input" placeholder="${escapeHtml(t('card.commentPh'))}" rows="1">${escapeHtml(savedComment)}</textarea>
+          <div class="save-indicator" id="save-indicator"><span class="dot"></span><span id="save-indicator-text"></span></div>
         </div>
         <div class="cats">
           <div class="cats-label">${escapeHtml(t('card.placeAt'))}</div>
@@ -1622,10 +1752,23 @@
     document.getElementById('remove-link').addEventListener('click', () => onRemoveCurrent());
     cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => act('assign', b.dataset.cat)));
     const ta = document.getElementById('comment-input');
+    let commentSaveTimer = null;
+    let lastSavedText = savedComment || '';
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
       saveDraft(song.id, ta.value);
+      // Auto-save to server too (debounced, 1.5s) so partial comments survive
+      if (commentSaveTimer) clearTimeout(commentSaveTimer);
+      const txt = ta.value;
+      if (txt.trim() === lastSavedText.trim()) return;
+      showSaveIndicator('saving');
+      commentSaveTimer = setTimeout(async () => {
+        if (currentSong?.id !== song.id) return;
+        const r = await apiAction({ song_id: song.id, user: userName, action: 'comment', comment: txt });
+        if (r.ok) { lastSavedText = txt; showSaveIndicator('saved'); }
+        else showSaveIndicator('error');
+      }, 1500);
     });
     if (savedComment) setTimeout(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
 
@@ -1694,13 +1837,15 @@
       cardEl.style.transition = 'opacity 0.22s, transform 0.22s';
       await new Promise(r => setTimeout(r, 220));
     }
-    saveDraft(songRef.id, ''); // clear draft for this song
     const res = await apiAction(payload);
     if (!res.ok) {
+      // Restore card visually and KEEP draft so nothing is lost
+      if (cardEl) { cardEl.style.opacity = '1'; cardEl.style.transform = 'scale(1)'; }
       showToast(t('toast.offline'));
       actInFlight = false;
       return;
     }
+    saveDraft(songRef.id, ''); // success — now safe to clear draft
     if (action === 'assign') {
       const msg = comment ? tGender('toast.commentSaved') + ' · ' + t('toast.assigned', { cat: t(`cat.${category}.short`) }) : t('toast.assigned', { cat: t(`cat.${category}.short`) });
       showToast(msg);
@@ -1974,6 +2119,7 @@
     mineBody.innerHTML = `<div class="ov-status">…</div>`;
     if (mineTab === 'picks') await renderMinePicks();
     else if (mineTab === 'added') await renderMineAdded();
+    else if (mineTab === 'removed') await renderMineRemoved();
     else await renderActivity();
     updateMineCounts();
   }
@@ -1997,11 +2143,14 @@
           <div class="mine-group-count">${arr.length}</div>
         </div>
         ${arr.map(it => `
-          <div class="mine-item">
+          <div class="mine-item" data-song="${it.id}">
             <div class="mi-text">
               <div class="mi-title">${escapeHtml(it.title)}</div>
               <div class="mi-artist">${escapeHtml(it.artist)}${it.year ? ' · ' + it.year : ''}</div>
-              ${it.comment ? `<div class="mi-comment">«${escapeHtml(it.comment)}»</div>` : ''}
+              ${it.comment
+                ? `<div class="mi-comment" data-edit="${it.id}" title="${escapeHtml(t('mine.editComment'))}">«${escapeHtml(it.comment)}»</div>`
+                : `<button class="mi-comment-add" type="button" data-edit="${it.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>${escapeHtml(t('mine.addComment'))}</span></button>`
+              }
             </div>
             <div class="mi-actions">
               <button class="sr-icon-btn danger" data-rm="${it.id}" aria-label="убрать из категории"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -2016,6 +2165,84 @@
         const id = parseInt(b.dataset.rm, 10);
         const r = await apiAction({ song_id: id, user: userName, action: 'reset' });
         if (r.ok) { showToast(t('toast.removed').split('.')[0]); renderMine(); }
+        else showToast(t('toast.failed'));
+      });
+    });
+    mineBody.querySelectorAll('[data-edit]').forEach(el => {
+      el.addEventListener('click', () => openCommentEditor(el, parseInt(el.dataset.edit, 10), items));
+    });
+  }
+
+  function openCommentEditor(triggerEl, songId, items) {
+    const it = items.find(x => x.id === songId);
+    if (!it) return;
+    const wrap = triggerEl.closest('.mine-item');
+    if (!wrap || wrap.querySelector('.mine-comment-editor')) return;
+    const original = it.comment || '';
+    const editor = document.createElement('div');
+    editor.className = 'mine-comment-editor';
+    editor.innerHTML = `
+      <textarea>${escapeHtml(original)}</textarea>
+      <div class="mce-actions">
+        <div class="mce-left">
+          <button type="button" class="mce-save">${escapeHtml(t('mine.commentSave'))}</button>
+          <button type="button" class="mce-cancel">${escapeHtml(t('mine.commentCancel'))}</button>
+        </div>
+        ${original ? `<button type="button" class="mce-delete">${escapeHtml(t('mine.commentDelete'))}</button>` : ''}
+      </div>
+    `;
+    // Hide the original comment / add-button
+    triggerEl.style.display = 'none';
+    wrap.querySelector('.mi-text').appendChild(editor);
+    const ta = editor.querySelector('textarea');
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    editor.querySelector('.mce-cancel').addEventListener('click', () => {
+      editor.remove();
+      triggerEl.style.display = '';
+    });
+    editor.querySelector('.mce-save').addEventListener('click', async () => {
+      const txt = ta.value.trim();
+      editor.querySelector('.mce-save').disabled = true;
+      const r = await apiAction({ song_id: songId, user: userName, action: 'comment', comment: txt });
+      if (r.ok) { showToast(t('save.saved')); it.comment = txt; renderMinePicks(); }
+      else { showToast(t('toast.failed')); editor.querySelector('.mce-save').disabled = false; }
+    });
+    const delBtn = editor.querySelector('.mce-delete');
+    if (delBtn) delBtn.addEventListener('click', async () => {
+      delBtn.disabled = true;
+      const r = await apiAction({ song_id: songId, user: userName, action: 'comment', comment: '' });
+      if (r.ok) { showToast(t('save.saved')); it.comment = ''; renderMinePicks(); }
+      else { showToast(t('toast.failed')); delBtn.disabled = false; }
+    });
+  }
+
+  async function renderMineRemoved() {
+    const r = await fetchWithRetry(`${API}/api/library/removed?user=${encodeURIComponent(userName)}`).then(r => r.ok ? r.json() : { songs: [] }).catch(() => ({ songs: [] }));
+    const items = r.songs || [];
+    document.getElementById('tc-removed').textContent = items.length;
+    if (!items.length) {
+      mineBody.innerHTML = `<div class="ov-status">${escapeHtml(tGender('mine.noRemoved'))}</div>`;
+      return;
+    }
+    const html = items.map(s => `
+      <div class="activity-item">
+        <div class="activity-icon remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <div class="activity-text">
+          <div class="activity-track">${escapeHtml(s.artist)} — ${escapeHtml(s.title)}${s.year ? ' · ' + s.year : ''}</div>
+          <div class="activity-time">${escapeHtml(timeAgo(s.removed_at))}</div>
+          <button class="activity-undo" data-restore="${s.id}" data-track="${escapeHtml(s.artist + ' — ' + s.title)}">${escapeHtml(t('activity.undo'))}</button>
+        </div>
+      </div>
+    `).join('');
+    mineBody.innerHTML = html;
+    mineBody.querySelectorAll('[data-restore]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = parseInt(btn.dataset.restore, 10);
+        const ok = confirm(t('confirm.restore', { t: btn.dataset.track }));
+        if (!ok) return;
+        const r = await apiRestoreSong(id);
+        if (r.ok) { showToast(t('toast.restored')); renderMineRemoved(); }
         else showToast(t('toast.failed'));
       });
     });
