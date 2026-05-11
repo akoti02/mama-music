@@ -483,6 +483,25 @@
   }
 
   /* ===== Category pills ===== */
+  .cats-collapse { margin-bottom: 18px; }
+  .cats-collapse summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 14px;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13px; font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.01em;
+  }
+  .cats-collapse summary::-webkit-details-marker { display: none; }
+  .cats-collapse summary:hover { color: var(--text); border-color: var(--line-2); }
+  .cats-collapse summary .caret { width: 14px; height: 14px; opacity: 0.7; transition: transform 0.2s; }
+  .cats-collapse[open] summary .caret { transform: rotate(180deg); }
+  .cats-collapse[open] summary { background: rgba(212,164,92,0.08); border-color: rgba(212,164,92,0.3); color: var(--text); }
+  .cats-collapse .cats { margin-top: 10px; margin-bottom: 0; }
   .cats { margin-bottom: 18px; }
   .cats-label {
     text-align: center; color: var(--text-muted);
@@ -1003,6 +1022,34 @@
 
   /* ===== Other users' comments under the card comment field ===== */
   .others-comments { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .oc-collapse {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-3);
+    overflow: hidden;
+  }
+  .oc-collapse > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+  .oc-collapse > summary::-webkit-details-marker { display: none; }
+  .oc-collapse > summary .oc-count {
+    font-size: 11px; color: var(--gold-bright);
+    background: rgba(212,164,92,0.12);
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-weight: 700;
+    margin-left: auto;
+  }
+  .oc-collapse > summary .caret { width: 14px; height: 14px; opacity: 0.7; transition: transform 0.2s; }
+  .oc-collapse[open] > summary .caret { transform: rotate(180deg); }
+  .oc-collapse .oc-rest { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .oc-collapse[open] > summary { border-bottom: 1px solid var(--line); }
   .other-comment {
     display: flex; align-items: flex-start; gap: 10px;
     padding: 10px 12px;
@@ -1443,9 +1490,9 @@
       <div class="cat-nm">Торт</div>
       <div class="cat-ctx">разрезание</div>
     </button>
-    <button type="button" class="cat-tile" data-cat="DJ Микки">
+    <button type="button" class="cat-tile lovers" data-cat="DJ Микки">
       <div class="cat-nm">DJ Микки</div>
-      <div class="cat-ctx">диджей-сет</div>
+      <div class="cat-ctx">диджей-сет · общая подборка с DJ Микки</div>
     </button>
     <button type="button" class="cat-tile" data-cat="Юля">
       <div class="cat-nm">Юля</div>
@@ -2325,6 +2372,7 @@
     tile.addEventListener('click', () => {
       const c = tile.dataset.cat;
       if (c === 'LOVERS') { window.location.href = '/lovers.html'; return; }
+      if (c === 'DJ Микки') { window.location.href = '/dj.html'; return; }
       setCat(c);
       enterDiscovery();
     });
@@ -2381,8 +2429,9 @@
     currentSong = song;
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля' || song.added_by === 'Света') ? 'а' : '')}</div>` : '';
-    // LOVERS handled in /lovers.html — don't surface it as a card pill here.
-    const catsHTML = CATEGORIES.filter(c => c !== 'LOVERS').map(c => `<button type="button" class="cat-pill" data-cat="${escapeHtml(c)}"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
+    // LOVERS and DJ Микки are external shared workspaces — not card pills here.
+    const inCardCategories = CATEGORIES.filter(c => c !== 'LOVERS' && c !== 'DJ Микки');
+    const catsHTML = inCardCategories.map(c => `<button type="button" class="cat-pill" data-cat="${escapeHtml(c)}"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
     const ratingHTML = Array.from({length: 10}, (_, i) => `<button type="button" class="rating-btn" data-r="${i+1}">${i+1}</button>`).join('');
     const canBack = seenIdx > 0;
     const savedComment = drafts[song.id] || '';
@@ -2408,10 +2457,13 @@
           <div class="rating-grid" id="rating-grid">${ratingHTML}</div>
           <div class="rating-hint" id="rating-hint">${escapeHtml(t('rating.hint.empty'))}</div>
         </div>
+        <details class="cats-collapse">
+          <summary class="cats-summary"><span class="cats-summary-label">${escapeHtml(t('card.placeAt'))}</span><svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
         <div class="cats">
-          <div class="cats-label">${escapeHtml(t('card.placeAt'))}</div>
+          <div class="cats-label" style="display:none">${escapeHtml(t('card.placeAt'))}</div>
           <div class="cats-grid">${catsHTML}</div>
         </div>
+        </details>
         <div class="nav-row">
           <button type="button" class="nav-btn" id="back-btn" ${canBack ? '' : 'disabled'}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -2587,28 +2639,38 @@
     loadOthersComments(song.id);
   }
 
+  function renderOcEntry(e) {
+    const cls = e.user_name === 'Юля' ? 'is-yula' : e.user_name === 'Артур' ? 'is-arthur' : e.user_name === 'Света' ? 'is-sveta' : '';
+    const initial = (e.user_name || '?')[0];
+    const cmt = e.comment ? `<div class="oc-text">«${escapeHtml(e.comment)}»</div>` : '';
+    return `
+      <div class="other-comment ${cls}">
+        <div class="oc-av">${escapeHtml(initial)}</div>
+        <div class="oc-body">
+          <div class="oc-head"><span class="oc-name">${escapeHtml(e.user_name)}</span></div>
+          ${cmt}
+        </div>
+      </div>`;
+  }
   async function loadOthersComments(songId) {
     const host = document.getElementById('others-comments');
     if (!host) return;
     const entries = await apiSongComments(songId);
     if (currentSong?.id !== songId) return;
-    const others = entries.filter(e => e.user_name !== userName && (e.comment || e.rating));
+    const others = entries.filter(e => e.user_name !== userName && e.comment && e.comment.trim());
     if (!others.length) { host.innerHTML = ''; return; }
-    host.innerHTML = others.map(e => {
-      const cls = e.user_name === 'Юля' ? 'is-yula' : e.user_name === 'Артур' ? 'is-arthur' : e.user_name === 'Света' ? 'is-sveta' : '';
-      const initial = (e.user_name || '?')[0];
-      const rating = e.rating ? `<span class="oc-rating">★ ${e.rating}</span>` : '';
-      const cmt = e.comment ? `<div class="oc-text">«${escapeHtml(e.comment)}»</div>` : '';
-      return `
-        <div class="other-comment ${cls}">
-          <div class="oc-av">${escapeHtml(initial)}</div>
-          <div class="oc-body">
-            <div class="oc-head"><span class="oc-name">${escapeHtml(e.user_name)}</span>${rating}</div>
-            ${cmt}
-          </div>
-        </div>
-      `;
-    }).join('');
+    // Mom's comments are primary — always visible. Others go into a collapsible.
+    const momEntries = others.filter(e => e.user_name === 'Юля');
+    const restEntries = others.filter(e => e.user_name !== 'Юля');
+    let html = '';
+    if (momEntries.length) html += momEntries.map(renderOcEntry).join('');
+    if (restEntries.length) {
+      html += `<details class="oc-collapse">
+        <summary>Ещё комментарии <span class="oc-count">${restEntries.length}</span><svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <div class="oc-rest">${restEntries.map(renderOcEntry).join('')}</div>
+      </details>`;
+    }
+    host.innerHTML = html;
   }
 
   function setupCardSwipe(el) {
