@@ -1373,6 +1373,7 @@
       'empty.h': 'Готово',
       'empty.body': 'Ты прошл{0} все треки. Можно посмотреть, что собрано, или вернуться к уже прослушанным.',
       'empty.mine': 'Моё',
+      'empty.all': 'Все треки',
       'empty.add': 'Добавить трек',
       'empty.zero.h': 'Ничего нет',
       'empty.zero.body': 'В библиотеке нет треков. Можно начать с добавления своего.',
@@ -1460,6 +1461,7 @@
       'empty.h': 'Done',
       'empty.body': 'You went through all tracks. Review what you picked or revisit earlier songs.',
       'empty.mine': 'My picks',
+      'empty.all': 'All tracks',
       'empty.add': 'Add a track',
       'empty.zero.h': 'Nothing here',
       'empty.zero.body': 'The library is empty. Add your first track.',
@@ -1884,7 +1886,12 @@
     }
 
     // Wire events
-    document.getElementById('skip-btn').addEventListener('click', () => act('skip'));
+    document.getElementById('skip-btn').addEventListener('click', () => {
+      // If a category was pre-tagged, treat skip as assign-without-rating
+      // (mom selected the pill; honour that intent instead of dropping it on the floor)
+      if (selectedCategory) act('assign', selectedCategory);
+      else act('skip');
+    });
     document.getElementById('back-btn').addEventListener('click', () => goBack());
     document.getElementById('remove-link').addEventListener('click', () => onRemoveCurrent());
     cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => {
@@ -1908,16 +1915,17 @@
       act(action, selectedCategory, r);
     }));
     const ta = document.getElementById('comment-input');
+    let commentEdited = false;
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
+      commentEdited = true;
       saveDraft(song.id, ta.value);
-      // Local-only draft. Don't auto-commit to server — that used to create a
-      // 'skip' placeholder which removed the song from the queue. The comment
-      // goes to the server together with the rating/category commit, OR via
-      // Mine's explicit edit-comment flow (which only updates existing rows).
       showSaveIndicator('saved');
     });
+    // expose edited flag for act() to know whether to send '' (clear) or omit (preserve)
+    ta.dataset.edited = '0';
+    ta.addEventListener('input', () => { ta.dataset.edited = '1'; }, { once: true });
     if (ta.value) setTimeout(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
 
     // Swipe gestures: left = skip, right = back
@@ -1950,8 +1958,10 @@
       if (Math.abs(dx) < 70) return;
       if (Math.abs(dy) > 60) return;
       if (dx < 0) {
-        // swipe left → skip / next
-        act('skip');
+        // swipe left → next; respects a pre-tagged category
+        const pillSel = cardHost.querySelector('.cat-pill.selected');
+        if (pillSel) act('assign', pillSel.dataset.cat);
+        else act('skip');
       } else {
         // swipe right → back
         goBack();
@@ -1967,10 +1977,16 @@
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
         <h2>${escapeHtml(t('empty.h'))}</h2>
         <p>${escapeHtml(tGender('empty.body'))}</p>
-        <button class="empty-cta" type="button" id="empty-mine">${escapeHtml(t('empty.mine'))}</button>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px">
+          <button class="empty-cta" type="button" id="empty-mine">${escapeHtml(t('empty.mine'))}</button>
+          <button class="empty-cta" type="button" id="empty-all" style="background:transparent;color:var(--text);border:1px solid var(--line-2);box-shadow:none">${escapeHtml(t('empty.all'))}</button>
+          <button class="empty-cta" type="button" id="empty-add" style="background:transparent;color:var(--text-dim);border:1px dashed var(--line-2);box-shadow:none">${escapeHtml(t('empty.add'))}</button>
+        </div>
       </div>
     `;
     document.getElementById('empty-mine').addEventListener('click', openMine);
+    document.getElementById('empty-all').addEventListener('click', openAll);
+    document.getElementById('empty-add').addEventListener('click', openAdd);
   }
 
   /* ===== YouTube embed ===== */
@@ -2010,9 +2026,13 @@
     const songRef = currentSong;
     const commentEl = document.getElementById('comment-input');
     const comment = commentEl ? commentEl.value.trim() : '';
+    const commentEdited = commentEl ? commentEl.dataset.edited === '1' : false;
     const payload = { song_id: songRef.id, user: userName, action };
     if (category) payload.category = category;
-    if (comment) payload.comment = comment;
+    // Send comment if it was edited (even if now empty — that means "clear");
+    // or if it's non-empty (could be pre-fill from server, no harm in re-sending).
+    if (commentEdited) payload.comment = comment;
+    else if (comment) payload.comment = comment;
     if (rating) payload.rating = rating;
     if (cardEl) {
       cardEl.style.opacity = '0';
@@ -2491,17 +2511,16 @@
     });
   }
   async function renderMineAdded() {
-    // Get all tracks I added (regardless of category)
-    const r = await apiAllTracks('added', 0, 100);
-    const allItems = r?.results || [];
-    const mine = allItems.filter(s => s.added_by === userName);
-    document.getElementById('tc-added').textContent = mine.length;
-    if (!mine.length) {
+    // Dedicated endpoint: returns all tracks added by this user, not capped by sort offset.
+    const r = await fetchWithRetry(`${API}/api/library/added?user=${encodeURIComponent(userName)}`).then(r => r.ok ? r.json() : { songs: [] }).catch(() => ({ songs: [] }));
+    const items = r.songs || [];
+    document.getElementById('tc-added').textContent = items.length;
+    if (!items.length) {
       mineBody.innerHTML = `<div class="ov-status">${escapeHtml(tGender('mine.noAdded'))}</div>`;
       return;
     }
     mineBody.innerHTML = '';
-    renderRows(mineBody, mine);
+    renderRows(mineBody, items);
   }
   async function renderActivity() {
     const events = await apiActivity();
