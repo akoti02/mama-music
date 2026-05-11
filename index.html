@@ -992,6 +992,51 @@
   .mine-comment-editor .mce-delete:hover { background: rgba(217, 102, 102, 0.08); }
   .mine-item .mi-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 
+  /* ===== Other users' comments under the card comment field ===== */
+  .others-comments { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .other-comment {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .other-comment .oc-av {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-2);
+    font-size: 10px; font-weight: 800;
+    color: var(--text);
+    text-transform: uppercase; letter-spacing: 0.02em;
+  }
+  .other-comment.is-yula .oc-av { background: rgba(249,168,212,0.22); color: var(--pink); }
+  .other-comment.is-arthur .oc-av { background: rgba(147,197,253,0.22); color: var(--blue); }
+  .other-comment.is-sveta .oc-av { background: rgba(125,211,163,0.22); color: var(--green); }
+  .other-comment .oc-body { flex: 1; min-width: 0; }
+  .other-comment .oc-head {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .other-comment .oc-head .oc-name { color: var(--text); }
+  .other-comment .oc-rating {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 1px 6px;
+    background: rgba(var(--art-r), var(--art-g), var(--art-b), 0.14);
+    border: 1px solid rgba(var(--art-r), var(--art-g), var(--art-b), 0.32);
+    border-radius: 999px;
+    color: var(--gold-bright);
+    font-variant-numeric: tabular-nums;
+  }
+  .other-comment .oc-text {
+    margin-top: 6px;
+    font-family: var(--font-display);
+    font-size: 15px; line-height: 1.4; font-style: italic;
+    color: var(--text);
+  }
+
   /* ===== Save indicator on card comment ===== */
   .save-indicator {
     display: inline-flex; align-items: center; gap: 6px;
@@ -1815,6 +1860,39 @@
       return await r.json();
     } catch (e) { console.warn('submit', e?.message); return { ok: false }; }
   }
+  async function apiSongComments(songId) {
+    try {
+      const r = await fetchWithRetry(`${API}/api/song/comments?song_id=${songId}`);
+      if (!r.ok) return [];
+      const d = await r.json();
+      return d.entries || [];
+    } catch (e) { console.warn('comments', e?.message); return []; }
+  }
+  async function apiDraftPush(songId, comment) {
+    try {
+      await fetchWithRetry(`${API}/api/draft`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ song_id: songId, user: userName, comment }) });
+    } catch (e) { console.warn('draft push', e?.message); }
+  }
+  async function apiDraftsPull() {
+    try {
+      const r = await fetchWithRetry(`${API}/api/drafts?user=${encodeURIComponent(userName)}`);
+      if (!r.ok) return [];
+      const d = await r.json();
+      return d.drafts || [];
+    } catch (e) { console.warn('drafts pull', e?.message); return []; }
+  }
+  async function apiDraftClear(songId) {
+    try {
+      await fetchWithRetry(`${API}/api/draft`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ song_id: songId, user: userName }) });
+    } catch (e) {}
+  }
+  async function apiVersion() {
+    try {
+      const r = await fetchWithRetry(`${API}/api/version`);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) { return null; }
+  }
 
   /* ===== Screen routing ===== */
   const screens = {
@@ -1841,12 +1919,14 @@
 
   /* ===== Onboarding ===== */
   document.querySelectorAll('#ob-user button').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const u = btn.dataset.user;
       if (!ALLOWED_USERS.has(u)) return;
       userName = u;
       lsSet(K_NAME, u);
       apiSaveName();
+      await bootstrapDrafts();
+      startSyncLoop();
       enterDiscovery();
     });
   });
@@ -1901,6 +1981,7 @@
         <div class="comment-row">
           <textarea id="comment-input" placeholder="${escapeHtml(t('card.commentPh'))}" rows="1">${escapeHtml(savedComment)}</textarea>
           <div class="save-indicator" id="save-indicator"><span class="dot"></span><span id="save-indicator-text"></span></div>
+          <div class="others-comments" id="others-comments"></div>
         </div>
         <div class="rating">
           <div class="rating-label">${escapeHtml(t('rating.label'))}</div>
@@ -2058,6 +2139,33 @@
 
     // Mount YouTube
     mountYouTube(song);
+
+    // Multi-user comments — show what others have written for this song
+    loadOthersComments(song.id);
+  }
+
+  async function loadOthersComments(songId) {
+    const host = document.getElementById('others-comments');
+    if (!host) return;
+    const entries = await apiSongComments(songId);
+    if (currentSong?.id !== songId) return;
+    const others = entries.filter(e => e.user_name !== userName && (e.comment || e.rating));
+    if (!others.length) { host.innerHTML = ''; return; }
+    host.innerHTML = others.map(e => {
+      const cls = e.user_name === 'Юля' ? 'is-yula' : e.user_name === 'Артур' ? 'is-arthur' : e.user_name === 'Света' ? 'is-sveta' : '';
+      const initial = (e.user_name || '?')[0];
+      const rating = e.rating ? `<span class="oc-rating">★ ${e.rating}</span>` : '';
+      const cmt = e.comment ? `<div class="oc-text">«${escapeHtml(e.comment)}»</div>` : '';
+      return `
+        <div class="other-comment ${cls}">
+          <div class="oc-av">${escapeHtml(initial)}</div>
+          <div class="oc-body">
+            <div class="oc-head"><span class="oc-name">${escapeHtml(e.user_name)}</span>${rating}</div>
+            ${cmt}
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   function setupCardSwipe(el) {
@@ -2256,6 +2364,7 @@
       return;
     }
     saveDraft(songRef.id, '');
+    apiDraftClear(songRef.id).catch(() => {});
     if (action === 'assign') {
       const r = rating ? ` · ★${rating}` : '';
       showToast(t('toast.assigned', { cat: t(`cat.${category}.short`) }) + r);
@@ -2934,12 +3043,69 @@
     } catch (e) { showToast(t('toast.failed')); }
   }
 
+  /* ===== Periodic background tasks ===== */
+  let lastVersionState = null;
+  async function periodicSync() {
+    if (!userName || !ALLOWED_USERS.has(userName)) return;
+    // 1) Push any localStorage drafts that haven't been server-saved yet
+    for (const sid of Object.keys(drafts)) {
+      const text = drafts[sid];
+      if (text && text.trim()) {
+        apiDraftPush(parseInt(sid, 10), text).catch(() => {});
+      }
+    }
+    // 2) Refresh the current card's others-comments
+    if (currentSong) loadOthersComments(currentSong.id);
+    // 3) Version + library mutation poll — detect new content
+    const v = await apiVersion();
+    if (v && lastVersionState) {
+      if (v.active_songs !== lastVersionState.active_songs ||
+          v.last_added !== lastVersionState.last_added ||
+          v.last_removed !== lastVersionState.last_removed) {
+        // Library content changed — refresh open overlays
+        if (document.getElementById('mine-overlay')?.classList.contains('open')) renderMine();
+        if (document.getElementById('all-overlay')?.classList.contains('open')) {
+          aoOffset = 0; aoDone = false; aoLastCat = null;
+          document.getElementById('all-results').innerHTML = '<div class="ov-status">…</div>';
+          loadAllPage();
+        }
+      }
+    }
+    lastVersionState = v;
+  }
+  let syncTimer = null;
+  function startSyncLoop() {
+    if (syncTimer) return;
+    syncTimer = setInterval(periodicSync, 30000);
+    periodicSync();
+  }
+
+  // Pull server-side drafts on boot and merge into localStorage (server wins if newer)
+  async function bootstrapDrafts() {
+    if (!userName || !ALLOWED_USERS.has(userName)) return;
+    const serverDrafts = await apiDraftsPull();
+    for (const d of serverDrafts) {
+      if (d.comment && d.comment.trim()) {
+        drafts[d.song_id] = d.comment;
+      }
+    }
+    lsSetJSON(K_DRAFTS, drafts);
+  }
+
+  // Refresh on tab focus and after long idles
+  window.addEventListener('focus', () => {
+    if (currentSong) loadOthersComments(currentSong.id);
+    if (document.getElementById('mine-overlay')?.classList.contains('open')) renderMine();
+  });
+  window.addEventListener('online', () => { periodicSync(); });
+
   /* ===== Boot ===== */
   applyStaticI18n();
   if (!userName || !ALLOWED_USERS.has(userName)) {
     showScreen('ob');
   } else {
-    enterDiscovery();
+    bootstrapDrafts().then(() => enterDiscovery());
+    startSyncLoop();
   }
 })();
 </script>
