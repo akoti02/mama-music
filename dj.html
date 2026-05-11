@@ -168,6 +168,11 @@
     transition: opacity 0.2s;
   }
   .song .thumb:hover::after, .song .thumb:active::after { opacity: 1; }
+  .song .thumb.thumb-empty {
+    background-image: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+    background-size: cover;
+  }
+  .song .thumb.thumb-empty::after { display: none; }
   .song-body { flex: 1; min-width: 0; }
   .song-title { font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
   .song-artist { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
@@ -600,6 +605,12 @@
 
   /* ===== Songs list ===== */
   async function loadSongs() {
+    // Snapshot any in-progress comment input so the re-render doesn't wipe it.
+    const pending = {};
+    document.querySelectorAll('input[data-cmt-sid]').forEach(el => {
+      const v = el.value;
+      if (v && v.length) pending[el.dataset.cmtSid] = v;
+    });
     try {
       const r = await fetchWithRetry(`${API}/api/dj/songs`, {}, 2, 20000);
       if (!r.ok) throw new Error('http');
@@ -607,6 +618,11 @@
       renderSongs(d.songs || []);
     } catch (e) {
       document.getElementById('root').innerHTML = '<div class="empty"><p>Не удалось загрузить. Попробую снова через 30 с.</p></div>';
+    }
+    // Restore pending comment text after the new DOM is in place.
+    for (const sid of Object.keys(pending)) {
+      const el = document.querySelector(`input[data-cmt-sid="${sid}"]`);
+      if (el) el.value = pending[sid];
     }
   }
 
@@ -628,15 +644,16 @@
     wireSongs();
   }
   function renderSongCard(s, canRemove) {
-    const ytThumb = s.youtube_id ? `https://i.ytimg.com/vi/${s.youtube_id}/mqdefault.jpg` : '';
-    const thumbStyle = ytThumb ? `style="background-image:url('${ytThumb}')"` : '';
+    const hasYt = !!s.youtube_id;
+    const ytThumb = hasYt ? `https://i.ytimg.com/vi/${s.youtube_id}/mqdefault.jpg` : '';
+    const thumbStyle = hasYt ? `style="background-image:url('${ytThumb}')"` : '';
+    const thumbExtraCls = hasYt ? '' : ' thumb-empty';
     const isOwner = (myName === 'Юля' || myName === 'Артур');
     const marks = s.removal_marks || [];
     const myMark = marks.find(m => m.by_name === myName);
-    // Owners see all marks as a clear flag block. Non-owners see a toggle.
     const ownerMarks = (isOwner && marks.length) ? `<div class="flagged"><span class="flag-icon">⚠</span><span>Пометили «не подходит»: <strong>${marks.map(m => escapeHtml(m.by_name)).join(', ')}</strong></span></div>` : '';
     const flagBtn = !isOwner
-      ? `<button class="flag-btn ${myMark ? 'active' : ''}" data-flag="${s.id}">${myMark ? '✓ Помечено как не подходит' : '🚫 Не подходит'}</button>`
+      ? `<button class="flag-btn ${myMark ? 'active' : ''}" data-flag="${s.id}">${myMark ? '✓ Не подходит · нажми, чтобы снять' : '🚫 Не подходит'}</button>`
       : '';
     const comments = (s.comments || []).map(c => {
       const isMine = c.by_name === myName;
@@ -647,11 +664,11 @@
       </div>`;
     }).join('');
     return `<div class="song${marks.length ? ' has-flags' : ''}" data-sid="${s.id}">
-      <div class="thumb" ${thumbStyle} data-yt="${s.youtube_id || ''}"></div>
+      <div class="thumb${thumbExtraCls}" ${thumbStyle} data-yt="${s.youtube_id || ''}" title="${hasYt ? '' : 'Видео ещё не нашлось'}"></div>
       <div class="song-body">
         <div class="song-title">${escapeHtml(s.title)}</div>
         <div class="song-artist">${escapeHtml(s.artist)}</div>
-        <div class="song-meta">добавил${s.added_by && (s.added_by.endsWith('а') || s.added_by === 'Юля' || s.added_by === 'Света') ? 'а' : ''} <strong>${escapeHtml(s.added_by || '—')}</strong></div>
+        <div class="song-meta">от <strong>${escapeHtml(s.added_by || '—')}</strong>${hasYt ? '' : ' · <em style="color:var(--text-muted)">видео ищется…</em>'}</div>
         ${ownerMarks}
         ${canRemove ? `<button class="song-remove" data-rm="${s.id}">Удалить песню</button>` : ''}
         ${flagBtn}
@@ -711,11 +728,14 @@
     qPush({ kind: '/api/dj/comment/delete', payload: { comment_id: commentId, by: myName } });
     qDrain().then(() => loadSongs());
   }
-  function toggleFlag(songId, currentlyActive) {
+  async function toggleFlag(songId, currentlyActive) {
     const kind = currentlyActive ? '/api/dj/unmark-remove' : '/api/dj/mark-remove';
     qPush({ kind, payload: { song_id: songId, by: myName } });
     showToast(currentlyActive ? 'Пометка снята' : 'Пометили как не подходит');
-    qDrain().then(() => loadSongs());
+    try { await qDrain(); } catch {}
+    // Always re-render — even on network failure — so the disabled button is
+    // replaced and the user can act again. Pending changes stay in the queue.
+    await loadSongs();
   }
 
   /* ===== Add comment ===== */
@@ -818,12 +838,21 @@
   });
   window.addEventListener('pagehide', () => { qFlushBeacon(); });
   // If user changes identity in the main app tab while this one is open,
-  // reload so the right name is used for further actions.
+  // reload so the right name is used for further actions. Debounce so two
+  // tabs flipping identity at once don't reload-storm each other.
+  let storageReloadTimer = null;
   window.addEventListener('storage', e => {
-    if (e.key === MAIN_USER_KEY && e.newValue !== e.oldValue) location.reload();
+    if (e.key !== MAIN_USER_KEY || e.newValue === e.oldValue) return;
+    if (document.getElementById('id-picker')) return; // user is mid-pick
+    if (storageReloadTimer) clearTimeout(storageReloadTimer);
+    storageReloadTimer = setTimeout(() => location.reload(), 1500);
   });
-  // Periodic refresh
-  setInterval(() => { qDrain(); loadSongs(); }, 30000);
+  // Periodic refresh — suspends while tab is hidden (saves request budget,
+  // and avoids stomping the comment input when mom is typing on the other tab).
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    qDrain(); loadSongs();
+  }, 60000);
 
   /* ===== Boot ===== */
   applyIdentity();

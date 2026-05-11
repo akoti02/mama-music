@@ -2176,9 +2176,13 @@
       const serverCats = server?.category || '';
       const serverComment = (server?.comment || '').trim();
       // Server-authoritative window: if the server has a row that was written
-      // AFTER our local snapshot's ts, trust the server completely (another
-      // device made a fresher change). Drop the snapshot and skip resend.
-      if (server && server.created_at && snap.ts && server.created_at > snap.ts) {
+      // meaningfully AFTER our local snapshot's ts (60s skew tolerance for
+      // phone clocks lagging Cloudflare time), trust the server. Drop the
+      // snapshot and skip resend. Legacy snapshots without ts get treated as
+      // ts=0 so the first reconcile picks up the server's view.
+      const SKEW_MS = 60000;
+      const snapTs = (typeof snap.ts === 'number') ? snap.ts : 0;
+      if (server && server.created_at && server.created_at > snapTs + SKEW_MS) {
         delete localSnaps[sidStr];
         continue;
       }
@@ -2369,6 +2373,11 @@
   function setCat(c) {
     currentCat = c || '';
     if (currentCat) lsSet(K_CAT, currentCat); else lsDel(K_CAT);
+    // Reset progress counters when switching scope so renderEmpty / progress
+    // line never display stale numbers from the previous category.
+    progressN = 0; progressTotal = 0;
+    const pn = document.getElementById('progress-n'); if (pn) pn.textContent = '0';
+    const pt = document.getElementById('progress-total'); if (pt) pt.textContent = '0';
     refreshCatChip();
   }
   function refreshCatChip() {
@@ -3684,10 +3693,21 @@
     lastVersionState = v;
   }
   let syncTimer = null;
+  let lastSyncTs = 0;
+  async function periodicSyncDebounced() {
+    // Don't fire when tab is hidden — saves battery + request budget.
+    if (document.visibilityState === 'hidden') return;
+    // Debounce — multiple triggers (focus / visibility / online) can fire
+    // within milliseconds of each other; ignore anything within 3s of a sync.
+    if (Date.now() - lastSyncTs < 3000) return;
+    lastSyncTs = Date.now();
+    return periodicSync();
+  }
   function startSyncLoop() {
     if (syncTimer) return;
-    syncTimer = setInterval(periodicSync, 30000);
-    periodicSync();
+    // Poll every 60s (was 30s) — halves the worker request budget.
+    syncTimer = setInterval(periodicSyncDebounced, 60000);
+    periodicSyncDebounced();
   }
 
   // Pull server-side drafts on boot and merge into localStorage (server wins if newer)
@@ -3707,7 +3727,7 @@
     if (currentSong) loadOthersComments(currentSong.id);
     if (document.getElementById('mine-overlay')?.classList.contains('open')) renderMine();
   });
-  window.addEventListener('online', () => { periodicSync(); });
+  window.addEventListener('online', () => { periodicSyncDebounced(); });
 
   /* ===== Boot ===== */
   async function bootstrapAndRecover() {
