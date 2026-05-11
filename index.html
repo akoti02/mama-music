@@ -61,7 +61,7 @@
   /* Discovery mode locks the page; the card has its own internal scroller.
      Other modes (onboarding, cat-picker) scroll the body normally so long
      content always reaches users on every device. */
-  body.discovery-locked { height: 100%; overflow: hidden; }
+  body.discovery-locked { height: 100%; overflow: hidden; overscroll-behavior: contain; }
   html.discovery-locked { height: 100%; overflow: hidden; }
   /* Album-art-driven page tint */
   #album-tint {
@@ -1095,7 +1095,7 @@
 
   /* ===== Unsaved-changes badge (global, floats near top) ===== */
   .unsaved-badge {
-    position: fixed; top: 12px; left: 50%; transform: translate(-50%, -8px);
+    position: fixed; top: calc(12px + env(safe-area-inset-top)); left: 50%; transform: translate(-50%, -8px);
     z-index: 1500;
     display: inline-flex; align-items: center; gap: 8px;
     padding: 8px 14px;
@@ -2086,11 +2086,19 @@
           q = qGet();
           continue;
         }
-        // Non-2xx response. 4xx = client error, won't succeed on retry → drop with diag.
-        // 5xx = server error, keep for retry.
+        // Non-2xx response. 4xx = mostly terminal (won't succeed on retry) → drop.
+        // EXCEPT 408 Request Timeout and 429 Too Many Requests, which are
+        // transient and should be retried. 5xx = always retry.
         const status = r.status;
         let bodyText = '';
         try { bodyText = await r.text(); } catch {}
+        if (status === 408 || status === 429) {
+          const cur = qGet();
+          const idx = cur.findIndex(x => x._id === _id);
+          if (idx >= 0) { cur[idx]._attempts = (cur[idx]._attempts || 0) + 1; qSet(cur); }
+          diag('drain_transient_keep', { song_id: payload.song_id, action: payload.action, status });
+          break;
+        }
         if (status >= 400 && status < 500) {
           diag('drain_4xx_drop', { song_id: payload.song_id, action: payload.action, status, body: bodyText.slice(0, 300) });
           qRemove(_id);
@@ -2162,18 +2170,26 @@
       const snap = localSnaps[sidStr] || {};
       const server = byId.get(sid);
       const cats = (snap.categories || '').split(',').filter(Boolean).join(',');
-      // What we expect the server to have:
       const localRating = snap.rating || 0;
       const localComment = (snap.comment || '').trim();
       const serverRating = server?.rating || 0;
       const serverCats = server?.category || '';
       const serverComment = (server?.comment || '').trim();
-      const needsResend =
-        (localRating > 0 && serverRating !== localRating) ||
-        (cats && serverCats !== cats) ||
-        (localComment && serverComment !== localComment && (server || localRating > 0 || cats));
-      if (needsResend) {
-        const action = cats ? 'assign' : (localRating > 0 ? 'rate' : 'skip');
+      // What's missing on the server? Resend whenever ANY local field differs.
+      // Special case: comment-only snapshot (no rating, no cats) should also
+      // resend, but as a 'comment' action (server stores it via drafts path,
+      // not as a fake skip row that drops the song out of discovery).
+      const ratingMismatch = (localRating > 0 && serverRating !== localRating);
+      const catsMismatch = (cats && serverCats !== cats);
+      const commentMismatch = (localComment && serverComment !== localComment);
+      const hasAnyDelta = ratingMismatch || catsMismatch || commentMismatch;
+      if (hasAnyDelta) {
+        // Pick action based on what the user actually has, NOT a default
+        // 'skip' that would silently drop the song from discovery.
+        let action;
+        if (cats) action = 'assign';
+        else if (localRating > 0) action = 'rate';
+        else action = 'comment'; // comment-only — server stores via drafts path
         const payload = { song_id: sid, user: userName, action };
         if (cats) payload.category = cats;
         if (localRating > 0) payload.rating = localRating;
@@ -2181,10 +2197,9 @@
         qEnqueue(payload);
         resent++;
       }
-      // Clear snapshot if server has caught up (rating + cats + comment all match)
-      if (!needsResend && (localRating === serverRating) && ((cats || '') === (serverCats || '')) && (localComment === serverComment)) {
-        delete localSnaps[sidStr];
-      }
+      // Clear snapshot if server has caught up.
+      const allMatch = (localRating === serverRating) && ((cats || '') === (serverCats || '')) && (localComment === serverComment);
+      if (!hasAnyDelta && allMatch) delete localSnaps[sidStr];
     }
     lsSetJSON(K_SNAPSHOTS, localSnaps);
     // Also push any local drafts that the server doesn't have yet
@@ -2371,8 +2386,14 @@
   document.querySelectorAll('#cat-picker .cat-tile').forEach(tile => {
     tile.addEventListener('click', () => {
       const c = tile.dataset.cat;
-      if (c === 'LOVERS') { window.location.href = '/lovers.html'; return; }
-      if (c === 'DJ Микки') { window.location.href = '/dj.html'; return; }
+      if (c === 'LOVERS' || c === 'DJ Микки') {
+        // Flush any in-flight card state and queue BEFORE navigating away,
+        // otherwise an uncommitted comment can be stranded.
+        try { if (typeof window.__flushCardSave === 'function') window.__flushCardSave(); } catch {}
+        try { qFlushBeacon(); } catch {}
+        window.location.href = c === 'LOVERS' ? '/lovers.html' : '/dj.html';
+        return;
+      }
       setCat(c);
       enterDiscovery();
     });
@@ -2846,14 +2867,15 @@
   async function advanceWithoutSave() {
     if (!currentSong || actInFlight) return;
     actInFlight = true;
-    if (cardEl) {
-      cardEl.style.opacity = '0';
-      cardEl.style.transform = 'scale(0.97)';
-      cardEl.style.transition = 'opacity 0.22s, transform 0.22s';
-      await new Promise(r => setTimeout(r, 220));
-    }
-    actInFlight = false;
-    await loadNext();
+    try {
+      if (cardEl) {
+        cardEl.style.opacity = '0';
+        cardEl.style.transform = 'scale(0.97)';
+        cardEl.style.transition = 'opacity 0.22s, transform 0.22s';
+        await new Promise(r => setTimeout(r, 220));
+      }
+      await loadNext();
+    } finally { actInFlight = false; }
   }
 
   async function act(action, category, rating) {
@@ -2897,8 +2919,8 @@
       showToast(hadComment ? t('toast.noteSaved') : t('toast.skipped'));
     }
     progressN++;
-    actInFlight = false;
-    await loadNext();
+    try { await loadNext(); }
+    finally { actInFlight = false; } // keep lock until next card is mounted
   }
   async function loadNext() {
     document.getElementById('progress-n').textContent = fmt(progressN);
@@ -2933,6 +2955,7 @@
   }
   async function goBack() {
     if (seenIdx <= 0) return;
+    if (actInFlight) return; // wait for current commit/transition to finish
     if (typeof window.__flushCardSave === 'function') await window.__flushCardSave();
     seenIdx--;
     renderCard(seenStack[seenIdx]);

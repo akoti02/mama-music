@@ -43,9 +43,10 @@
     background: var(--bg); color: var(--text);
     font-size: 16px; line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    padding: 28px 16px calc(120px + env(safe-area-inset-bottom));
+    padding: calc(28px + env(safe-area-inset-top)) 16px calc(120px + env(safe-area-inset-bottom));
     max-width: 720px; margin: 0 auto;
     min-height: 100vh;
+    min-height: 100dvh;
     -webkit-tap-highlight-color: transparent;
   }
   header { margin-bottom: 28px; text-align: center; }
@@ -180,6 +181,29 @@
     text-decoration: underline;
   }
   .song-remove:active { opacity: 0.7; }
+  .flag-btn {
+    margin-top: 8px; padding: 6px 12px;
+    background: rgba(217,102,102,0.10);
+    border: 1px solid rgba(217,102,102,0.35);
+    border-radius: 999px;
+    color: var(--bad);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .flag-btn.active { background: rgba(217,102,102,0.32); color: #fff; border-color: rgba(217,102,102,0.7); }
+  .flag-btn:active { opacity: 0.7; }
+  .flagged {
+    margin-top: 8px; padding: 8px 12px;
+    background: rgba(217,102,102,0.14);
+    border-left: 3px solid var(--bad);
+    border-radius: 4px 10px 10px 4px;
+    color: var(--bad); font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .flagged .flag-icon { font-size: 14px; }
+  .flagged strong { color: var(--text); }
+  .song.has-flags { border-color: rgba(217,102,102,0.45); }
   .comments {
     margin-top: 10px;
     display: flex; flex-direction: column; gap: 6px;
@@ -339,7 +363,7 @@
 
   /* Unsaved-changes pill (for offline scenarios) */
   .unsaved {
-    position: fixed; top: 12px; left: 50%; transform: translate(-50%, -8px);
+    position: fixed; top: calc(12px + env(safe-area-inset-top)); left: 50%; transform: translate(-50%, -8px);
     z-index: 1500;
     display: inline-flex; align-items: center; gap: 8px;
     padding: 7px 13px;
@@ -471,11 +495,30 @@
             body: JSON.stringify(payload)
           }, 3, 20000);
           if (r.ok) { qRemove(_id); q = qGet(); continue; }
-          if (r.status >= 400 && r.status < 500) { qRemove(_id); q = qGet(); continue; }
-          break;
+          // 409 ('already exists') is a legit terminal state for add — drop.
+          // 408/429 are transient — keep. 4xx validation errors (400/403/404)
+          // would never succeed on retry — drop with a console warning.
+          if (r.status === 408 || r.status === 429) break;
+          if (r.status >= 400 && r.status < 500) {
+            console.warn('drop queue item (4xx)', kind, r.status);
+            qRemove(_id); q = qGet(); continue;
+          }
+          break; // 5xx — keep and retry later
         } catch (e) { break; }
       }
     } finally { draining = false; refreshUnsaved(); }
+  }
+  // Fire-and-forget all queued items via sendBeacon. Used on page hide /
+  // navigation away so iOS Safari can't kill the tab with unsent comments.
+  function qFlushBeacon() {
+    const q = qGet();
+    if (!q.length || !navigator.sendBeacon) return;
+    for (const { kind, payload } of q) {
+      try {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain' });
+        navigator.sendBeacon(`${API}${kind}`, blob);
+      } catch (e) { /* fire-and-forget */ }
+    }
   }
   function refreshUnsaved() {
     const el = document.getElementById('unsaved');
@@ -547,21 +590,31 @@
   function renderSongCard(s, canRemove) {
     const ytThumb = s.youtube_id ? `https://i.ytimg.com/vi/${s.youtube_id}/mqdefault.jpg` : '';
     const thumbStyle = ytThumb ? `style="background-image:url('${ytThumb}')"` : '';
+    const isOwner = (myName === 'Юля' || myName === 'Артур');
+    const marks = s.removal_marks || [];
+    const myMark = marks.find(m => m.by_name === myName);
+    // Owners see all marks as a clear flag block. Non-owners see a toggle.
+    const ownerMarks = (isOwner && marks.length) ? `<div class="flagged"><span class="flag-icon">⚠</span><span>Пометили «не подходит»: <strong>${marks.map(m => escapeHtml(m.by_name)).join(', ')}</strong></span></div>` : '';
+    const flagBtn = !isOwner
+      ? `<button class="flag-btn ${myMark ? 'active' : ''}" data-flag="${s.id}">${myMark ? '✓ Помечено как не подходит' : '🚫 Не подходит'}</button>`
+      : '';
     const comments = (s.comments || []).map(c => {
       const isMine = c.by_name === myName;
-      const canDel = isMine || myName === 'Юля' || myName === 'Артур';
+      const canDel = isMine || isOwner;
       return `<div class="comment">
         <div class="c-by">${escapeHtml(c.by_name)}${canDel ? ` <button class="c-del" data-del-comment-id="${c.id || ''}" data-del-comment-by="${escapeHtml(c.by_name)}">×</button>` : ''}</div>
         <div class="c-text">${escapeHtml(c.comment)}</div>
       </div>`;
     }).join('');
-    return `<div class="song" data-sid="${s.id}">
+    return `<div class="song${marks.length ? ' has-flags' : ''}" data-sid="${s.id}">
       <div class="thumb" ${thumbStyle} data-yt="${s.youtube_id || ''}"></div>
       <div class="song-body">
         <div class="song-title">${escapeHtml(s.title)}</div>
         <div class="song-artist">${escapeHtml(s.artist)}</div>
         <div class="song-meta">добавил${s.added_by && (s.added_by.endsWith('а') || s.added_by === 'Юля' || s.added_by === 'Света') ? 'а' : ''} <strong>${escapeHtml(s.added_by || '—')}</strong></div>
+        ${ownerMarks}
         ${canRemove ? `<button class="song-remove" data-rm="${s.id}">Удалить песню</button>` : ''}
+        ${flagBtn}
         <div class="comments">${comments}</div>
         <div class="add-comment">
           <input type="text" placeholder="Коммент от ${escapeHtml(myName)}..." data-cmt-sid="${s.id}" maxlength="500">
@@ -599,10 +652,19 @@
       if (!cid) return;
       b.addEventListener('click', () => deleteComment(cid));
     });
+    document.querySelectorAll('button.flag-btn[data-flag]').forEach(b => {
+      b.addEventListener('click', () => toggleFlag(parseInt(b.dataset.flag, 10), b.classList.contains('active')));
+    });
   }
   function deleteComment(commentId) {
     if (!commentId) return;
     qPush({ kind: '/api/dj/comment/delete', payload: { comment_id: commentId, by: myName } });
+    qDrain().then(() => loadSongs());
+  }
+  function toggleFlag(songId, currentlyActive) {
+    const kind = currentlyActive ? '/api/dj/unmark-remove' : '/api/dj/mark-remove';
+    qPush({ kind, payload: { song_id: songId, by: myName } });
+    showToast(currentlyActive ? 'Пометка снята' : 'Пометили как не подходит');
     qDrain().then(() => loadSongs());
   }
 
@@ -610,16 +672,18 @@
   function sendComment(songId, inputEl) {
     const txt = inputEl.value.trim();
     if (!txt) return;
-    inputEl.value = '';
+    // Persist to queue FIRST, then clear UI. Otherwise a quota error would
+    // wipe the user's text from both UI and storage.
     qPush({ kind: '/api/dj/comment', payload: { song_id: songId, by: myName, comment: txt } });
+    inputEl.value = '';
     showToast('Коммент отправляю…');
     qDrain().then(() => loadSongs());
   }
 
   /* ===== Remove song (Юля only) ===== */
   function removeSong(songId) {
-    if (myName !== 'Юля') return;
-    if (!confirm('Точно удалить эту песню из общего LOVERS?')) return;
+    if (myName !== 'Юля' && myName !== 'Артур') return;
+    if (!confirm('Точно удалить эту песню из DJ Микки?')) return;
     qPush({ kind: '/api/dj/remove', payload: { song_id: songId, by: myName } });
     qDrain().then(() => loadSongs());
   }
@@ -698,6 +762,13 @@
   window.addEventListener('online', () => qDrain().then(loadSongs));
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') { qDrain().then(loadSongs); }
+    else { qFlushBeacon(); } // fire on home-screen swipe / app switch
+  });
+  window.addEventListener('pagehide', () => { qFlushBeacon(); });
+  // If user changes identity in the main app tab while this one is open,
+  // reload so the right name is used for further actions.
+  window.addEventListener('storage', e => {
+    if (e.key === MAIN_USER_KEY && e.newValue !== e.oldValue) location.reload();
   });
   // Periodic refresh
   setInterval(() => { qDrain(); loadSongs(); }, 30000);
