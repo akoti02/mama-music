@@ -411,8 +411,10 @@
 (function() {
   'use strict';
   const API = 'https://api.akoev.com';
-  const K_NAME = 'lovers_user_name_v1';
   const K_QUEUE = 'lovers_pending_v1';
+  const MAIN_USER_KEY = 'venchanie_user_name_v2'; // shared with akoev.com main app
+  const OWNER_NAMES = new Set(['Юля', 'Артур', 'Света']);
+  const DEFAULT_GUEST = 'Lovers';
 
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function lsGet(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } }
@@ -420,7 +422,13 @@
   function lsGetJSON(k, d) { try { const v = lsGet(k, null); return v ? JSON.parse(v) : d; } catch { return d; } }
   function lsSetJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
-  let myName = lsGet(K_NAME, '') || '';
+  // Identity: prefer the main app's name (Юля/Артур/Света from akoev.com),
+  // otherwise default to "Lovers" — never prompt.
+  let myName = (() => {
+    const mainName = (lsGet(MAIN_USER_KEY, '') || '').trim();
+    if (mainName && OWNER_NAMES.has(mainName)) return mainName;
+    return DEFAULT_GUEST;
+  })();
 
   /* ===== Toast ===== */
   const toastEl = document.getElementById('toast');
@@ -487,28 +495,16 @@
     throw lastErr || new Error('fetch failed');
   }
 
-  /* ===== Onboarding ===== */
-  function showOnboarding() {
-    document.getElementById('ob-overlay').style.display = 'flex';
-    document.getElementById('me-strip').hidden = true;
-    document.getElementById('add-fab').hidden = true;
-    setTimeout(() => document.getElementById('ob-name').focus(), 200);
+  /* ===== Identity (no prompt — derived automatically) ===== */
+  function applyIdentity() {
+    const ob = document.getElementById('ob-overlay'); if (ob) ob.remove();
+    const strip = document.getElementById('me-strip');
+    const fab = document.getElementById('add-fab');
+    const changeBtn = document.getElementById('change-name');
+    if (changeBtn) changeBtn.remove();
+    if (strip) { strip.hidden = false; document.getElementById('me-name').textContent = myName; }
+    if (fab) fab.hidden = false;
   }
-  function hideOnboarding() {
-    document.getElementById('ob-overlay').style.display = 'none';
-    document.getElementById('me-strip').hidden = false;
-    document.getElementById('me-name').textContent = myName;
-    document.getElementById('add-fab').hidden = false;
-  }
-  document.getElementById('ob-go').addEventListener('click', () => {
-    const v = document.getElementById('ob-name').value.trim();
-    if (!v) { document.getElementById('ob-name').focus(); return; }
-    myName = v; lsSet(K_NAME, v);
-    hideOnboarding();
-    loadSongs();
-  });
-  document.getElementById('ob-name').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('ob-go').click(); });
-  document.getElementById('change-name').addEventListener('click', () => { document.getElementById('ob-name').value = myName; showOnboarding(); });
 
   /* ===== Songs list ===== */
   async function loadSongs() {
@@ -683,8 +679,8 @@
   setInterval(() => { qDrain(); loadSongs(); }, 30000);
 
   /* ===== Boot ===== */
-  if (!myName) showOnboarding();
-  else { hideOnboarding(); qDrain().then(loadSongs); }
+  applyIdentity();
+  qDrain().then(loadSongs);
 })();
 </script>
 </body>

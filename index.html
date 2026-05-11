@@ -45,7 +45,7 @@
     --font-display: 'Instrument Serif', 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, serif;
   }
   html, body { margin: 0; padding: 0; }
-  html { background: var(--bg); height: 100%; }
+  html { background: var(--bg); }
   body {
     font-family: var(--font-sans);
     font-feature-settings: 'cv11', 'ss01';
@@ -55,11 +55,14 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
-    height: 100%; overflow: hidden;
     position: relative;
+    min-height: 100vh;
   }
-  /* Cat-picker mode unlocks body scrolling on phones. */
-  body.allow-scroll { height: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* Discovery mode locks the page; the card has its own internal scroller.
+     Other modes (onboarding, cat-picker) scroll the body normally so long
+     content always reaches users on every device. */
+  body.discovery-locked { height: 100%; overflow: hidden; }
+  html.discovery-locked { height: 100%; overflow: hidden; }
   /* Album-art-driven page tint */
   #album-tint {
     position: fixed; inset: 0; z-index: -2;
@@ -2279,9 +2282,12 @@
     // Hide cat-current chip on the picker (we're already picking)
     const catChip = document.getElementById('cat-current');
     if (catChip) catChip.hidden = (name !== 'discovery');
-    // Allow body scrolling on the picker; lock it elsewhere (the card has its
-    // own internal scroll container).
-    document.body.classList.toggle('allow-scroll', name === 'catpick');
+    // Lock the page only in discovery mode (card has its own internal scroller).
+    // Onboarding and cat-picker rely on regular body scrolling so all content
+    // is reachable on every phone, regardless of viewport height.
+    const lock = (name === 'discovery');
+    document.body.classList.toggle('discovery-locked', lock);
+    document.documentElement.classList.toggle('discovery-locked', lock);
     if (name !== 'discovery') resetAlbumColor();
   }
   function updateWhoChip() {
@@ -2375,7 +2381,8 @@
     currentSong = song;
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля' || song.added_by === 'Света') ? 'а' : '')}</div>` : '';
-    const catsHTML = CATEGORIES.map(c => `<button type="button" class="cat-pill" data-cat="${escapeHtml(c)}"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
+    // LOVERS handled in /lovers.html — don't surface it as a card pill here.
+    const catsHTML = CATEGORIES.filter(c => c !== 'LOVERS').map(c => `<button type="button" class="cat-pill" data-cat="${escapeHtml(c)}"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
     const ratingHTML = Array.from({length: 10}, (_, i) => `<button type="button" class="rating-btn" data-r="${i+1}">${i+1}</button>`).join('');
     const canBack = seenIdx > 0;
     const savedComment = drafts[song.id] || '';
