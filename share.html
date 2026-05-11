@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#08080a">
+<title>Музыка к венчанию · общий просмотр</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --bg: #07070a;
+    --surface: rgba(22, 22, 26, 0.72);
+    --surface-2: #131318;
+    --surface-3: rgba(255,255,255,0.045);
+    --line: rgba(255, 255, 255, 0.075);
+    --line-2: rgba(255, 255, 255, 0.14);
+    --text: #f5f5f7;
+    --text-dim: #b0b0b8;
+    --text-muted: #84848a;
+    --gold: #d4a45c;
+    --gold-bright: #ecc380;
+    --pink: #f9a8d4; --blue: #93c5fd; --green: #7dd3a3;
+    --bad: #d96666;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    --font-display: 'Instrument Serif', 'Inter', system-ui, serif;
+  }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg); color: var(--text);
+    font-size: 16px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    padding: 28px 20px calc(40px + env(safe-area-inset-bottom));
+    max-width: 760px; margin: 0 auto;
+    min-height: 100vh;
+  }
+  header { margin-bottom: 28px; text-align: center; }
+  header .crest {
+    width: 56px; height: 56px; margin: 0 auto 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 20px 44px -10px var(--gold);
+  }
+  header .crest svg { width: 26px; height: 26px; color: #0a0a0d; }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400; font-size: 36px; line-height: 1.05;
+    letter-spacing: -0.018em; margin: 0;
+  }
+  h1 em { font-style: italic; color: var(--gold-bright); }
+  .sub {
+    margin-top: 12px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em;
+    color: var(--text-muted); font-weight: 700;
+  }
+  .meta {
+    margin-top: 18px;
+    display: flex; justify-content: center; gap: 18px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text-dim);
+  }
+  .meta strong { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+  .refresh {
+    margin-top: 14px; font-size: 11px; color: var(--text-muted);
+    letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700;
+  }
+  .refresh .live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 6px; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.4 } 50% { opacity: 1 } }
+
+  .group { margin-top: 26px; }
+  .group h2 {
+    margin: 0 0 12px;
+    font-family: var(--font-display);
+    font-weight: 400; font-size: 26px;
+    letter-spacing: -0.015em;
+  }
+  .group h2 .count { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-left: 10px; }
+  .item {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 16px;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    margin-bottom: 10px;
+  }
+  .thumb {
+    width: 56px; height: 56px; flex-shrink: 0;
+    border-radius: 10px;
+    background: var(--surface-2) center/cover no-repeat;
+  }
+  .body { flex: 1; min-width: 0; }
+  .title { font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+  .artist { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+  .badges { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 8px;
+    background: rgba(212,164,92,0.16);
+    border: 1px solid rgba(212,164,92,0.34);
+    border-radius: 999px;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.04em;
+    color: var(--gold-bright);
+  }
+  .badge.pending { background: rgba(255,255,255,0.04); border-color: var(--line); color: var(--text-muted); }
+  .badge.approved { background: rgba(125,211,163,0.14); border-color: rgba(125,211,163,0.4); color: var(--green); }
+  .badge.rejected { background: rgba(217,102,102,0.14); border-color: rgba(217,102,102,0.4); color: var(--bad); }
+  .comment {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(212,164,92,0.08);
+    border-left: 2px solid rgba(212,164,92,0.6);
+    border-radius: 6px;
+    font-family: var(--font-display);
+    font-size: 15px; line-height: 1.4; font-style: italic;
+  }
+  .status { margin: 60px auto; text-align: center; color: var(--text-muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="crest"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+  <h1>Музыка к <em>венчанию</em></h1>
+  <div class="sub">12 июля 2026 · Франция</div>
+  <div class="meta" id="meta"></div>
+  <div class="refresh"><span class="live-dot"></span><span id="refresh-label">Обновится через 30 с</span></div>
+</header>
+
+<div id="root"><div class="status">Загружаю…</div></div>
+
+<script>
+(function() {
+  const API = 'https://api.akoev.com';
+  const params = new URLSearchParams(location.search);
+  const cat = params.get('cat') || 'LOVERS';
+  const user = params.get('user') || 'Юля';
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  async function load() {
+    try {
+      const r = await fetch(`${API}/api/share/category?cat=${encodeURIComponent(cat)}&user=${encodeURIComponent(user)}`);
+      if (!r.ok) throw new Error('http');
+      const d = await r.json();
+      render(d.songs || []);
+    } catch (e) {
+      document.getElementById('root').innerHTML = '<div class="status">Не удалось загрузить. Попробую снова через 30 с.</div>';
+    }
+  }
+
+  function render(songs) {
+    document.title = `${cat} · ${user} — Музыка к венчанию`;
+    // Group by status: approved (rated 7+ AND in category), pending (in suggested but not yet rated), other
+    const inCat = (s) => s.my_category && (',' + s.my_category + ',').includes(',' + cat + ',');
+    const inSuggested = (s) => s.suggested_categories && (',' + s.suggested_categories + ',').includes(',' + cat + ',');
+    const approved = songs.filter(s => s.my_rating != null && s.my_rating >= 7 && (inCat(s) || inSuggested(s)));
+    const considered = songs.filter(s => s.my_rating != null && s.my_rating < 7 && !approved.includes(s));
+    const pending = songs.filter(s => s.my_rating == null);
+
+    document.getElementById('meta').innerHTML = `
+      <div>категория · <strong>${escapeHtml(cat)}</strong></div>
+      <div>слушает · <strong>${escapeHtml(user)}</strong></div>
+      <div>прослушано · <strong>${songs.length - pending.length}</strong> / ${songs.length}</div>
+      <div>одобрено · <strong>${approved.length}</strong></div>
+    `;
+
+    let html = '';
+    function block(title, items, kind) {
+      if (!items.length) return '';
+      return `<section class="group">
+        <h2>${escapeHtml(title)}<span class="count">${items.length}</span></h2>
+        ${items.map(s => renderItem(s, kind)).join('')}
+      </section>`;
+    }
+    html += block('Одобрено (★7+)', approved, 'approved');
+    html += block('Прослушано, ниже ★7', considered, 'rejected');
+    html += block('Ещё не слушала', pending, 'pending');
+    if (!html) html = '<div class="status">В этой категории пока ничего нет.</div>';
+    document.getElementById('root').innerHTML = html;
+  }
+
+  function renderItem(s, kind) {
+    const yt = s.youtube_id ? `<div class="thumb" style="background-image:url('https://i.ytimg.com/vi/${s.youtube_id}/default.jpg')"></div>` : '<div class="thumb"></div>';
+    const badges = [];
+    if (s.my_rating) badges.push(`<span class="badge">★ ${s.my_rating}/10</span>`);
+    if (kind === 'approved') badges.push('<span class="badge approved">✓ Одобрено</span>');
+    else if (kind === 'rejected') badges.push('<span class="badge rejected">Ниже планки</span>');
+    else badges.push('<span class="badge pending">В очереди</span>');
+    const comment = s.my_comment ? `<div class="comment">«${escapeHtml(s.my_comment)}»</div>` : '';
+    return `
+      <div class="item">
+        ${yt}
+        <div class="body">
+          <div class="title">${escapeHtml(s.title)}</div>
+          <div class="artist">${escapeHtml(s.artist)}${s.year ? ' · ' + s.year : ''}</div>
+          <div class="badges">${badges.join('')}</div>
+          ${comment}
+        </div>
+      </div>
+    `;
+  }
+
+  load();
+  // Auto-refresh every 30s
+  let secs = 30;
+  setInterval(() => {
+    secs -= 1;
+    if (secs <= 0) { load(); secs = 30; }
+    document.getElementById('refresh-label').textContent = secs > 0 ? `Обновится через ${secs} с` : 'Обновляю…';
+  }, 1000);
+})();
+</script>
+</body>
+</html>

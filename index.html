@@ -1927,19 +1927,27 @@
     cardHost.scrollTop = 0;
     cardEl = document.getElementById('card');
 
-    // Pre-fill state from prior user actions on this song
-    let selectedCategory = song.my_category || null;
-    if (selectedCategory) {
-      const pill = cardHost.querySelector(`.cat-pill[data-cat="${selectedCategory.replace(/"/g, '\\"')}"]`);
+    // Pre-fill state from prior user actions OR from the song's suggested categories.
+    // Multi-category: selectedCategories is a Set of canonical category names.
+    const selectedCategories = new Set();
+    const myCats = (song.my_category || '').split(',').filter(Boolean);
+    const suggested = (song.suggested_categories || '').split(',').filter(Boolean);
+    // If the user has not yet picked any category, pre-select the suggestions.
+    const initial = myCats.length ? myCats : suggested;
+    for (const c of initial) if (CATEGORIES.includes(c)) selectedCategories.add(c);
+    for (const c of selectedCategories) {
+      const pill = cardHost.querySelector(`.cat-pill[data-cat="${c.replace(/"/g, '\\"')}"]`);
       if (pill) pill.classList.add('selected');
     }
-    if (song.my_rating) {
-      cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= song.my_rating));
-      const hint = document.getElementById('rating-hint');
-      if (hint) hint.textContent = t('rating.hint.set', { n: song.my_rating });
-    } else {
-      const hint = document.getElementById('rating-hint');
-      if (hint) hint.textContent = selectedCategory ? t('rating.hint.with_cat') : t('rating.hint.empty');
+    let currentRating = song.my_rating || 0;
+    if (currentRating) {
+      cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= currentRating));
+    }
+    const hint = document.getElementById('rating-hint');
+    if (hint) {
+      if (currentRating) hint.textContent = t('rating.hint.set', { n: currentRating });
+      else if (selectedCategories.size) hint.textContent = t('rating.hint.with_cat');
+      else hint.textContent = t('rating.hint.empty');
     }
     // If we have a server-side comment and no fresher local draft, use the server one
     if (song.my_comment && !savedComment) {
@@ -1947,34 +1955,65 @@
       if (ta) ta.value = song.my_comment;
     }
 
-    // Wire events
+    // Persist current card state (rating/categories/comment) without advancing.
+    let saveTimer = null;
+    function persistCard() {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        if (currentSong?.id !== song.id) return;
+        const ta = document.getElementById('comment-input');
+        const commentEdited = ta && ta.dataset.edited === '1';
+        const comment = ta ? ta.value.trim() : '';
+        const cats = [...selectedCategories].join(',');
+        const action = cats ? 'assign' : (currentRating ? 'rate' : 'skip');
+        const payload = { song_id: song.id, user: userName, action };
+        if (cats) payload.category = cats;
+        if (currentRating) payload.rating = currentRating;
+        if (commentEdited || comment) payload.comment = comment;
+        showSaveIndicator('saving');
+        const res = await apiAction(payload);
+        if (res.ok) showSaveIndicator('saved');
+        else showSaveIndicator('error');
+      }, 350);
+    }
+
     document.getElementById('skip-btn').addEventListener('click', () => {
-      // If a category was pre-tagged, treat skip as assign-without-rating
-      // (mom selected the pill; honour that intent instead of dropping it on the floor)
-      if (selectedCategory) act('assign', selectedCategory);
-      else act('skip');
+      // 'Дальше' just advances. State should already be saved; flush any pending save first.
+      if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+      const ta = document.getElementById('comment-input');
+      const commentEdited = ta && ta.dataset.edited === '1';
+      const comment = ta ? ta.value.trim() : '';
+      const cats = [...selectedCategories].join(',');
+      const action = cats ? 'assign' : (currentRating ? 'rate' : 'skip');
+      act(action, cats || null, currentRating || null);
     });
     document.getElementById('back-btn').addEventListener('click', () => goBack());
     document.getElementById('remove-link').addEventListener('click', () => onRemoveCurrent());
+
     cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => {
-      const wasSelected = b.classList.contains('selected');
-      cardHost.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('selected'));
-      if (wasSelected) { selectedCategory = null; }
-      else { b.classList.add('selected'); selectedCategory = b.dataset.cat; }
+      const cat = b.dataset.cat;
+      if (selectedCategories.has(cat)) { selectedCategories.delete(cat); b.classList.remove('selected'); }
+      else { selectedCategories.add(cat); b.classList.add('selected'); }
       const hint = document.getElementById('rating-hint');
       if (hint) {
-        const hasRating = !!cardHost.querySelector('.rating-btn.filled');
-        if (hasRating) hint.textContent = t('rating.hint.set', { n: cardHost.querySelectorAll('.rating-btn.filled').length });
-        else hint.textContent = selectedCategory ? t('rating.hint.with_cat') : t('rating.hint.empty');
+        if (currentRating) hint.textContent = t('rating.hint.set', { n: currentRating });
+        else hint.textContent = selectedCategories.size ? t('rating.hint.with_cat') : t('rating.hint.empty');
       }
+      persistCard();
     }));
     cardHost.querySelectorAll('.rating-btn').forEach(b => b.addEventListener('click', () => {
       const r = parseInt(b.dataset.r, 10);
-      cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= r));
+      // Tap same rating again to clear it
+      if (currentRating === r) {
+        currentRating = 0;
+        cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.remove('filled'));
+      } else {
+        currentRating = r;
+        cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= r));
+      }
       const hint = document.getElementById('rating-hint');
-      if (hint) hint.textContent = t('rating.hint.set', { n: r });
-      const action = selectedCategory ? 'assign' : 'rate';
-      act(action, selectedCategory, r);
+      if (hint) hint.textContent = currentRating ? t('rating.hint.set', { n: currentRating }) : (selectedCategories.size ? t('rating.hint.with_cat') : t('rating.hint.empty'));
+      persistCard();
     }));
     const ta = document.getElementById('comment-input');
     const skipBtnEl = document.getElementById('skip-btn');
@@ -1986,13 +2025,27 @@
         skipLabelEl.textContent = hasText ? t('card.skipWithNote') : t('card.skip');
       }
     }
+    let commentServerTimer = null;
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
       ta.dataset.edited = '1';
       saveDraft(song.id, ta.value);
-      showSaveIndicator('saved');
       refreshSkipLabel();
+      // Server-side persist: only if there's already a record for this song
+      // (avoids creating a 'skip' placeholder for an untouched song).
+      // We rely on the fact that rating-tap or cat-tap will create the row;
+      // comment-only typing stays as a localStorage draft until those happen.
+      // Once a row exists (rating or cat clicked), debounced server save kicks in.
+      if (currentRating > 0 || selectedCategories.size > 0) {
+        if (commentServerTimer) clearTimeout(commentServerTimer);
+        commentServerTimer = setTimeout(() => {
+          if (currentSong?.id !== song.id) return;
+          persistCard();
+        }, 800);
+      } else {
+        showSaveIndicator('saved'); // local-only
+      }
     });
     ta.dataset.edited = '0';
     if (ta.value) {
