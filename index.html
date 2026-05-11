@@ -394,6 +394,59 @@
     box-shadow: 0 0 0 4px rgba(var(--art-r), var(--art-g), var(--art-b), 0.08);
   }
 
+  /* ===== Rating row (primary action) ===== */
+  .rating { margin-bottom: 22px; }
+  .rating-label {
+    text-align: center; color: var(--text-muted);
+    font-size: 10px; font-weight: 800; letter-spacing: 0.24em;
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .rating-grid {
+    display: grid; grid-template-columns: repeat(10, 1fr);
+    gap: 5px;
+  }
+  .rating-btn {
+    appearance: none;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 100%),
+      var(--surface);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 0;
+    min-height: 50px;
+    font-size: 14px; font-weight: 800;
+    cursor: pointer;
+    transition: all 0.18s var(--ease-spring);
+    font-variant-numeric: tabular-nums;
+  }
+  .rating-btn:hover {
+    color: var(--text);
+    border-color: rgba(var(--art-r), var(--art-g), var(--art-b), 0.4);
+    transform: translateY(-1px);
+  }
+  .rating-btn:active { transform: scale(0.92); transition-duration: 0.08s; }
+  .rating-btn.filled {
+    background:
+      radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.45) 0%, transparent 55%),
+      linear-gradient(135deg, rgba(var(--art-r), var(--art-g), var(--art-b), 1) 0%, rgba(var(--art-r), var(--art-g), var(--art-b), 0.82) 100%);
+    color: #0a0a0d;
+    border-color: transparent;
+    box-shadow:
+      0 8px 22px -6px rgba(var(--art-r), var(--art-g), var(--art-b), 0.55),
+      inset 0 1px 0 rgba(255,255,255,0.35);
+  }
+  .rating-btn.filled:hover { transform: translateY(-2px); }
+  .rating-hint {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 11px; color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    height: 14px;
+  }
+
   /* ===== Category pills ===== */
   .cats { margin-bottom: 18px; }
   .cats-label {
@@ -435,6 +488,15 @@
   .cat-pill:active { transform: scale(0.97) translateY(0); transition-duration: 0.08s; }
   .cat-pill .nm { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; position: relative; }
   .cat-pill .ctx { font-size: 11px; color: var(--text-muted); font-weight: 600; position: relative; text-transform: uppercase; letter-spacing: 0.12em; }
+  .cat-pill.selected {
+    border-color: rgba(var(--art-r), var(--art-g), var(--art-b), 0.85);
+    background:
+      linear-gradient(180deg, rgba(var(--art-r), var(--art-g), var(--art-b), 0.14) 0%, rgba(var(--art-r), var(--art-g), var(--art-b), 0.06) 100%),
+      var(--surface);
+    box-shadow: 0 14px 30px -12px rgba(var(--art-r), var(--art-g), var(--art-b), 0.55),
+                inset 0 0 0 1px rgba(var(--art-r), var(--art-g), var(--art-b), 0.4);
+  }
+  .cat-pill.selected .nm { color: var(--gold-bright); }
 
   /* ===== Nav row (skip / back / remove) ===== */
   .nav-row {
@@ -756,6 +818,19 @@
   .mine-item .mi-text { flex: 1; min-width: 0; }
   .mine-item .mi-title { font-weight: 600; font-size: 15px; letter-spacing: -0.005em; }
   .mine-item .mi-artist { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+  .mine-item .mi-rating {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 4px;
+    padding: 2px 9px 2px 8px;
+    background: rgba(var(--art-r), var(--art-g), var(--art-b), 0.14);
+    border: 1px solid rgba(var(--art-r), var(--art-g), var(--art-b), 0.32);
+    border-radius: 999px;
+    font-size: 11px; font-weight: 800;
+    color: var(--gold-bright);
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .mine-item .mi-rating .star { font-size: 10px; }
   .mine-item .mi-comment {
     margin-top: 8px;
     padding: 8px 10px 8px 12px;
@@ -1157,6 +1232,7 @@
   </div>
   <div class="mine-tabs">
     <button type="button" class="mine-tab active" data-tab="picks"><span data-i18n="mine.picks"></span> <span class="count" id="tc-picks">0</span></button>
+    <button type="button" class="mine-tab" data-tab="rated"><span data-i18n="mine.rated"></span> <span class="count" id="tc-rated">0</span></button>
     <button type="button" class="mine-tab" data-tab="added"><span data-i18n="mine.added"></span> <span class="count" id="tc-added">0</span></button>
     <button type="button" class="mine-tab" data-tab="removed"><span data-i18n="mine.removed"></span> <span class="count" id="tc-removed">0</span></button>
     <button type="button" class="mine-tab" data-tab="activity"><span data-i18n="mine.activity"></span></button>
@@ -1260,10 +1336,14 @@
       'cat.DJ Микки.short': 'DJ Микки', 'cat.DJ Микки.ctx': 'диджей-сет',
       'cat.Юля.short': 'Юля', 'cat.Юля.ctx': 'выход невесты',
       'cat.Вилла.short': 'Вилла', 'cat.Вилла.ctx': '10 июля · фон',
-      'card.placeAt': 'Куда определить',
+      'card.placeAt': 'Куда определить · по желанию',
       'card.commentPh': 'Заметка к треку (необязательно)',
       'card.skip': 'Пропустить', 'card.back': 'Назад',
       'card.remove': 'Удалить из списка',
+      'rating.label': 'Оцени от 1 до 10',
+      'rating.hint.empty': 'Тапни цифру, чтобы перейти к следующей',
+      'rating.hint.with_cat': 'Тапни цифру — сохраню с выбранной категорией',
+      'rating.hint.set': '★ {n} из 10',
       'card.removed': 'Песня была удалена',
       'card.removedHint': 'Удалила {by}. Можно вернуть в «Моё → Активность».',
       'card.addedBy': 'Добавил{a} {by}',
@@ -1282,8 +1362,9 @@
       'allTracks.title': 'Все треки',
       'sort.alpha': 'По артисту', 'sort.year': 'По году', 'sort.title': 'По названию', 'sort.added': 'Новые',
       'mine.title': 'Моё', 'mine.sub': 'собрано',
-      'mine.picks': 'Что собрано', 'mine.added': 'Я добавил', 'mine.removed': 'Я удалил', 'mine.activity': 'Активность',
+      'mine.picks': 'Собрано', 'mine.rated': 'Оценки', 'mine.added': 'Добавил', 'mine.removed': 'Удалил', 'mine.activity': 'Активность',
       'mine.noPicks': 'Пока ничего не выбрано',
+      'mine.noRated': 'Пока ничего не оценил{a}',
       'mine.noAdded': 'Ничего не добавил{a}',
       'mine.noRemoved': 'Ничего не удалял{a}',
       'mine.noActivity': 'Пока без изменений',
@@ -1317,6 +1398,7 @@
       'toast.failed': 'Что-то пошло не так',
       'toast.offline': 'Нет связи. Подожди и попробуй снова.',
       'toast.assigned': 'В «{cat}»',
+      'toast.rated': 'Оценка ★{n}',
       'toast.skipped': 'Пропущено',
       'toast.removed': 'Удалено. Вернуть — во вкладке «Моё».',
       'toast.restored': 'Вернули',
@@ -1341,10 +1423,14 @@
       'cat.DJ Микки.short': 'DJ Micky', 'cat.DJ Микки.ctx': 'DJ set',
       'cat.Юля.short': 'Yulia', 'cat.Юля.ctx': 'bride entrance',
       'cat.Вилла.short': 'Villa', 'cat.Вилла.ctx': 'Jul 10 · background',
-      'card.placeAt': 'Place into',
+      'card.placeAt': 'Place into · optional',
       'card.commentPh': 'Note for this track (optional)',
       'card.skip': 'Skip', 'card.back': 'Back',
       'card.remove': 'Remove from list',
+      'rating.label': 'Rate from 1 to 10',
+      'rating.hint.empty': 'Tap a number to go to the next track',
+      'rating.hint.with_cat': 'Tap a number — saves with your selected category',
+      'rating.hint.set': '★ {n} of 10',
       'card.removed': 'This track was removed',
       'card.removedHint': 'Removed by {by}. Restore in My → Activity.',
       'card.addedBy': 'Added by {by}',
@@ -1363,8 +1449,9 @@
       'allTracks.title': 'All tracks',
       'sort.alpha': 'By artist', 'sort.year': 'By year', 'sort.title': 'By title', 'sort.added': 'New',
       'mine.title': 'My', 'mine.sub': 'picked',
-      'mine.picks': 'Picked', 'mine.added': 'I added', 'mine.removed': 'I removed', 'mine.activity': 'Activity',
+      'mine.picks': 'Picked', 'mine.rated': 'Ratings', 'mine.added': 'Added', 'mine.removed': 'Removed', 'mine.activity': 'Activity',
       'mine.noPicks': 'Nothing picked yet',
+      'mine.noRated': 'Nothing rated yet',
       'mine.noAdded': 'You haven\'t added anything',
       'mine.noRemoved': 'You haven\'t removed anything',
       'mine.noActivity': 'No changes yet',
@@ -1398,6 +1485,7 @@
       'toast.failed': 'Something went wrong',
       'toast.offline': 'No connection. Wait and try again.',
       'toast.assigned': 'To «{cat}»',
+      'toast.rated': 'Rated ★{n}',
       'toast.skipped': 'Skipped',
       'toast.removed': 'Removed. Restore from the My tab.',
       'toast.restored': 'Restored',
@@ -1709,6 +1797,7 @@
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля' || song.added_by === 'Света') ? 'а' : '')}</div>` : '';
     const catsHTML = CATEGORIES.map(c => `<button type="button" class="cat-pill" data-cat="${escapeHtml(c)}"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
+    const ratingHTML = Array.from({length: 10}, (_, i) => `<button type="button" class="rating-btn" data-r="${i+1}">${i+1}</button>`).join('');
     const canBack = seenIdx > 0;
     const savedComment = drafts[song.id] || '';
 
@@ -1725,6 +1814,11 @@
         <div class="comment-row">
           <textarea id="comment-input" placeholder="${escapeHtml(t('card.commentPh'))}" rows="1">${escapeHtml(savedComment)}</textarea>
           <div class="save-indicator" id="save-indicator"><span class="dot"></span><span id="save-indicator-text"></span></div>
+        </div>
+        <div class="rating">
+          <div class="rating-label">${escapeHtml(t('rating.label'))}</div>
+          <div class="rating-grid" id="rating-grid">${ratingHTML}</div>
+          <div class="rating-hint" id="rating-hint">${escapeHtml(t('rating.hint.empty'))}</div>
         </div>
         <div class="cats">
           <div class="cats-label">${escapeHtml(t('card.placeAt'))}</div>
@@ -1747,10 +1841,28 @@
     cardEl = document.getElementById('card');
 
     // Wire events
+    let selectedCategory = null;
     document.getElementById('skip-btn').addEventListener('click', () => act('skip'));
     document.getElementById('back-btn').addEventListener('click', () => goBack());
     document.getElementById('remove-link').addEventListener('click', () => onRemoveCurrent());
-    cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => act('assign', b.dataset.cat)));
+    cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => {
+      const wasSelected = b.classList.contains('selected');
+      cardHost.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('selected'));
+      if (wasSelected) { selectedCategory = null; }
+      else { b.classList.add('selected'); selectedCategory = b.dataset.cat; }
+      const hint = document.getElementById('rating-hint');
+      if (hint) hint.textContent = selectedCategory ? t('rating.hint.with_cat') : t('rating.hint.empty');
+    }));
+    cardHost.querySelectorAll('.rating-btn').forEach(b => b.addEventListener('click', () => {
+      const r = parseInt(b.dataset.r, 10);
+      // Fill visual up to r
+      cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= r));
+      const hint = document.getElementById('rating-hint');
+      if (hint) hint.textContent = t('rating.hint.set', { n: r });
+      // Commit: if a category was selected → assign, else 'rate'
+      const action = selectedCategory ? 'assign' : 'rate';
+      act(action, selectedCategory, r);
+    }));
     const ta = document.getElementById('comment-input');
     let commentSaveTimer = null;
     let lastSavedText = savedComment || '';
@@ -1821,7 +1933,7 @@
   }
 
   /* ===== Actions ===== */
-  async function act(action, category) {
+  async function act(action, category, rating) {
     if (!currentSong || actInFlight) return;
     actInFlight = true;
     const songRef = currentSong;
@@ -1830,7 +1942,7 @@
     const payload = { song_id: songRef.id, user: userName, action };
     if (category) payload.category = category;
     if (comment) payload.comment = comment;
-    // Animate out
+    if (rating) payload.rating = rating;
     if (cardEl) {
       cardEl.style.opacity = '0';
       cardEl.style.transform = 'scale(0.97)';
@@ -1839,16 +1951,17 @@
     }
     const res = await apiAction(payload);
     if (!res.ok) {
-      // Restore card visually and KEEP draft so nothing is lost
       if (cardEl) { cardEl.style.opacity = '1'; cardEl.style.transform = 'scale(1)'; }
       showToast(t('toast.offline'));
       actInFlight = false;
       return;
     }
-    saveDraft(songRef.id, ''); // success — now safe to clear draft
+    saveDraft(songRef.id, '');
     if (action === 'assign') {
-      const msg = comment ? tGender('toast.commentSaved') + ' · ' + t('toast.assigned', { cat: t(`cat.${category}.short`) }) : t('toast.assigned', { cat: t(`cat.${category}.short`) });
-      showToast(msg);
+      const r = rating ? ` · ★${rating}` : '';
+      showToast(t('toast.assigned', { cat: t(`cat.${category}.short`) }) + r);
+    } else if (action === 'rate') {
+      showToast(t('toast.rated', { n: rating }));
     } else if (action === 'skip') {
       showToast(t('toast.skipped'));
     }
@@ -2118,10 +2231,49 @@
   async function renderMine() {
     mineBody.innerHTML = `<div class="ov-status">…</div>`;
     if (mineTab === 'picks') await renderMinePicks();
+    else if (mineTab === 'rated') await renderMineRated();
     else if (mineTab === 'added') await renderMineAdded();
     else if (mineTab === 'removed') await renderMineRemoved();
     else await renderActivity();
     updateMineCounts();
+  }
+  async function renderMineRated() {
+    const r = await fetchWithRetry(`${API}/api/library/rated?user=${encodeURIComponent(userName)}`).then(r => r.ok ? r.json() : { songs: [] }).catch(() => ({ songs: [] }));
+    const items = r.songs || [];
+    document.getElementById('tc-rated').textContent = items.length;
+    if (!items.length) {
+      mineBody.innerHTML = `<div class="ov-status">${escapeHtml(tGender('mine.noRated'))}</div>`;
+      return;
+    }
+    // Group by rating bucket
+    const buckets = [[10,9,8,'8 — 10'], [7,6,5,'5 — 7'], [4,3,2,1,'1 — 4']];
+    const groups = [];
+    for (const arr of buckets) {
+      const label = arr.pop();
+      const sub = items.filter(s => arr.includes(s.rating));
+      if (sub.length) groups.push([label, sub]);
+    }
+    mineBody.innerHTML = groups.map(([label, arr]) => `
+      <section class="mine-group">
+        <div class="mine-group-head">
+          <div class="mine-group-name">★ ${escapeHtml(label)}</div>
+          <div class="mine-group-count">${arr.length}</div>
+        </div>
+        ${arr.map(it => `
+          <div class="mine-item" data-song="${it.id}">
+            <div class="mi-text">
+              <div class="mi-title">${escapeHtml(it.title)}</div>
+              <div class="mi-artist">${escapeHtml(it.artist)}${it.year ? ' · ' + it.year : ''}${it.category ? ' · ' + escapeHtml(t(`cat.${it.category}.short`)) : ''}</div>
+              <div class="mi-rating"><span class="star">★</span>${it.rating}/10</div>
+              ${it.comment ? `<div class="mi-comment" data-edit="${it.id}">«${escapeHtml(it.comment)}»</div>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </section>
+    `).join('');
+    mineBody.querySelectorAll('[data-edit]').forEach(el => {
+      el.addEventListener('click', () => openCommentEditor(el, parseInt(el.dataset.edit, 10), items));
+    });
   }
   async function renderMinePicks() {
     const items = await apiMine();
@@ -2147,6 +2299,7 @@
             <div class="mi-text">
               <div class="mi-title">${escapeHtml(it.title)}</div>
               <div class="mi-artist">${escapeHtml(it.artist)}${it.year ? ' · ' + it.year : ''}</div>
+              ${it.rating ? `<div class="mi-rating"><span class="star">★</span>${it.rating}/10</div>` : ''}
               ${it.comment
                 ? `<div class="mi-comment" data-edit="${it.id}" title="${escapeHtml(t('mine.editComment'))}">«${escapeHtml(it.comment)}»</div>`
                 : `<button class="mi-comment-add" type="button" data-edit="${it.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>${escapeHtml(t('mine.addComment'))}</span></button>`
@@ -2304,9 +2457,15 @@
     try {
       const m = await apiMine();
       document.getElementById('tc-picks').textContent = m.length;
-      document.getElementById('mine-counter').textContent = fmt(m.length);
+      const r = await fetchWithRetry(`${API}/api/library/rated?user=${encodeURIComponent(userName)}`).then(r => r.ok ? r.json() : { songs: [] }).catch(() => ({ songs: [] }));
+      const rated = (r.songs || []).length;
+      const elR = document.getElementById('tc-rated');
+      if (elR) elR.textContent = rated;
+      // Header counter: prefer ratings (the primary metric) when there are any
+      document.getElementById('mine-counter').textContent = fmt(rated || m.length);
       const badge = document.getElementById('mine-badge');
-      if (m.length > 0) { badge.hidden = false; badge.textContent = m.length; }
+      const n = rated || m.length;
+      if (n > 0) { badge.hidden = false; badge.textContent = n; }
       else badge.hidden = true;
     } catch (e) {}
   }
