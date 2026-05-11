@@ -501,13 +501,13 @@
   /* ===== Nav row (skip / back / remove) ===== */
   .nav-row {
     display: flex; align-items: center; justify-content: space-between;
-    margin-top: 8px;
+    margin-top: 14px;
     gap: 10px;
   }
   .nav-btn {
     appearance: none; background: transparent; border: 0;
     color: var(--text-dim);
-    font-size: 14px; font-weight: 600;
+    font-size: 13px; font-weight: 700;
     padding: 10px 14px;
     cursor: pointer;
     transition: color 0.18s, transform 0.1s;
@@ -519,6 +519,33 @@
   .nav-btn:active:not(:disabled) { transform: scale(0.95); }
   .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .nav-btn svg { width: 14px; height: 14px; }
+  .nav-btn.primary {
+    background: var(--surface-3);
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    padding: 12px 22px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .nav-btn.primary:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: rgba(var(--art-r), var(--art-g), var(--art-b), 0.5);
+    transform: translateY(-1px);
+  }
+  .nav-btn.has-note {
+    background:
+      radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.35) 0%, transparent 55%),
+      linear-gradient(135deg, rgba(var(--art-r), var(--art-g), var(--art-b), 1) 0%, rgba(var(--art-r), var(--art-g), var(--art-b), 0.82) 100%);
+    color: #0a0a0d;
+    border-color: transparent;
+    box-shadow: 0 12px 26px -8px rgba(var(--art-r), var(--art-g), var(--art-b), 0.5),
+                inset 0 1px 0 rgba(255,255,255,0.35);
+  }
+  .nav-btn.has-note:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px -8px rgba(var(--art-r), var(--art-g), var(--art-b), 0.6),
+                inset 0 1px 0 rgba(255,255,255,0.35);
+  }
   .remove-link {
     display: block; text-align: center;
     margin-top: 22px;
@@ -1359,7 +1386,7 @@
       'cat.Вилла.short': 'Вилла', 'cat.Вилла.ctx': '10 июля · фон',
       'card.placeAt': 'Куда определить · по желанию',
       'card.commentPh': 'Заметка к треку (необязательно)',
-      'card.skip': 'Пропустить', 'card.back': 'Назад',
+      'card.skip': 'Дальше', 'card.skipWithNote': 'Сохранить и дальше', 'card.back': 'Назад',
       'card.remove': 'Удалить из списка',
       'rating.label': 'Оцени от 1 до 10',
       'rating.hint.empty': 'Тапни цифру, чтобы перейти к следующей',
@@ -1423,6 +1450,7 @@
       'toast.assigned': 'В «{cat}»',
       'toast.rated': 'Оценка ★{n}',
       'toast.skipped': 'Пропущено',
+      'toast.noteSaved': 'Заметка сохранена',
       'toast.removed': 'Удалено. Вернуть — во вкладке «Моё».',
       'toast.restored': 'Вернули',
       'toast.added': 'Добавлено',
@@ -1448,7 +1476,7 @@
       'cat.Вилла.short': 'Villa', 'cat.Вилла.ctx': 'Jul 10 · background',
       'card.placeAt': 'Place into · optional',
       'card.commentPh': 'Note for this track (optional)',
-      'card.skip': 'Skip', 'card.back': 'Back',
+      'card.skip': 'Next', 'card.skipWithNote': 'Save & next', 'card.back': 'Back',
       'card.remove': 'Remove from list',
       'rating.label': 'Rate from 1 to 10',
       'rating.hint.empty': 'Tap a number to go to the next track',
@@ -1512,6 +1540,7 @@
       'toast.assigned': 'To «{cat}»',
       'toast.rated': 'Rated ★{n}',
       'toast.skipped': 'Skipped',
+      'toast.noteSaved': 'Note saved',
       'toast.removed': 'Removed. Restore from the My tab.',
       'toast.restored': 'Restored',
       'toast.added': 'Added',
@@ -1854,8 +1883,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             <span>${escapeHtml(t('card.back'))}</span>
           </button>
-          <button type="button" class="nav-btn" id="skip-btn">
-            <span>${escapeHtml(t('card.skip'))}</span>
+          <button type="button" class="nav-btn primary" id="skip-btn">
+            <span id="skip-label">${escapeHtml(t('card.skip'))}</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
@@ -1915,18 +1944,28 @@
       act(action, selectedCategory, r);
     }));
     const ta = document.getElementById('comment-input');
-    let commentEdited = false;
+    const skipBtnEl = document.getElementById('skip-btn');
+    const skipLabelEl = document.getElementById('skip-label');
+    function refreshSkipLabel() {
+      const hasText = ta.value.trim().length > 0;
+      if (skipBtnEl && skipLabelEl) {
+        skipBtnEl.classList.toggle('has-note', hasText);
+        skipLabelEl.textContent = hasText ? t('card.skipWithNote') : t('card.skip');
+      }
+    }
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
-      commentEdited = true;
+      ta.dataset.edited = '1';
       saveDraft(song.id, ta.value);
       showSaveIndicator('saved');
+      refreshSkipLabel();
     });
-    // expose edited flag for act() to know whether to send '' (clear) or omit (preserve)
     ta.dataset.edited = '0';
-    ta.addEventListener('input', () => { ta.dataset.edited = '1'; }, { once: true });
-    if (ta.value) setTimeout(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
+    if (ta.value) {
+      setTimeout(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
+      refreshSkipLabel();
+    }
 
     // Swipe gestures: left = skip, right = back
     setupCardSwipe(cardEl);
@@ -2054,7 +2093,9 @@
     } else if (action === 'rate') {
       showToast(t('toast.rated', { n: rating }));
     } else if (action === 'skip') {
-      showToast(t('toast.skipped'));
+      // If a comment came along, acknowledge that explicitly
+      const hadComment = (payload.comment && payload.comment.trim().length > 0);
+      showToast(hadComment ? t('toast.noteSaved') : t('toast.skipped'));
     }
     progressN++;
     actInFlight = false;
