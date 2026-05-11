@@ -661,6 +661,7 @@
   }
   .sr-row:hover { background: rgba(255,255,255,0.06); border-color: var(--line); }
   .sr-row.expanded { background: rgba(212,164,92,0.06); border-color: var(--gold-soft); }
+  .sr-row:active { background: rgba(var(--art-r), var(--art-g), var(--art-b), 0.1); }
   .sr-art {
     width: 52px; height: 52px;
     flex-shrink: 0;
@@ -668,7 +669,29 @@
     background: var(--surface-2) center/cover no-repeat;
     display: flex; align-items: center; justify-content: center;
     color: var(--text-muted);
+    position: relative;
   }
+  .sr-art .play-ico {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.45);
+    opacity: 0;
+    transition: opacity 0.18s;
+    border-radius: 10px;
+  }
+  .sr-row:hover .sr-art .play-ico { opacity: 1; }
+  .sr-art .play-ico svg { width: 22px; height: 22px; color: #fff; }
+  .sr-row .mi-rating {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 1px 7px 1px 6px;
+    background: rgba(var(--art-r), var(--art-g), var(--art-b), 0.16);
+    border: 1px solid rgba(var(--art-r), var(--art-g), var(--art-b), 0.34);
+    border-radius: 999px;
+    font-size: 10px; font-weight: 800;
+    color: var(--gold-bright);
+    letter-spacing: 0.04em; margin-top: 4px;
+  }
+  .sr-row .mi-rating .star { font-size: 9px; }
   .sr-art svg { width: 22px; height: 22px; opacity: 0.45; }
   .sr-text { flex: 1; min-width: 0; }
   .sr-title { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.005em; }
@@ -1676,7 +1699,7 @@
   }
   async function apiSearch(q) {
     try {
-      const r = await fetchWithRetry(`${API}/api/library/search?q=${encodeURIComponent(q)}`);
+      const r = await fetchWithRetry(`${API}/api/library/search?q=${encodeURIComponent(q)}&user=${encodeURIComponent(userName)}`);
       if (!r.ok) return [];
       const d = await r.json();
       return d.results || [];
@@ -1684,7 +1707,7 @@
   }
   async function apiAllTracks(sort, offset, limit) {
     try {
-      const r = await fetchWithRetry(`${API}/api/library/all?sort=${encodeURIComponent(sort)}&offset=${offset}&limit=${limit}`);
+      const r = await fetchWithRetry(`${API}/api/library/all?sort=${encodeURIComponent(sort)}&offset=${offset}&limit=${limit}&user=${encodeURIComponent(userName)}`);
       if (!r.ok) return null;
       return await r.json();
     } catch (e) { console.warn('all', e?.message); return null; }
@@ -1840,8 +1863,27 @@
     cardHost.scrollTop = 0;
     cardEl = document.getElementById('card');
 
+    // Pre-fill state from prior user actions on this song
+    let selectedCategory = song.my_category || null;
+    if (selectedCategory) {
+      const pill = cardHost.querySelector(`.cat-pill[data-cat="${selectedCategory.replace(/"/g, '\\"')}"]`);
+      if (pill) pill.classList.add('selected');
+    }
+    if (song.my_rating) {
+      cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= song.my_rating));
+      const hint = document.getElementById('rating-hint');
+      if (hint) hint.textContent = t('rating.hint.set', { n: song.my_rating });
+    } else {
+      const hint = document.getElementById('rating-hint');
+      if (hint) hint.textContent = selectedCategory ? t('rating.hint.with_cat') : t('rating.hint.empty');
+    }
+    // If we have a server-side comment and no fresher local draft, use the server one
+    if (song.my_comment && !savedComment) {
+      const ta = document.getElementById('comment-input');
+      if (ta) ta.value = song.my_comment;
+    }
+
     // Wire events
-    let selectedCategory = null;
     document.getElementById('skip-btn').addEventListener('click', () => act('skip'));
     document.getElementById('back-btn').addEventListener('click', () => goBack());
     document.getElementById('remove-link').addEventListener('click', () => onRemoveCurrent());
@@ -1851,41 +1893,70 @@
       if (wasSelected) { selectedCategory = null; }
       else { b.classList.add('selected'); selectedCategory = b.dataset.cat; }
       const hint = document.getElementById('rating-hint');
-      if (hint) hint.textContent = selectedCategory ? t('rating.hint.with_cat') : t('rating.hint.empty');
+      if (hint) {
+        const hasRating = !!cardHost.querySelector('.rating-btn.filled');
+        if (hasRating) hint.textContent = t('rating.hint.set', { n: cardHost.querySelectorAll('.rating-btn.filled').length });
+        else hint.textContent = selectedCategory ? t('rating.hint.with_cat') : t('rating.hint.empty');
+      }
     }));
     cardHost.querySelectorAll('.rating-btn').forEach(b => b.addEventListener('click', () => {
       const r = parseInt(b.dataset.r, 10);
-      // Fill visual up to r
       cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= r));
       const hint = document.getElementById('rating-hint');
       if (hint) hint.textContent = t('rating.hint.set', { n: r });
-      // Commit: if a category was selected → assign, else 'rate'
       const action = selectedCategory ? 'assign' : 'rate';
       act(action, selectedCategory, r);
     }));
     const ta = document.getElementById('comment-input');
-    let commentSaveTimer = null;
-    let lastSavedText = savedComment || '';
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
       saveDraft(song.id, ta.value);
-      // Auto-save to server too (debounced, 1.5s) so partial comments survive
-      if (commentSaveTimer) clearTimeout(commentSaveTimer);
-      const txt = ta.value;
-      if (txt.trim() === lastSavedText.trim()) return;
-      showSaveIndicator('saving');
-      commentSaveTimer = setTimeout(async () => {
-        if (currentSong?.id !== song.id) return;
-        const r = await apiAction({ song_id: song.id, user: userName, action: 'comment', comment: txt });
-        if (r.ok) { lastSavedText = txt; showSaveIndicator('saved'); }
-        else showSaveIndicator('error');
-      }, 1500);
+      // Local-only draft. Don't auto-commit to server — that used to create a
+      // 'skip' placeholder which removed the song from the queue. The comment
+      // goes to the server together with the rating/category commit, OR via
+      // Mine's explicit edit-comment flow (which only updates existing rows).
+      showSaveIndicator('saved');
     });
-    if (savedComment) setTimeout(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
+    if (ta.value) setTimeout(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
+
+    // Swipe gestures: left = skip, right = back
+    setupCardSwipe(cardEl);
 
     // Mount YouTube
     mountYouTube(song);
+  }
+
+  function setupCardSwipe(el) {
+    if (!el) return;
+    let startX = 0, startY = 0, startT = 0, tracking = false;
+    el.addEventListener('touchstart', (e) => {
+      // Ignore swipes that start inside the YouTube iframe or scrollable comment
+      if (e.target.closest('iframe') || e.target.closest('textarea') || e.target.closest('button')) { tracking = false; return; }
+      const tch = e.touches[0];
+      startX = tch.clientX; startY = tch.clientY; startT = Date.now();
+      tracking = true;
+    }, { passive: true });
+    el.addEventListener('touchend', (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const tch = (e.changedTouches && e.changedTouches[0]) || null;
+      if (!tch) return;
+      const dx = tch.clientX - startX;
+      const dy = tch.clientY - startY;
+      const dt = Date.now() - startT;
+      // Horizontal flick: |dx| > 70px, |dy| < 60px, dt < 700ms
+      if (dt > 700) return;
+      if (Math.abs(dx) < 70) return;
+      if (Math.abs(dy) > 60) return;
+      if (dx < 0) {
+        // swipe left → skip / next
+        act('skip');
+      } else {
+        // swipe right → back
+        goBack();
+      }
+    }, { passive: true });
   }
 
   function renderEmpty() {
@@ -2085,20 +2156,27 @@
   /* ===== Result rows (shared) ===== */
   function renderRows(container, items) {
     const html = items.map(s => {
-      const status = s.assigned_to ? `<div class="sr-status">${escapeHtml(t('search.assignedAs', { cat: t(`cat.${s.assigned_to}.short`), by: s.assigned_by }))}</div>` : '';
+      const status = s.my_category
+        ? `<div class="sr-status">${escapeHtml(t('search.assignedAs', { cat: t(`cat.${s.my_category}.short`), by: userName }))}</div>`
+        : (s.assigned_to ? `<div class="sr-status">${escapeHtml(t('search.assignedAs', { cat: t(`cat.${s.assigned_to}.short`), by: s.assigned_by }))}</div>` : '');
+      const myRating = s.my_rating ? `<div class="mi-rating"><span class="star">★</span>${s.my_rating}/10</div>` : '';
       const addedFlag = s.added_by ? `<div class="sr-added-flag">+ ${escapeHtml(s.added_by)}</div>` : '';
       return `
         <div class="sr-row" data-id="${s.id}" data-yt="${escapeHtml(s.youtube_id || '')}">
-          <div class="sr-art" id="sr-art-${s.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+          <div class="sr-art" id="sr-art-${s.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <div class="play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+          </div>
           <div class="sr-text">
             <div class="sr-title">${escapeHtml(s.title)}</div>
             <div class="sr-artist">${escapeHtml(s.artist)}${s.year ? ' · ' + s.year : ''}</div>
             ${status}
+            ${myRating}
             ${addedFlag}
           </div>
           <div class="sr-actions">
             <button class="sr-icon-btn danger" data-act="remove" aria-label="убрать"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg></button>
-            <button class="sr-add-cat" data-act="cat" aria-label="добавить">+</button>
+            <button class="sr-add-cat" data-act="cat" aria-label="категория">+</button>
           </div>
         </div>
         <div class="sr-cats">
@@ -2110,13 +2188,16 @@
     }).join('');
     container.innerHTML = html;
 
-    // Wire each row
     container.querySelectorAll('.sr-row').forEach((row, i) => {
       const songId = parseInt(row.dataset.id, 10);
+      // Tap on the row (anywhere except action buttons) → open in player
       row.addEventListener('click', e => {
         if (e.target.closest('.sr-icon-btn') || e.target.closest('.sr-add-cat')) return;
-        toggleRow(row);
+        // Close any open overlay then jump to player
+        document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'));
+        openSongInPlayer(items[i]);
       });
+      // "+" button still opens the category strip (for power-user quick-assign without playing)
       const addBtn = row.querySelector('[data-act="cat"]');
       if (addBtn) addBtn.addEventListener('click', e => { e.stopPropagation(); toggleRow(row); });
       const remBtn = row.querySelector('[data-act="remove"]');
@@ -2148,7 +2229,6 @@
         } else { showToast(t('toast.failed')); }
       });
     });
-    // Load thumbs in batches
     items.forEach(s => {
       if (s.youtube_id) {
         const el = document.getElementById(`sr-art-${s.id}`);
@@ -2161,6 +2241,16 @@
     const parent = row.parentElement;
     if (parent) parent.querySelectorAll('.sr-row.expanded').forEach(r => r.classList.remove('expanded'));
     if (!wasExpanded) row.classList.add('expanded');
+  }
+
+  /* ===== Jump to song in player (from overlay rows) ===== */
+  function openSongInPlayer(song) {
+    if (!song) return;
+    // Push to history so back works
+    seenStack.push(song);
+    if (seenStack.length > 30) seenStack.splice(0, seenStack.length - 30);
+    seenIdx = seenStack.length - 1;
+    renderCard(song);
   }
 
   /* ===== All-tracks overlay ===== */
