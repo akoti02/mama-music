@@ -58,6 +58,8 @@
     height: 100%; overflow: hidden;
     position: relative;
   }
+  /* Cat-picker mode unlocks body scrolling on phones. */
+  body.allow-scroll { height: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   /* Album-art-driven page tint */
   #album-tint {
     position: fixed; inset: 0; z-index: -2;
@@ -1065,16 +1067,15 @@
   .rating { display: none !important; }
   #mine-btn { display: none !important; }
 
-  /* ===== Category picker screen ===== */
+  /* ===== Category picker screen =====
+     Lives in normal document flow (no position:fixed) so that
+     body.allow-scroll lets the page scroll naturally on phones. */
   #cat-picker[hidden] { display: none !important; }
   #cat-picker {
-    position: fixed; inset: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
     padding: max(28px, env(safe-area-inset-top)) 16px calc(60px + env(safe-area-inset-bottom));
-    display: flex; flex-direction: column;
+    display: block;
     background: var(--bg);
-    z-index: 10;
+    min-height: 100vh;
   }
   #cat-picker > * { max-width: 760px; width: 100%; margin-left: auto; margin-right: auto; }
   #cat-picker h2 {
@@ -2278,6 +2279,9 @@
     // Hide cat-current chip on the picker (we're already picking)
     const catChip = document.getElementById('cat-current');
     if (catChip) catChip.hidden = (name !== 'discovery');
+    // Allow body scrolling on the picker; lock it elsewhere (the card has its
+    // own internal scroll container).
+    document.body.classList.toggle('allow-scroll', name === 'catpick');
     if (name !== 'discovery') resetAlbumColor();
   }
   function updateWhoChip() {
