@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-trash-and-wal -->
+<!-- build: 2026-05-12T-stream-filter -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1789,6 +1789,129 @@
   .cat-current strong { color: var(--gold-bright); margin-left: 4px; }
   .cat-current svg { width: 12px; height: 12px; opacity: 0.6; }
 
+  /* Stream filter chip — sits next to cat-current, lets mom restrict the
+     next-up flow to a genre/artist while staying in the same player view. */
+  .stream-filter-chip {
+    appearance: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-left: 8px;
+    padding: 6px 12px;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--text-dim);
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: background 0.18s, border-color 0.18s, color 0.18s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .stream-filter-chip svg { width: 13px; height: 13px; opacity: 0.7; }
+  .stream-filter-chip:hover { background: var(--surface-2); color: var(--text); }
+  .stream-filter-chip.has-filter {
+    background: rgba(212,164,92,0.18);
+    border-color: rgba(212,164,92,0.45);
+    color: var(--gold-bright);
+  }
+  .stream-filter-chip.has-filter svg { opacity: 0.95; }
+  body.guest-mode .stream-filter-chip { display: none; }
+
+  /* Stream filter overlay internals */
+  .sf-section { margin-bottom: 22px; }
+  .sf-section__label {
+    font: 700 11px var(--font-body);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 10px;
+  }
+  .sf-genres {
+    display: flex; flex-wrap: wrap; gap: 7px;
+  }
+  .sf-genres button {
+    appearance: none;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-dim);
+    padding: 9px 14px;
+    border-radius: 999px;
+    font: 600 13px var(--font-body);
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(.2,.8,.2,1);
+    min-height: 44px;
+  }
+  .sf-genres button.selected {
+    background: linear-gradient(180deg, rgba(212,164,92,0.22), rgba(212,164,92,0.08));
+    color: var(--gold-bright);
+    border-color: rgba(212,164,92,0.55);
+  }
+  .sf-artist-input {
+    width: 100%; min-height: 48px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--text);
+    font: 400 16px var(--font-body);
+    box-sizing: border-box;
+  }
+  .sf-artist-input:focus {
+    outline: none;
+    border-color: rgba(212,164,92,0.55);
+  }
+  .sf-artist-suggestions {
+    margin-top: 8px;
+    display: flex; flex-direction: column; gap: 4px;
+    max-height: 240px; overflow-y: auto;
+  }
+  .sf-artist-suggestions button {
+    appearance: none;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 10px;
+    font: 600 14px var(--font-body);
+    cursor: pointer;
+    text-align: left;
+    display: flex; justify-content: space-between; align-items: center;
+    min-height: 44px;
+  }
+  .sf-artist-suggestions button:hover { background: rgba(212,164,92,0.10); }
+  .sf-artist-suggestions button.selected { background: rgba(212,164,92,0.20); color: var(--gold-bright); }
+  .sf-artist-suggestions .sf-count { font: 700 12px var(--font-body); color: var(--text-muted); }
+  .sf-actions {
+    display: flex; gap: 10px;
+    margin-top: 24px;
+    position: sticky; bottom: 0;
+    background: linear-gradient(180deg, transparent, var(--bg) 30%);
+    padding-top: 16px;
+  }
+  .sf-btn {
+    appearance: none;
+    flex: 1;
+    padding: 14px 18px;
+    border-radius: 12px;
+    font: 700 14px var(--font-body);
+    cursor: pointer;
+    transition: all 0.18s;
+    min-height: 48px;
+  }
+  .sf-btn--clear {
+    background: transparent;
+    border: 1px solid var(--line-2);
+    color: var(--text-dim);
+  }
+  .sf-btn--clear:hover { background: var(--surface-2); color: var(--text); }
+  .sf-btn--apply {
+    background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+    color: #0a0a0d;
+    border: 0;
+    box-shadow: 0 12px 28px -8px rgba(212,164,92,0.4);
+  }
+  .sf-btn--apply:hover { transform: translateY(-1px); }
+  .sf-btn--apply:active { transform: translateY(0); }
+
   /* ===== Save indicator on card comment ===== */
   .save-indicator {
     display: inline-flex; align-items: center; gap: 6px;
@@ -2050,6 +2173,10 @@
     <strong id="cat-current-name"></strong>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
   </button>
+  <button class="stream-filter-chip" id="stream-filter-btn" type="button" aria-label="фильтр потока">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+    <span id="stream-filter-label">Фильтр</span>
+  </button>
   <div class="top-actions">
     <button type="button" class="icon-btn" id="add-btn" aria-label="добавить песню">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -2247,6 +2374,34 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         <span data-i18n="settings.sendBtn"></span>
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Stream filter overlay: lets mom narrow the player's next-up flow to a
+     specific music genre and/or artist. Sits on top of whatever wedding
+     category she's in — they AND together. -->
+<div class="overlay" id="stream-filter-overlay">
+  <div class="ov-header">
+    <button class="ov-close" id="stream-filter-close" type="button" aria-label="закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <div class="ov-title-wrap">
+      <div class="ov-title">Фильтр потока</div>
+      <div class="ov-sub">Только определённый жанр или артист</div>
+    </div>
+  </div>
+  <div class="ov-body">
+    <div class="sf-section">
+      <div class="sf-section__label">Жанр</div>
+      <div class="sf-genres" id="sf-genres"></div>
+    </div>
+    <div class="sf-section">
+      <div class="sf-section__label">Артист</div>
+      <input type="text" id="sf-artist-input" class="sf-artist-input" placeholder="Начни печатать имя…" autocomplete="off">
+      <div class="sf-artist-suggestions" id="sf-artist-suggestions"></div>
+    </div>
+    <div class="sf-actions">
+      <button type="button" class="sf-btn sf-btn--clear" id="sf-clear-btn">Сбросить</button>
+      <button type="button" class="sf-btn sf-btn--apply" id="sf-apply-btn">Применить</button>
     </div>
   </div>
 </div>
@@ -2840,9 +2995,19 @@
   }
   async function apiNext() {
     const catQ = currentCat ? `&cat=${encodeURIComponent(currentCat)}` : '';
-    const r = await fetchWithRetry(`${API}/api/library/next?user=${encodeURIComponent(userName)}${catQ}`);
+    const gQ = streamFilter.genre ? `&genre=${encodeURIComponent(streamFilter.genre)}` : '';
+    const aQ = streamFilter.artist ? `&artist=${encodeURIComponent(streamFilter.artist)}` : '';
+    const r = await fetchWithRetry(`${API}/api/library/next?user=${encodeURIComponent(userName)}${catQ}${gQ}${aQ}`);
     if (!r.ok) throw new Error('next-failed');
     return await r.json();
+  }
+  async function apiArtists(q) {
+    try {
+      const qQ = q ? `&q=${encodeURIComponent(q)}` : '';
+      const r = await fetchWithRetry(`${API}/api/library/artists?user=${encodeURIComponent(userName)}${qQ}`);
+      if (!r.ok) return { artists: [] };
+      return await r.json();
+    } catch (e) { return { artists: [] }; }
   }
   /* ===== Bulletproof action queue =====
      Every state change is first written to a localStorage queue, then sent
@@ -3278,6 +3443,34 @@
   /* ===== Category mode ===== */
   const K_CAT = 'venchanie_cat_v1';
   let currentCat = lsGet(K_CAT, '') || ''; // '' = общий (no filter)
+  // Stream filter state — orthogonal to currentCat. Mom can be in cat=LOVERS
+  // AND filter the player flow down to genre=Поп AND/OR artist=Adele. Both
+  // empty = no filter. Persisted across reloads.
+  const K_STREAM_FILTER = 'venchanie_stream_filter_v1';
+  let streamFilter = (() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(K_STREAM_FILTER) || '{}');
+      return { genre: raw.genre || null, artist: raw.artist || null };
+    } catch { return { genre: null, artist: null }; }
+  })();
+  function persistStreamFilter() {
+    try { localStorage.setItem(K_STREAM_FILTER, JSON.stringify(streamFilter)); } catch {}
+  }
+  function refreshStreamFilterChip() {
+    const btn = document.getElementById('stream-filter-btn');
+    const label = document.getElementById('stream-filter-label');
+    if (!btn || !label) return;
+    const parts = [];
+    if (streamFilter.genre) parts.push(streamFilter.genre);
+    if (streamFilter.artist) parts.push(streamFilter.artist);
+    if (parts.length) {
+      btn.classList.add('has-filter');
+      label.textContent = parts.join(' · ');
+    } else {
+      btn.classList.remove('has-filter');
+      label.textContent = 'Фильтр';
+    }
+  }
   function setCat(c) {
     currentCat = c || '';
     if (currentCat) { lsSet(K_CAT, currentCat); setCookie('mm_cat', currentCat, 90); }
@@ -3342,12 +3535,19 @@
   function enterDiscovery() {
     updateWhoChip();
     refreshCatChip();
+    refreshStreamFilterChip();
     showScreen('discovery');
     seenStack.length = 0;
     seenIdx = -1;
     progressN = 0;
     loadNext();
   }
+  // Locally-known soft-removed song IDs — written when mom removes a song
+  // via the player or via the tc-card swipe. The next-card path checks this
+  // set BEFORE rendering and bypasses any song the local replica still
+  // thinks is removed, so even an inflight race between remove → next can
+  // never put a freshly-deleted song back on the deck.
+  const localRemoved = new Set();
 
   // Keyboard navigation on desktop: arrow-right = commit+advance, arrow-left = back.
   // Ignore when focus is in a text field so typing inside the comment doesn't
@@ -4180,6 +4380,20 @@
     if (d?.total != null) { progressTotal = d.total; document.getElementById('progress-total').textContent = fmt(progressTotal); }
     if (d?.processed != null) { progressN = d.processed; document.getElementById('progress-n').textContent = fmt(progressN); }
     if (!d || !d.song) { renderEmpty(); return; }
+    // Server may have raced — if it returned a song the local replica knows
+    // is removed (mom just deleted it but the soft-delete write hasn't yet
+    // propagated to this exact next-query), skip and try again. Bounded to
+    // 3 retries so we don't loop forever on a genuine state divergence.
+    if (localRemoved.has(d.song.id)) {
+      if (!loadNext._retries) loadNext._retries = 0;
+      if (loadNext._retries < 3) {
+        loadNext._retries++;
+        return loadNext();
+      }
+      loadNext._retries = 0;
+    } else {
+      loadNext._retries = 0;
+    }
     seenStack.push(d.song);
     seenIdx = seenStack.length - 1;
     if (seenStack.length > 30) seenStack.splice(0, seenStack.length - 30);
@@ -4198,6 +4412,10 @@
     const ok = confirm(t('confirm.remove', { t: `${currentSong.artist} — ${currentSong.title}` }));
     if (!ok) return;
     const songRef = currentSong;
+    // Mark as removed in the local replica FIRST so even if the server fight
+    // is slow / the next-card request races ahead, the song can't reappear
+    // on the deck for this session.
+    localRemoved.add(songRef.id);
     const r = await apiRemoveSong(songRef.id);
     if (!r.ok) { showToast(t('toast.failed')); return; }
     showToast(t('toast.removed'));
@@ -4215,6 +4433,76 @@
   document.getElementById('search-btn')?.addEventListener('click', openSearch);
   document.getElementById('all-btn')?.addEventListener('click', openAll);
   document.getElementById('settings-btn')?.addEventListener('click', openSettings);
+  document.getElementById('stream-filter-btn')?.addEventListener('click', () => openStreamFilter());
+  document.getElementById('stream-filter-close')?.addEventListener('click', () => closeOv('stream-filter-overlay'));
+
+  /* Stream-filter overlay: lets mom restrict the player's next-up flow to a
+     single music genre and/or a single artist. Settings are persisted to
+     localStorage and survive page reloads. Apply → close overlay → reload
+     the next card so she immediately gets a song matching the filter. */
+  let sfDraft = { genre: null, artist: null }; // edit-in-flight before "Применить"
+  let sfArtistTimer = null;
+  function openStreamFilter() {
+    if (isGuestUser()) return;
+    sfDraft = { genre: streamFilter.genre, artist: streamFilter.artist };
+    openOv('stream-filter-overlay');
+    renderSfGenres();
+    const inp = document.getElementById('sf-artist-input');
+    if (inp) inp.value = sfDraft.artist || '';
+    renderSfArtists('');
+  }
+  function renderSfGenres() {
+    const wrap = document.getElementById('sf-genres');
+    if (!wrap) return;
+    // Build a fixed canonical list (matches backend GENRES_SET).
+    const GENRES = ['Поп', 'Рок', 'Электроника', 'Хип-хоп', 'R&B', 'Чилл', 'Джаз', 'Классика', 'Эстрада', 'Шансон', 'Кантри', 'Прочее'];
+    wrap.innerHTML = GENRES.map(g => `<button type="button" data-g="${escapeHtml(g)}" class="${sfDraft.genre === g ? 'selected' : ''}">${escapeHtml(g)}</button>`).join('');
+    wrap.querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => {
+        const g = b.dataset.g;
+        sfDraft.genre = (sfDraft.genre === g) ? null : g; // tap-twice clears
+        renderSfGenres();
+      });
+    });
+  }
+  async function renderSfArtists(q) {
+    const wrap = document.getElementById('sf-artist-suggestions');
+    if (!wrap) return;
+    const r = await apiArtists(q);
+    const list = (r.artists || []).slice(0, 30);
+    wrap.innerHTML = list.map(a => `<button type="button" data-a="${escapeHtml(a.artist)}" class="${sfDraft.artist === a.artist ? 'selected' : ''}"><span>${escapeHtml(a.artist)}</span><span class="sf-count">${fmt(a.n)}</span></button>`).join('');
+    wrap.querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => {
+        const a = b.dataset.a;
+        sfDraft.artist = (sfDraft.artist === a) ? null : a;
+        const inp = document.getElementById('sf-artist-input');
+        if (inp) inp.value = sfDraft.artist || '';
+        renderSfArtists(inp ? inp.value.trim() : '');
+      });
+    });
+  }
+  document.getElementById('sf-artist-input')?.addEventListener('input', (e) => {
+    if (sfArtistTimer) clearTimeout(sfArtistTimer);
+    sfArtistTimer = setTimeout(() => renderSfArtists(e.target.value.trim()), 220);
+  });
+  document.getElementById('sf-clear-btn')?.addEventListener('click', () => {
+    sfDraft = { genre: null, artist: null };
+    streamFilter = { genre: null, artist: null };
+    persistStreamFilter();
+    refreshStreamFilterChip();
+    closeOv('stream-filter-overlay');
+    // Reset the deck to the freshly-unfiltered queue.
+    seenStack.length = 0; seenIdx = -1;
+    loadNext();
+  });
+  document.getElementById('sf-apply-btn')?.addEventListener('click', () => {
+    streamFilter = { genre: sfDraft.genre || null, artist: sfDraft.artist || null };
+    persistStreamFilter();
+    refreshStreamFilterChip();
+    closeOv('stream-filter-overlay');
+    seenStack.length = 0; seenIdx = -1;
+    loadNext();
+  });
   document.getElementById('share-fab')?.addEventListener('click', doShare);
 
   /* ===== Overlay open/close ===== */
@@ -4515,6 +4803,11 @@
         const song = items[i];
         const ok = confirm(t('confirm.remove', { t: `${song.artist} — ${song.title}` }));
         if (!ok) return;
+        // Mark locally BEFORE the server call — same reason as onRemoveCurrent.
+        localRemoved.add(songId);
+        const idx = seenStack.findIndex(s => s.id === songId);
+        if (idx >= 0) seenStack.splice(idx, 1);
+        if (seenIdx >= seenStack.length) seenIdx = seenStack.length - 1;
         const r = await apiRemoveSong(songId);
         if (r.ok) {
           showToast(t('toast.removed'));
@@ -4572,6 +4865,11 @@
           inner.style.transform = `translateX(-${w}px)`;
           card.classList.add('deleting');
           const song = items[i];
+          // Local-replica mark + seenStack cleanup BEFORE server call.
+          localRemoved.add(songId);
+          const sIdx = seenStack.findIndex(s => s.id === songId);
+          if (sIdx >= 0) seenStack.splice(sIdx, 1);
+          if (seenIdx >= seenStack.length) seenIdx = seenStack.length - 1;
           const r = await apiRemoveSong(songId);
           if (r.ok) {
             showToast(t('toast.removed'));
