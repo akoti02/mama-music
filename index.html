@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-unique-palette -->
+<!-- build: 2026-05-12T-vibe-brain -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,16 +70,12 @@
   body {
     font-family: var(--font-sans);
     font-feature-settings: 'cv11', 'ss01';
-    /* Multi-pool gradient backdrop — rose / gold / lavender pools breathing
-       behind everything so the page never reads as flat charcoal. Fixed so
-       it doesn't scroll away. */
-    background:
-      radial-gradient(ellipse 60% 50% at 18% 12%, rgba(244,114,182,0.18) 0%, transparent 65%),
-      radial-gradient(ellipse 50% 45% at 85% 22%, rgba(252,211,77,0.14) 0%, transparent 60%),
-      radial-gradient(ellipse 70% 55% at 50% 95%, rgba(167,139,250,0.16) 0%, transparent 65%),
-      radial-gradient(ellipse 45% 40% at 12% 85%, rgba(134,239,172,0.10) 0%, transparent 70%),
-      var(--bg);
+    /* Static base backdrop — the live vibe gradient layer above (#vibe-bg)
+       crossfades the page tint to match the current song's colours. */
+    background: var(--bg);
     background-attachment: fixed;
+    --vibe-c1: 244 114 182;
+    --vibe-c2: 252 211 77;
     color: var(--text);
     line-height: 1.5; font-size: 16px;
     letter-spacing: -0.005em;
@@ -94,6 +90,27 @@
      content always reaches users on every device. */
   body.discovery-locked { height: 100%; overflow: hidden; overscroll-behavior: contain; }
   html.discovery-locked { height: 100%; overflow: hidden; }
+  /* Live song-vibe gradient — three breathing pools whose colours come from
+     the LLM-derived per-song palette (vibe_c1 / vibe_c2). Smoothly crossfades
+     when a new track mounts. Sits behind everything (z:-3) so it tints the
+     whole page without obscuring content. */
+  #vibe-bg {
+    position: fixed; inset: 0; z-index: -3;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 55% at 18% 12%, rgba(var(--vibe-c1), 0.28) 0%, transparent 65%),
+      radial-gradient(ellipse 55% 50% at 85% 22%, rgba(var(--vibe-c2), 0.22) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% 95%, rgba(var(--vibe-c1), 0.20) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 45% at 8% 80%, rgba(var(--vibe-c2), 0.14) 0%, transparent 70%),
+      radial-gradient(ellipse 45% 40% at 92% 80%, rgba(var(--vibe-c1), 0.12) 0%, transparent 70%);
+    transition: background 1.4s var(--ease-out);
+    animation: vibePulse 18s ease-in-out infinite;
+    will-change: background;
+  }
+  @keyframes vibePulse {
+    0%, 100% { filter: saturate(1.0) brightness(1.0); }
+    50%      { filter: saturate(1.15) brightness(1.05); }
+  }
   /* Album-art-driven page tint */
   #album-tint {
     position: fixed; inset: 0; z-index: -2;
@@ -2651,6 +2668,7 @@
 </head>
 <body>
 
+<div id="vibe-bg" aria-hidden="true"></div>
 <div id="album-tint" aria-hidden="true"></div>
 <!-- Decorative ornament layer — floating coloured particles + soft SVG
      flourishes drifting behind the content. Pure CSS animations, ~12KB of
@@ -3471,6 +3489,14 @@
     return h;
   }
   function songPalette(song) {
+    // Prefer the LLM-derived vibe colours when the backend has analyzed this
+    // track (lyrics → mood/theme → unique RGB pair authentic to the song).
+    // Falls back to the hashed-by-genre palette when vibe data is still
+    // pending (new adds while the background classifier is running, or
+    // tracks that failed analysis).
+    if (song?.vibe_c1 && song?.vibe_c2 && /^\d{1,3} \d{1,3} \d{1,3}$/.test(song.vibe_c1) && /^\d{1,3} \d{1,3} \d{1,3}$/.test(song.vibe_c2)) {
+      return [song.vibe_c1, song.vibe_c2];
+    }
     const fam = GENRE_FAMILY[song?.genre] || GENRE_FAMILY['Прочее'];
     // Mix song id with year + first-letter codes so even cluster of sequential
     // ids feels varied (D1 inserts often land in chunks of similar genre).
@@ -3479,6 +3505,18 @@
       + (String(song?.artist || '').charCodeAt(0) * 7919);
     const idx = fam[songHash(seed) % fam.length];
     return SONG_PALETTES[idx] || SONG_PALETTES[0];
+  }
+  /* Drives the live body-background gradient to match the currently-playing
+     track. Two CSS variables on <body> are read by the radial-gradient layers
+     in the stylesheet; smooth crossfade is handled by a CSS transition.
+     Called from renderCard whenever a new song is mounted. */
+  function applyBodyVibe(song) {
+    if (!song) return;
+    const [c1, c2] = songPalette(song);
+    document.body.style.setProperty('--vibe-c1', c1);
+    document.body.style.setProperty('--vibe-c2', c2);
+    const mood = song.mood ? String(song.mood).slice(0, 30) : '';
+    document.body.setAttribute('data-mood', mood);
   }
   function fmt(n) { return new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : 'en-US').format(n); }
   function timeAgo(ts) {
@@ -4283,6 +4321,7 @@
     // Snapshot the current song so a tab close / browser quit can resume on
     // the same track. Cheap localStorage write, irrelevant to performance.
     try { rememberCurrentSong(song); } catch {}
+    try { applyBodyVibe(song); } catch {}
     const yearStr = song.year ? `<span class="year">${song.year}</span>` : '';
     const noYearCls = song.year ? '' : ' no-year';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
