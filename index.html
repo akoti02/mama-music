@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-audit-fixes-final-2 -->
+<!-- build: 2026-05-12T-audit-zero-loose-ends -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,10 @@
     --line-2: rgba(255, 255, 255, 0.14);
     --text: #f5f5f7;
     --text-dim: #b0b0b8;
-    --text-muted: #84848a;
+    /* Lift from #84848a (~4.4:1 on surface) → #9d9da4 (~5.6:1) so small
+       10-11px labels pass WCAG AA for body text on dark UI. Mom over 50
+       reads it clearly without losing the "muted" visual hierarchy. */
+    --text-muted: #9d9da4;
     --gold: #d4a45c;
     --gold-bright: #ecc380;
     --gold-soft: rgba(212, 164, 92, 0.18);
@@ -346,9 +349,13 @@
   /* ===== Stage (discovery) ===== */
   .stage {
     position: fixed; inset: 0;
-    padding: calc(70px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));
+    /* `--kbd-offset` is updated by a visualViewport listener whenever the
+       iOS soft keyboard slides in/out. The padding-bottom expands so the
+       rating row + cats summary stay reachable while the user types. */
+    padding: calc(70px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom) + var(--kbd-offset, 0px));
     display: flex; flex-direction: column;
     overflow: hidden;
+    transition: padding-bottom 0.22s ease;
   }
   .progress-line {
     text-align: center;
@@ -3332,16 +3339,23 @@
 
     // Pre-fill state from prior user actions OR from the song's suggested categories.
     // Multi-category: selectedCategories is a Set of canonical category names.
-    // We honour a pending localStorage snapshot ONLY if it's fresh (<30 min).
-    // Older snapshots usually mean the user acted on this card on another
-    // device since then, and the server's my_* fields are the source of truth.
-    // Snapshots without a ts are treated as fresh for back-compat.
+    // We honour a pending localStorage snapshot only when it's NEWER than
+    // the server's last write for this user on this song. The server now
+    // returns `my_action_at` (last library_actions.created_at for this user)
+    // alongside the my_* fields; if the snapshot was taken before the server
+    // last saw a write, server is the source of truth.
+    //   Back-compat: a snapshot with no `ts` is treated as fresh (legacy
+    //   format pre-dating the timestamp field).
+    //   Belt + braces: also age-out snapshots older than 30 min so a stale
+    //   localStorage entry can't haunt the device after a long absence.
     const SNAPSHOT_TTL_MS = 30 * 60 * 1000;
     const rawSnap = snapshots[song.id] || {};
-    const snap = (!rawSnap.ts || (Date.now() - rawSnap.ts) <= SNAPSHOT_TTL_MS) ? rawSnap : {};
-    if (rawSnap.ts && (Date.now() - rawSnap.ts) > SNAPSHOT_TTL_MS) {
-      // Stale snapshot — prune from localStorage so a server-true card paint
-      // doesn't keep stale data around for the next visit.
+    const serverTs = typeof song.my_action_at === 'number' ? song.my_action_at : null;
+    const snapTs = typeof rawSnap.ts === 'number' ? rawSnap.ts : null;
+    const tooOld = snapTs && (Date.now() - snapTs) > SNAPSHOT_TTL_MS;
+    const serverNewer = snapTs && serverTs && serverTs > snapTs;
+    const snap = (rawSnap && !tooOld && !serverNewer) ? rawSnap : {};
+    if (rawSnap && (tooOld || serverNewer)) {
       try { snapshotClear(song.id); } catch {}
     }
     const selectedCategories = new Set();
@@ -3489,6 +3503,20 @@
       persistCard();
     }));
     const ta = document.getElementById('comment-input');
+    // iOS keyboard handling: when the textarea is focused, the soft keyboard
+    // slides up ~280-340px. With body.discovery-locked + overflow:hidden the
+    // user cannot scroll the textarea + rating row + cats summary back into
+    // view. Two-pronged fix:
+    //   1. scrollIntoView({block:'center'}) on focus brings the textarea
+    //      into the visible viewport BEFORE the keyboard finishes animating.
+    //   2. visualViewport listener sets a `--kbd-offset` CSS var so the
+    //      stage shifts up by the keyboard height, ensuring rating buttons
+    //      stay reachable even while typing.
+    ta.addEventListener('focus', () => {
+      setTimeout(() => {
+        try { ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {}
+      }, 300);
+    });
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
@@ -5224,6 +5252,20 @@
     if (document.getElementById('mine-overlay')?.classList.contains('open')) renderMine();
   });
   window.addEventListener('online', () => { periodicSyncDebounced(); });
+
+  /* iOS keyboard offset: when the soft keyboard slides up under
+     body.discovery-locked, position:fixed elements don't naturally accommodate
+     it. We measure the gap between visualViewport.height and window.innerHeight
+     and expose it as --kbd-offset so the .stage can shift up. */
+  if (window.visualViewport) {
+    const setKbdOffset = () => {
+      const off = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
+      document.documentElement.style.setProperty('--kbd-offset', off + 'px');
+    };
+    window.visualViewport.addEventListener('resize', setKbdOffset);
+    window.visualViewport.addEventListener('scroll', setKbdOffset);
+    setKbdOffset();
+  }
 
   /* ===== Boot ===== */
   async function bootstrapAndRecover() {
