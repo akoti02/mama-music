@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-audit-zero-loose-ends -->
+<!-- build: 2026-05-12T-audit-pass4 -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,11 +25,12 @@
     --line: rgba(255, 255, 255, 0.075);
     --line-2: rgba(255, 255, 255, 0.14);
     --text: #f5f5f7;
-    --text-dim: #b0b0b8;
-    /* Lift from #84848a (~4.4:1 on surface) → #9d9da4 (~5.6:1) so small
-       10-11px labels pass WCAG AA for body text on dark UI. Mom over 50
-       reads it clearly without losing the "muted" visual hierarchy. */
-    --text-muted: #9d9da4;
+    /* Visual hierarchy: text (brightest) > text-dim > text-muted (subtle but
+       still readable). Both pass WCAG AA on the dark surface; dim is for
+       secondary lines, muted for tiny tertiary labels. Gap between them
+       widened so labels don't visually merge into the same tone. */
+    --text-dim: #c4c4cc;
+    --text-muted: #98989f;
     --gold: #d4a45c;
     --gold-bright: #ecc380;
     --gold-soft: rgba(212, 164, 92, 0.18);
@@ -157,7 +158,9 @@
   .welcome-back__close {
     appearance: none; background: transparent; border: 0;
     color: var(--text-muted);
-    width: 28px; height: 28px;
+    /* 40×40 to clear Apple HIG 44px guidance comfortably with built-in tap
+       expand-zone — the icon stays small (14×14) inside. */
+    width: 40px; height: 40px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     border-radius: 999px;
@@ -349,13 +352,15 @@
   /* ===== Stage (discovery) ===== */
   .stage {
     position: fixed; inset: 0;
-    /* `--kbd-offset` is updated by a visualViewport listener whenever the
-       iOS soft keyboard slides in/out. The padding-bottom expands so the
-       rating row + cats summary stay reachable while the user types. */
-    padding: calc(70px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom) + var(--kbd-offset, 0px));
+    /* Two dynamic vars compose the bottom inset:
+         --kbd-offset  : soft-keyboard height (iOS + Android, see boot JS)
+         --banner-pad  : extra top-padding while the welcome banner is shown
+                         so it doesn't visually cover the progress line / video.
+       Together they keep ALL card UI reachable in every state. */
+    padding: calc(70px + env(safe-area-inset-top) + var(--banner-pad, 0px)) 14px calc(18px + env(safe-area-inset-bottom) + var(--kbd-offset, 0px));
     display: flex; flex-direction: column;
     overflow: hidden;
-    transition: padding-bottom 0.22s ease;
+    transition: padding-bottom 0.22s ease, padding-top 0.22s ease;
   }
   .progress-line {
     text-align: center;
@@ -652,6 +657,21 @@
     .card { gap: 8px; padding-bottom: 8px; }
     .rating-btn { min-height: 40px; }
   }
+  /* Keyboard-up state: video is irrelevant while mom is typing, and we
+     desperately need the vertical room to keep the rating row + comment
+     reachable above the keyboard. Collapse the player but keep the iframe
+     alive (audio keeps playing if it was). */
+  body.kbd-open .yt-wrap {
+    max-height: 0;
+    margin-bottom: 0;
+    border-radius: 0;
+    box-shadow: none;
+    transition: max-height 0.22s ease;
+  }
+  body.kbd-open .meta .title { font-size: 18px; -webkit-line-clamp: 1; }
+  body.kbd-open .meta .by { display: none; }
+  body.kbd-open .meta .added-tag { display: none; }
+  body.kbd-open .card { gap: 8px; }
 
   /* ===== Category pills ===== */
   .cats-collapse { margin-bottom: 0; }
@@ -2966,8 +2986,14 @@
       // Comment-only snapshot (no rating, no cat): the comment lives in the
       // drafts table on the server, NOT in library_actions. Pushing it as
       // action='comment' gets 409'd by the server forever. Route to drafts
-      // and drop the snapshot.
+      // — but DON'T overwrite an existing matching server-side comment; that
+      // would demote a committed comment to a draft. Drop the snapshot if
+      // the server already has this exact text.
       if (!cats && localRating === 0 && localComment) {
+        if (serverComment === localComment) {
+          delete localSnaps[sidStr];
+          continue;
+        }
         apiDraftPush(sid, localComment).catch(() => {});
         delete localSnaps[sidStr];
         continue;
@@ -3513,8 +3539,21 @@
     //      stage shifts up by the keyboard height, ensuring rating buttons
     //      stay reachable even while typing.
     ta.addEventListener('focus', () => {
+      // Force a kbd-offset recompute on focus — iOS Safari sometimes fires
+      // the visualViewport `resize` BEFORE the keyboard reaches its final
+      // height; this guarantees we re-measure when the keyboard is up.
+      setTimeout(() => { try { recomputeKbdOffset(); } catch {} }, 250);
+      // Scroll the textarea into view inside the OWN scroller (#card-host) —
+      // a bare scrollIntoView would target window/body which are
+      // overflow:hidden and ignore the call. Compute the offset manually.
       setTimeout(() => {
-        try { ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {}
+        try {
+          const host = document.getElementById('card-host');
+          if (host && ta.offsetTop != null) {
+            const target = ta.offsetTop - host.clientHeight / 2 + ta.offsetHeight / 2;
+            host.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+          }
+        } catch {}
       }, 300);
     });
     ta.addEventListener('input', () => {
@@ -5253,19 +5292,27 @@
   });
   window.addEventListener('online', () => { periodicSyncDebounced(); });
 
-  /* iOS keyboard offset: when the soft keyboard slides up under
-     body.discovery-locked, position:fixed elements don't naturally accommodate
-     it. We measure the gap between visualViewport.height and window.innerHeight
-     and expose it as --kbd-offset so the .stage can shift up. */
-  if (window.visualViewport) {
-    const setKbdOffset = () => {
-      const off = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
-      document.documentElement.style.setProperty('--kbd-offset', off + 'px');
-    };
-    window.visualViewport.addEventListener('resize', setKbdOffset);
-    window.visualViewport.addEventListener('scroll', setKbdOffset);
-    setKbdOffset();
+  /* Soft-keyboard offset for both iOS and Android.
+       - iOS Safari: window.innerHeight stays full, visualViewport.height
+         shrinks → diff is the keyboard height.
+       - Android Chrome: window.innerHeight ALSO shrinks → naive diff = 0.
+     Fix: capture the original innerHeight ONCE at load (`baseInnerH`) and
+     diff against that. Toggles `body.kbd-open` so layout rules can react
+     (e.g. collapse the YT video on iPhone SE to keep rating row reachable). */
+  const baseInnerH = window.innerHeight;
+  function recomputeKbdOffset() {
+    const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    const vyOffset = (window.visualViewport && window.visualViewport.offsetTop) || 0;
+    const off = Math.max(0, baseInnerH - vh - vyOffset);
+    document.documentElement.style.setProperty('--kbd-offset', off + 'px');
+    document.body.classList.toggle('kbd-open', off > 80);
   }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', recomputeKbdOffset);
+    window.visualViewport.addEventListener('scroll', recomputeKbdOffset);
+  }
+  window.addEventListener('resize', recomputeKbdOffset);
+  recomputeKbdOffset();
 
   /* ===== Boot ===== */
   async function bootstrapAndRecover() {
@@ -5376,11 +5423,16 @@
           banner.hidden = false;
           // Allow paint before transitioning in.
           requestAnimationFrame(() => banner.classList.add('show'));
+          // Push stage content down by ~56px so the banner doesn't visually
+          // overlap the progress line / first slice of the video on small
+          // / notched phones.
+          document.documentElement.style.setProperty('--banner-pad', '56px');
           let dismissed = false;
           const dismiss = () => {
             if (dismissed) return;
             dismissed = true;
             banner.classList.remove('show');
+            document.documentElement.style.setProperty('--banner-pad', '0px');
             setTimeout(() => { banner.hidden = true; }, 350);
           };
           // Auto-dismiss after 6 seconds.
