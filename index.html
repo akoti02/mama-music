@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-audit-fixes-2 -->
+<!-- build: 2026-05-12T-audit-fixes-final -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,6 +43,10 @@
     --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
     --font-display: 'Instrument Serif', 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, serif;
+    /* Alias used in 19 places (premium card UI, chips, mine-tabs etc.). Was
+       silently falling back to the browser default serif (Times) because the
+       variable was never defined. */
+    --font-body: var(--font-sans);
   }
   html, body { margin: 0; padding: 0; }
   html { background: var(--bg); }
@@ -99,9 +103,14 @@
      a mis-attributed identity (e.g. Артур's cookie still on mom's phone)
      gets noticed instead of silently accumulating rows under the wrong user. */
   .welcome-back {
-    position: fixed; top: 0; left: 0; right: 0;
-    z-index: 120;
-    margin: calc(8px + env(safe-area-inset-top)) 12px 0;
+    position: fixed; left: 0; right: 0;
+    /* Sit BELOW the top-bar (which is z:100, ~58px tall after safe-area)
+       so the X из N, add, search, all-tracks, settings buttons stay tappable
+       while the banner is visible. */
+    top: calc(58px + env(safe-area-inset-top));
+    z-index: 95;
+    margin: 0 auto;
+    max-width: 540px;
     padding: 10px 14px 10px 16px;
     background: var(--surface);
     backdrop-filter: blur(22px) saturate(1.5);
@@ -117,6 +126,11 @@
     opacity: 0; transform: translateY(-12px);
     transition: opacity 0.35s ease, transform 0.35s ease;
     pointer-events: auto;
+    /* Mobile: respect viewport margin. Desktop: centered + capped width. */
+    width: calc(100% - 24px);
+  }
+  @media (min-width: 560px) {
+    .welcome-back { width: auto; }
   }
   .welcome-back.show { opacity: 1; transform: translateY(0); }
   .welcome-back__text { flex: 1; min-width: 0; }
@@ -409,21 +423,24 @@
     /* Above the iframe so a still-loading YT screen never bleeds through. */
     z-index: 2;
   }
-  /* Subtle "still working on it" label that appears only when the loading
-     state lasts long enough to need an explanation (>1.5s). Avoids feeling
-     broken on slow networks or during multi-attempt YT recovery. */
-  .yt-wrap.loading::after {
+  /* Subtle "still working on it" label that appears only on retry attempts
+     (data-loading-label is empty on the first mount, so the selector below
+     never matches a no-op). Avoids feeling broken during YT recovery loops
+     and keeps the first card-mount visually quiet. */
+  .yt-wrap.loading[data-loading-label]:not([data-loading-label=""])::after {
     content: attr(data-loading-label);
-    position: absolute; left: 50%; bottom: 18%;
+    position: absolute; left: 50%; bottom: 12%;
     transform: translateX(-50%);
     color: rgba(255,255,255,0.55);
     font: 600 12px/1.2 var(--font-body);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     opacity: 0;
-    animation: yt-loading-label 1.4s ease-out 1.5s forwards;
+    animation: yt-loading-label 1.4s ease-out 1.0s forwards;
     z-index: 3;
     pointer-events: none;
+    text-align: center;
+    width: 92%;
   }
   @keyframes yt-loading-label { from { opacity: 0; } to { opacity: 1; } }
   @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
@@ -482,11 +499,19 @@
     font-size: 26px; font-weight: 400;
     letter-spacing: -0.015em; line-height: 1.12;
     color: var(--text); word-wrap: break-word;
+    /* Cap at 2 lines so a long title with a parenthetical can't push the
+       compact card past the no-scroll budget on iPhone SE. Ellipsis on
+       overflow keeps the layout predictable. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .meta .title em { font-style: italic; color: rgba(255,255,255,0.95); }
   .meta-delete {
     appearance: none; flex-shrink: 0;
-    width: 40px; height: 40px;
+    /* Apple HIG demands 44×44 minimum for destructive controls on touch. */
+    width: 44px; height: 44px;
     border-radius: 999px;
     background: rgba(217,102,102,0.10);
     border: 1px solid rgba(217,102,102,0.32);
@@ -496,11 +521,17 @@
     transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.12s;
     -webkit-tap-highlight-color: transparent;
   }
-  .meta-delete:hover {
-    background: rgba(217,102,102,0.78);
-    border-color: rgba(217,102,102,0.95);
-    color: white;
-    transform: scale(1.05);
+  /* Hover styles ONLY for mouse pointers. iOS Safari treats tap as hover,
+     which would leave the button stuck in its red-armed state after every
+     delete tap until the user taps elsewhere — looks like a "second delete
+     primed" footgun. */
+  @media (hover: hover) and (pointer: fine) {
+    .meta-delete:hover {
+      background: rgba(217,102,102,0.78);
+      border-color: rgba(217,102,102,0.95);
+      color: white;
+      transform: scale(1.05);
+    }
   }
   .meta-delete:active { transform: scale(0.92); }
   .meta-delete svg { width: 16px; height: 16px; }
@@ -619,7 +650,12 @@
   .cats-collapse summary {
     list-style: none;
     cursor: pointer;
-    padding: 10px 14px;
+    /* Apple HIG: 44px min tap target. Bumping padding so the summary row
+       reliably catches taps on phone without users missing it and hitting
+       the rating row above. */
+    padding: 12px 14px;
+    min-height: 44px;
+    box-sizing: border-box;
     background: var(--surface-3);
     border: 1px solid var(--line);
     border-radius: 10px;
@@ -3320,16 +3356,18 @@
     }
 
     // Dirty flag — set when the user actively touches the card (cat pill or
-    // comment input). Pre-filled state from server is NOT dirty (server is the
-    // source of truth, no need to re-save). BUT pre-filled state from a LOCAL
-    // SNAPSHOT counts as dirty: the snapshot exists precisely because the
-    // user edited the card before navigating away and we haven't yet flushed
-    // to server. Without this, a swipe on a card prefilled from snapshot
-    // would `advanceWithoutSave` and silently drop the snapshot's contents.
-    const hasLocalSnapshot = !!(snap && (snap.comment || snap.rating || snap.categories));
-    let cardDirty = hasLocalSnapshot;
+    // comment input). Pre-filled state from server is NOT dirty. A LOCAL
+    // SNAPSHOT is dirty ONLY when it diverges from the server's known state
+    // for this user — otherwise a swipe on a fresh card with a no-op snapshot
+    // would trigger an unnecessary commit AND, worse, the act() success-path
+    // would clear the comment draft even though the user did nothing.
+    const snapDivergesFromServer =
+      (snap.comment != null && snap.comment !== (song.my_comment || '')) ||
+      (snap.rating != null && snap.rating !== (song.my_rating || 0)) ||
+      (snap.categories != null && snap.categories !== (song.my_category || ''));
+    let cardDirty = snapDivergesFromServer;
     function setDirty(v) { cardDirty = v; if (cardEl) cardEl.dataset.dirty = v ? '1' : '0'; }
-    if (hasLocalSnapshot && cardEl) cardEl.dataset.dirty = '1';
+    if (snapDivergesFromServer && cardEl) cardEl.dataset.dirty = '1';
     // Persist current card state (rating/categories/comment) without advancing.
     // Rating/category taps fire IMMEDIATELY — no debounce — so brief navigations
     // never lose data. Comment typing is debounced (800ms) to batch keystrokes.
@@ -3660,8 +3698,9 @@
       // Accept by origin first — iOS Safari occasionally hands back a fresh
       // Window proxy whose identity check (===) fails for the first ~50 ms
       // after appendChild, causing legit early life-signals to be dropped.
-      // Origin check is reliable across browsers.
-      const goodOrigin = e.origin === 'https://www.youtube.com' || e.origin === 'https://www.youtube-nocookie.com';
+      // Origin check is reliable across browsers. Our iframe only ever uses
+      // youtube.com/embed (never youtube-nocookie), so a single host check.
+      const goodOrigin = e.origin === 'https://www.youtube.com';
       if (!goodOrigin && e.source !== iframe.contentWindow) return;
       let d = e.data;
       if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
@@ -4392,6 +4431,13 @@
   function aoResetForNewFilter() {
     aoOffset = 0;
     aoDone = false;
+    // Critical: reset `aoLoading` to false. If a previous filter's fetch is
+    // still in flight, we DON'T want it to keep loadAllPage gated out — by
+    // bumping aoRunId the stale response will be dropped on arrival anyway,
+    // and the new filter's call should proceed immediately. Without this,
+    // clicking genre A then B (while A is in flight) would leave the UI on
+    // "Загружаю…" forever because B's loadAllPage saw aoLoading=true and
+    // early-returned without ever firing its own fetch.
     aoLoading = false;
     aoRunId++;
     aoAllChipTotal = null;
@@ -4463,8 +4509,11 @@
     // Stale-response gate: a filter / tab / genre change since we started
     // means this response belongs to the OLD filter. Dropping it prevents
     // rows from the previous tab rendering under the new one and keeps
-    // aoOffset in sync with the visible data.
-    if (myRun !== aoRunId) { aoLoading = false; return; }
+    // aoOffset in sync with the visible data. NOTE: do NOT clear aoLoading
+    // when dropping a stale response — a new live fetch may be in flight
+    // with aoLoading=true and clearing it here would let the scroll handler
+    // spawn a duplicate request mid-load.
+    if (myRun !== aoRunId) { return; }
     aoLoading = false;
     if (!d) return;
     document.getElementById('ao-counter').textContent = fmt(d.total);
@@ -4803,19 +4852,26 @@
   document.getElementById('switch-user-btn').addEventListener('click', () => {
     const ok = confirm(lang === 'ru' ? `Сменить пользователя? (текущий: ${userName})` : `Switch user? (current: ${userName})`);
     if (!ok) return;
-    // Hard reset: localStorage + cookie + any pending queue tagged for the old
-    // identity. Without dropping the cookie, the very next page-load restores
-    // the old name via the cookie-backup path; without dropping queue items
-    // tagged for the old user, they drain under the next user's session and
-    // get attributed weirdly.
+    // Hard reset for the next person on this device:
+    //   1. localStorage K_NAME + the mm_user cookie  → identity gone
+    //   2. queue items tagged for the OLD user      → they don't drain as the new user
+    //   3. K_SNAPSHOTS + in-memory snapshots         → no leftover edits replay under
+    //      the new identity (real identity-bleed; the audit caught this hole on top
+    //      of the cookie fix)
+    //   4. K_DRAFTS + in-memory drafts               → ditto for unsaved comment drafts
+    //   5. K_CAT cookie                              → don't pre-select the prior user's cat
     const oldName = userName;
     userName = '';
     try { lsDel(K_NAME); } catch {}
     try { setCookie('mm_user', '', -1); } catch {}
+    try { lsDel(K_CAT); } catch {}
+    try { setCookie('mm_cat', '', -1); } catch {}
     try {
       const q = qGet().filter(x => x.user !== oldName);
       qSet(q);
     } catch {}
+    try { localStorage.removeItem(K_SNAPSHOTS); for (const k of Object.keys(snapshots)) delete snapshots[k]; } catch {}
+    try { localStorage.removeItem(K_DRAFTS); for (const k of Object.keys(drafts)) delete drafts[k]; } catch {}
     closeOv('settings-overlay');
     showScreen('ob');
   });
@@ -5228,6 +5284,11 @@
     setCat(guestCat);
   }
 
+  // Apply guest-mode body class IMMEDIATELY once we know we're a guest — even
+  // before showScreen/renderCard runs. Otherwise there's a single-frame
+  // flash where the guest could see owner-only UI (delete button, share fab,
+  // category picker) before showScreen('discovery') sets the class.
+  if (isGuest) document.body.classList.add('guest-mode');
   if (!userName || !ALLOWED_USERS.has(userName)) {
     showScreen('ob');
   } else {
@@ -5263,18 +5324,23 @@
           closeBtn.addEventListener('click', dismiss);
           switchBtn.addEventListener('click', () => {
             dismiss();
-            // Hard switch: clear identity in BOTH localStorage and cookie, drop
-            // any pending queue items tagged for the old user (those would
-            // otherwise drain under the new identity's session and look like
-            // they came from the new user). Then send to onboarding.
+            // Hard switch — see Settings → switch-user handler for the full
+            // rationale. Mirror EVERY clearing step here so a banner-driven
+            // switch is just as thorough as a settings-driven one. Otherwise
+            // the new person on the phone inherits the prior user's drafts /
+            // snapshots / cat preference.
             const oldName = userName;
             userName = '';
             try { lsDel(K_NAME); } catch {}
             try { setCookie('mm_user', '', -1); } catch {}
+            try { lsDel(K_CAT); } catch {}
+            try { setCookie('mm_cat', '', -1); } catch {}
             try {
               const q = qGet().filter(x => x.user !== oldName);
               qSet(q);
             } catch {}
+            try { localStorage.removeItem(K_SNAPSHOTS); for (const k of Object.keys(snapshots)) delete snapshots[k]; } catch {}
+            try { localStorage.removeItem(K_DRAFTS); for (const k of Object.keys(drafts)) delete drafts[k]; } catch {}
             showScreen('ob');
           });
         }
