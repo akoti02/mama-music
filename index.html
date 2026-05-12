@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-stream-filter -->
+<!-- build: 2026-05-12T-auto-reload-and-save-safety -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2799,12 +2799,23 @@
     if (smInput) smInput.placeholder = t('search.intro').split(' — ')[0];
   }
 
-  /* ===== Storage helpers ===== */
+  /* ===== Storage helpers — return boolean success so callers can detect
+     a quota-exceeded write and respond (visible badge + in-memory mirror). */
   function lsGet(k, dflt) { try { const v = localStorage.getItem(k); return v == null ? dflt : v; } catch (e) { console.warn('ls.get', e?.message); return dflt; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { console.warn('ls.set', e?.message); } }
+  function lsSet(k, v) {
+    try { localStorage.setItem(k, v); return true; }
+    catch (e) {
+      console.warn('ls.set', e?.message);
+      // Surface a non-blocking warning so mom (or whoever's debugging) knows
+      // a write didn't persist — the in-memory queue mirror below catches
+      // the data, but the user should refresh or free space soon.
+      try { window.__lsWriteFailedAt = Date.now(); } catch {}
+      return false;
+    }
+  }
   function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
   function lsGetJSON(k, dflt) { try { const v = lsGet(k, null); return v ? JSON.parse(v) : dflt; } catch (e) { return dflt; } }
-  function lsSetJSON(k, v) { try { lsSet(k, JSON.stringify(v)); } catch (e) {} }
+  function lsSetJSON(k, v) { try { return lsSet(k, JSON.stringify(v)); } catch (e) { return false; } }
 
   /* ===== State ===== */
   let userName = lsGet(K_NAME, '') || '';
@@ -3018,17 +3029,39 @@
      via navigator.sendBeacon — the browser guarantees delivery even after
      the tab is hidden / closed. */
   const Q_KEY = 'venchanie_pending_actions_v1';
+  // In-memory mirror of the action queue. Mirrors EVERY enqueue regardless of
+  // whether the localStorage write succeeded. Used as the source-of-truth for
+  // qFlushBeacon on page-unload so a quota-exceeded localStorage write
+  // (or disabled localStorage in private mode) NEVER causes mom's pending
+  // actions to vanish on tab-close — the beacon still fires from RAM.
+  const qMirror = [];
   function qGet() {
-    // Guard against a corrupt queue blob taking out the entire boot — a
-    // partial JSON write (rare iOS Safari hard-crash mid-setItem) would
-    // make lsGetJSON throw inside a try/catch and return the default `[]`.
-    // We additionally validate that what came back is an array of objects;
-    // any garbage shape gets discarded with a diag entry instead of crashing.
+    // Union of persisted + in-memory items, dedup by _id. Anything that
+    // landed in localStorage AND in mirror only appears once.
     const raw = lsGetJSON(Q_KEY, []);
-    if (!Array.isArray(raw)) { try { diag('queue_corrupt_reset', {}); } catch {} return []; }
-    return raw.filter(x => x && typeof x === 'object' && typeof x.song_id === 'number');
+    const persisted = Array.isArray(raw)
+      ? raw.filter(x => x && typeof x === 'object' && typeof x.song_id === 'number')
+      : (() => { try { diag('queue_corrupt_reset', {}); } catch {} return []; })();
+    if (!qMirror.length) return persisted;
+    const byId = new Map();
+    for (const x of persisted) if (x && x._id) byId.set(x._id, x);
+    for (const x of qMirror) if (x && x._id) byId.set(x._id, x);
+    return Array.from(byId.values());
   }
-  function qSet(arr) { lsSetJSON(Q_KEY, arr); }
+  function qSet(arr) {
+    const ok = lsSetJSON(Q_KEY, arr);
+    if (!ok) {
+      // Persist failed — keep the entire desired state in memory until the
+      // user reloads or storage frees up. Mirror is the authoritative copy.
+      qMirror.length = 0;
+      for (const x of arr) qMirror.push(x);
+      try { diag('queue_ls_write_failed', { size: arr.length }); } catch {}
+    } else {
+      // Persist succeeded — mirror is redundant now, free its memory.
+      qMirror.length = 0;
+    }
+    return ok;
+  }
   // Raised from 500 → 5000 so a long offline session (e.g. mom flies to France
   // with no signal for hours) can hold every single action she made on the way.
   // 5000 × ~200 bytes = ~1 MB, well under the ~5 MB iOS localStorage cap.
@@ -5689,7 +5722,53 @@
       }
     }
     lastVersionState = v;
+    // 4) Frontend build-marker check — if the deployed HTML has a different
+    // build marker than what we booted with, a new version is live. Soft
+    // toast + auto-reload so mom never sees stale UI after we ship a fix.
+    checkBuildVersion();
   }
+
+  // Build-marker auto-update — read the build comment from the just-rendered
+  // <head>, then periodically fetch the live HTML and compare. When it
+  // differs, briefly toast and reload — mom never needs to clear cache to
+  // see a new deploy.
+  const CLIENT_BUILD = (() => {
+    const m = document.documentElement.innerHTML.match(/<!--\s*build:\s*([^\s-][^-]*)\s*-->/);
+    return m ? m[1].trim() : null;
+  })();
+  let reloadScheduled = false;
+  async function checkBuildVersion() {
+    if (reloadScheduled || !CLIENT_BUILD) return;
+    try {
+      // Cache-bust at the URL level so we get the freshest HTML through
+      // every cache layer (iOS Safari, Cloudflare CDN, anything in between).
+      const r = await fetch('/?_v=' + Date.now(), { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+      if (!r.ok) return;
+      const txt = await r.text();
+      const m = txt.match(/<!--\s*build:\s*([^\s-][^-]*)\s*-->/);
+      const serverBuild = m ? m[1].trim() : null;
+      if (serverBuild && serverBuild !== CLIENT_BUILD) {
+        reloadScheduled = true;
+        try { showToast('Загружаю свежую версию…'); } catch {}
+        // Flush any in-flight save before bouncing the page.
+        try { qFlushBeacon(); } catch {}
+        setTimeout(() => { try { location.reload(); } catch {} }, 1500);
+      }
+    } catch {}
+  }
+  // iOS Safari bfcache: when mom backgrounds the tab and returns later,
+  // the page snapshot is restored from memory without refetching. This
+  // listener fires only on bfcache-restore and forces a fresh load so the
+  // mid-deploy stale-page experience can't happen.
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) {
+      try { location.reload(); } catch {}
+    } else {
+      // First-paint check too — covers the case where mom opens a saved
+      // home-screen shortcut and the disk-cached HTML is days old.
+      checkBuildVersion();
+    }
+  });
   let syncTimer = null;
   let lastSyncTs = 0;
   async function periodicSyncDebounced() {
