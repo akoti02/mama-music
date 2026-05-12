@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-yt-stealth-recovery -->
+<!-- build: 2026-05-12T-yt-robust -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3490,9 +3490,12 @@
       let d = e.data;
       if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
       if (!d || typeof d !== 'object') return;
-      // Error signals → instant alternate-video attempt.
+      // Error signals → instant alternate-video attempt. Cover every known
+      // shape YouTube uses (onError event, infoDelivery with errorCode field,
+      // and any future variant that exposes a numeric errorCode at top level).
       const err = (d.event === 'onError') ||
-                  (d.event === 'infoDelivery' && d.info && d.info.errorCode);
+                  (d.info && typeof d.info.errorCode !== 'undefined') ||
+                  (typeof d.errorCode !== 'undefined');
       if (err) {
         ytMsgAbort?.abort();
         if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
@@ -3500,26 +3503,29 @@
         tryAnotherVideo(songRef);
         return;
       }
-      // Any other meaningful event = player is alive; disarm the watchdog.
-      const alive = (d.event === 'onReady') ||
-                    (d.event === 'onStateChange') ||
-                    (d.event === 'infoDelivery' && d.info &&
-                      (typeof d.info.playerState === 'number' ||
-                       typeof d.info.currentTime === 'number' ||
-                       typeof d.info.duration === 'number'));
-      if (alive) {
+      // Permissive life-signal: ANY structured message from the iframe means
+      // YouTube's player JS has loaded (an embed-blocked error page never
+      // posts messages). This is more robust than enumerating event names,
+      // which vary across YT iframe versions and Safari / Chrome / Edge.
+      if (!ytAlive) {
         ytAlive = true;
         if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
-        // Reveal the verified-working iframe with a smooth fade-in.
         wrap.classList.remove('loading');
         wrap.classList.add('playing', 'alive');
       }
     };
     window.addEventListener('message', onMsg, { signal: ytMsgAbort.signal });
-    // Wake the embed's listener-mode so it starts sending events to us.
-    setTimeout(() => {
-      try { iframe.contentWindow?.postMessage('{"event":"listening"}', '*'); } catch {}
-    }, 1500);
+    // Multi-shot "listening" handshake — first delivery sometimes lands
+    // before the player has wired up its listener; retry until we've heard
+    // back or hit four attempts. Each retry is cheap (1 postMessage call).
+    const wakeListening = (delay, tries) => {
+      setTimeout(() => {
+        if (ytAlive) return;
+        try { iframe.contentWindow?.postMessage('{"event":"listening"}', '*'); } catch {}
+        if (tries > 1) wakeListening(1200, tries - 1);
+      }, delay);
+    };
+    wakeListening(500, 4);
     // Watchdog: if 7s after mount we still haven't heard a single life signal
     // from the iframe, assume the embed silently failed (region-block, embed
     // disabled, "Повторите попытку позже" — none of these emit onError). Try
