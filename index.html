@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-cleanup -->
+<!-- build: 2026-05-12T-yt-watchdog -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3439,6 +3439,7 @@
   // loop on the same broken video.
   const ytTried = new Map();
   let ytMsgAbort = null;
+  let ytWatchdogTimer = null;
   function mountYTIframe(wrap, videoId) {
     const songRef = currentSong;
     if (songRef) {
@@ -3447,13 +3448,18 @@
     }
     const iframe = document.createElement('iframe');
     const ap = hasUserGesture ? '1' : '0';
-    // enablejsapi lets us hear postMessage error events; doesn't require the
-    // full YT.Player API which has loading-race issues on slow connections.
+    // enablejsapi lets us hear postMessage events. We listen for both error
+    // signals (onError / errorCode) AND life signals (onReady / onStateChange);
+    // the watchdog below uses absence of any life signal to detect a stuck
+    // "Повторите попытку позже" error screen that YouTube draws without ever
+    // emitting an onError event.
     iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=${ap}&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
     iframe.title = 'YouTube плеер';
     iframe.allowFullscreen = true;
-    iframe.loading = 'lazy';
+    // No iframe.loading='lazy' — iOS Safari can fail to fire load on
+    // dynamically-inserted lazy iframes even when visible; the player is the
+    // primary intent of the page so we want eager-load.
     wrap.innerHTML = '';
     wrap.appendChild(iframe);
     wrap.classList.add('playing');
@@ -3464,27 +3470,52 @@
     // listeners each holding a songRef closure.
     if (ytMsgAbort) ytMsgAbort.abort();
     ytMsgAbort = new AbortController();
-    // Best-effort error catch: listen for postMessage from this iframe. When
-    // YouTube can't play (embed-blocked / removed) it sends an onError event.
-    // If iOS Safari swallows the message, the user can still hit the "Не
-    // работает?" button which calls tryAnotherVideo directly.
+    if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
+    let ytAlive = false;
     const onMsg = (e) => {
       if (e.source !== iframe.contentWindow) return;
       let d = e.data;
       if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
       if (!d || typeof d !== 'object') return;
+      // Error signals → instant alternate-video attempt.
       const err = (d.event === 'onError') ||
                   (d.event === 'infoDelivery' && d.info && d.info.errorCode);
-      if (!err) return;
-      ytMsgAbort?.abort();
-      if (!songRef || currentSong?.id !== songRef.id) return;
-      tryAnotherVideo(songRef);
+      if (err) {
+        ytMsgAbort?.abort();
+        if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
+        if (!songRef || currentSong?.id !== songRef.id) return;
+        tryAnotherVideo(songRef);
+        return;
+      }
+      // Any other meaningful event = player is alive; disarm the watchdog.
+      const alive = (d.event === 'onReady') ||
+                    (d.event === 'onStateChange') ||
+                    (d.event === 'infoDelivery' && d.info &&
+                      (typeof d.info.playerState === 'number' ||
+                       typeof d.info.currentTime === 'number' ||
+                       typeof d.info.duration === 'number'));
+      if (alive) {
+        ytAlive = true;
+        if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
+      }
     };
     window.addEventListener('message', onMsg, { signal: ytMsgAbort.signal });
     // Wake the embed's listener-mode so it starts sending events to us.
     setTimeout(() => {
       try { iframe.contentWindow?.postMessage('{"event":"listening"}', '*'); } catch {}
     }, 1500);
+    // Watchdog: if 7s after mount we still haven't heard a single life signal
+    // from the iframe, assume the embed silently failed (region-block, embed
+    // disabled, "Повторите попытку позже" — none of these emit onError). Try
+    // a different video ID instead of leaving the user staring at the error.
+    ytWatchdogTimer = setTimeout(() => {
+      ytWatchdogTimer = null;
+      if (ytAlive) return;
+      if (!songRef || currentSong?.id !== songRef.id) return;
+      console.warn('YT watchdog: no life signal in 7s for ' + videoId + ', trying alternate');
+      ytMsgAbort?.abort();
+      tryAnotherVideo(songRef);
+    }, 7000);
   }
   // Ask the server to pick a different YouTube ID for this song, then remount.
   async function tryAnotherVideo(song) {
