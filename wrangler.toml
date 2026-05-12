@@ -1,0 +1,14 @@
+name = "akoev-site"
+compatibility_date = "2026-05-01"
+account_id = "1a8fda11ea2b5f1ed7a7e2e072a273ca"
+main = "_worker.js"
+
+routes = [
+  { pattern = "akoev.com", custom_domain = true },
+  { pattern = "www.akoev.com", custom_domain = true }
+]
+
+[assets]
+directory = "."
+binding = "ASSETS"
+not_found_handling = "single-page-application"

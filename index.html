@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-11T13:45 -->
+<!-- build: 2026-05-12T-genre-filter -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -373,6 +373,7 @@
     color: var(--gold-bright);
   }
   .player-fallback .svc-ico { width: 13px; height: 13px; }
+  .fb-try-btn:disabled { opacity: 0.6; cursor: default; }
 
   /* ===== Meta (title + artist) ===== */
   .meta {
@@ -484,6 +485,19 @@
 
   /* ===== Category pills ===== */
   .cats-collapse { margin-bottom: 18px; }
+  /* Guests (Lovers / DJ Микки) can't move songs between categories — they're
+     locked to one. Hide the category-pill section + the top-bar switcher. */
+  body.guest-mode .cats-collapse { display: none; }
+  body.guest-mode #cat-current { display: none !important; }
+  body.guest-mode #all-btn { display: none; }
+  body.guest-mode .remove-link { display: none; }
+  /* Guests are scoped to a single category — hide everything that would let
+     them escape: settings (switch user), global search, share (leaks other
+     categories), and the share-fab. Defense-in-depth alongside the server
+     check that refuses non-guest categories. */
+  body.guest-mode #settings-btn { display: none !important; }
+  body.guest-mode #search-btn { display: none !important; }
+  body.guest-mode #share-fab { display: none !important; }
   .cats-collapse summary {
     list-style: none;
     cursor: pointer;
@@ -620,13 +634,14 @@
     margin-top: 22px;
     appearance: none; background: transparent; border: 0;
     color: var(--text-muted);
-    font-size: 12px; font-weight: 500;
+    font-size: 11px; font-weight: 500;
     padding: 10px 14px;
     cursor: pointer;
-    transition: color 0.18s;
-    text-transform: uppercase; letter-spacing: 0.14em;
+    opacity: 0.55;
+    transition: opacity 0.18s, color 0.18s;
+    letter-spacing: 0.04em;
   }
-  .remove-link:hover { color: var(--bad); }
+  .remove-link:hover { opacity: 1; color: var(--bad); }
 
   /* ===== Empty state ===== */
   .empty-state {
@@ -791,6 +806,267 @@
   .sr-art svg { width: 22px; height: 22px; opacity: 0.45; }
   .sr-text { flex: 1; min-width: 0; }
   .sr-title { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.005em; }
+  /* Visual divide: songs WITH a comment have a left-edge accent + slightly
+     stronger title. Songs WITHOUT are dimmer so the user sees at a glance
+     what's left to do. */
+  .sr-row.has-comment { border-left: 2px solid var(--gold-bright); padding-left: 12px; }
+  .sr-row.no-comment .sr-title { color: var(--text-dim); font-weight: 500; }
+  .sr-row.no-comment .sr-artist { color: var(--text-muted); }
+  .sr-commented-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--gold-bright); margin-right: 7px; vertical-align: middle;
+    box-shadow: 0 0 6px rgba(236,195,128,0.5);
+  }
+  .sr-my-comment {
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: rgba(212,164,92,0.08);
+    border-left: 3px solid rgba(212,164,92,0.55);
+    border-radius: 3px 10px 10px 3px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 14px; line-height: 1.45;
+    color: var(--text);
+    max-width: 100%;
+    /* allow wrap so the full comment is visible at a glance */
+    white-space: normal;
+    overflow: visible;
+  }
+  /* ===== Track card v3 — premium spacious UX =====
+     Bigger, breathier cards with prominent cover art. Single-column on
+     phones (one per row, full-width feel); 2-column responsive grid on
+     desktop / iPad so wider screens don't get a long thin list. */
+  .tc-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 720px) {
+    .tc-grid { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  }
+  @media (min-width: 1100px) {
+    .tc-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  .tc-card {
+    position: relative;
+    background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    overflow: hidden;
+    transform: translateZ(0);
+    transition: transform 0.4s cubic-bezier(.2,.8,.2,1),
+                border-color 0.25s, box-shadow 0.3s;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 2px 6px rgba(0,0,0,0.18),
+      0 12px 32px -16px rgba(0,0,0,0.65);
+    -webkit-tap-highlight-color: transparent;
+    backdrop-filter: blur(8px);
+  }
+  .tc-card:hover {
+    border-color: rgba(212,164,92,0.3);
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.05) inset,
+      0 4px 12px rgba(0,0,0,0.22),
+      0 20px 48px -18px rgba(0,0,0,0.7);
+  }
+  .tc-card.expanded {
+    border-color: rgba(212,164,92,0.4);
+    background: linear-gradient(180deg, rgba(212,164,92,0.05), rgba(255,255,255,0.008));
+    box-shadow:
+      0 1px 0 rgba(212,164,92,0.1) inset,
+      0 4px 14px rgba(0,0,0,0.25),
+      0 24px 60px -20px rgba(212,164,92,0.18),
+      0 24px 60px -20px rgba(0,0,0,0.7);
+  }
+  .tc-card.swiping { transition: none; }
+  .tc-card.deleting { transform: translateX(-110%) scale(0.94); opacity: 0; transition: transform 0.45s cubic-bezier(.4,.0,.2,1), opacity 0.3s; }
+
+  /* Red wash behind the card revealed during a left-swipe. Sits in normal
+     flow but the card slides over it. */
+  .tc-card__delete-layer {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 35%, rgba(217,102,102,0.95) 100%);
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 28px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .tc-card.swiping .tc-card__delete-layer,
+  .tc-card.swipe-armed .tc-card__delete-layer { opacity: 1; }
+  .tc-card__delete-layer svg { width: 22px; height: 22px; color: white; }
+  .tc-card__delete-layer .lbl { color: white; font: 700 13px/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; margin-right: 12px; }
+
+  /* The actual card content sits on top of the delete layer, slides on swipe */
+  .tc-card__inner {
+    position: relative;
+    background: inherit;
+    transition: transform 0.35s cubic-bezier(.2,.8,.2,1);
+    will-change: transform;
+  }
+  .tc-card.swiping .tc-card__inner { transition: none; }
+
+  .tc-card__head { display: flex; align-items: center; gap: 16px; padding: 18px 20px; cursor: pointer; }
+  .tc-card__art {
+    width: 64px; height: 64px; flex-shrink: 0;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(212,164,92,0.18), rgba(212,164,92,0.04));
+    background-size: cover; background-position: center;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold-bright);
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 14px -4px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.06) inset;
+  }
+  .tc-card__art.has-thumb::after {
+    /* subtle dark gradient overlay so the music-note SVG stays readable
+       on top of a busy YouTube thumbnail */
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(0,0,0,0.15), rgba(0,0,0,0.35));
+  }
+  .tc-card__art.has-thumb svg { display: none; }
+  .tc-card__art svg { width: 28px; height: 28px; position: relative; z-index: 1; }
+  .tc-card__meta { flex: 1; min-width: 0; padding-right: 8px; }
+  .tc-card__title { font: 600 17px/1.3 var(--font-body); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.005em; }
+  .tc-card__artist { font: 400 14px/1.4 var(--font-body); color: var(--text-dim); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Chips: chip--cat (assignment) + chip--comment (has comment) — always
+     scannable on the collapsed card. */
+  .tc-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  .tc-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font: 700 11px/1.4 var(--font-body);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    backdrop-filter: blur(8px);
+  }
+  .tc-chip--cat { background: rgba(212,164,92,0.13); color: var(--gold-bright); border: 1px solid rgba(212,164,92,0.3); }
+  .tc-chip--comment { background: rgba(140,190,255,0.1); color: #b8d4ff; border: 1px solid rgba(140,190,255,0.25); }
+  .tc-chip--rating { background: rgba(212,164,92,0.18); color: var(--gold-bright); border: 1px solid rgba(212,164,92,0.4); font-weight: 800; }
+  .tc-chip svg { width: 11px; height: 11px; }
+
+  /* Desktop hover-reveal delete — Apple-style circle in top-right. Hidden
+     on touch devices (those use swipe). */
+  .tc-card__hover-delete {
+    position: absolute; top: 14px; right: 14px;
+    width: 32px; height: 32px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    opacity: 0; transform: scale(0.82);
+    transition: opacity 0.25s, transform 0.3s cubic-bezier(.34,1.56,.64,1), background 0.18s, color 0.18s, border-color 0.18s;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .tc-card:hover .tc-card__hover-delete { opacity: 1; transform: scale(1); pointer-events: auto; }
+  .tc-card__hover-delete:hover { background: rgba(217,102,102,0.85); border-color: rgba(217,102,102,1); color: white; transform: scale(1.05); }
+  .tc-card__hover-delete:active { transform: scale(0.92); }
+  .tc-card__hover-delete svg { width: 13px; height: 13px; }
+  @media (hover: none) { .tc-card__hover-delete { display: none; } }
+
+  /* The animated expand region. grid-template-rows trick animates from 0fr
+     to 1fr — auto height animation without JS measurement. */
+  .tc-card__expand {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.4s cubic-bezier(.2,.8,.2,1);
+  }
+  .tc-card.expanded .tc-card__expand { grid-template-rows: 1fr; }
+  .tc-card__expand-inner { overflow: hidden; min-height: 0; }
+  .tc-card__expand-content {
+    padding: 4px 20px 20px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin-top: 2px;
+  }
+
+  /* All-comments thread inside the expanded card */
+  .tc-thread { margin-top: 14px; }
+  .tc-thread__loading { font: 400 13px var(--font-body); color: var(--text-muted); padding: 6px 0; }
+  .tc-thread__empty { font: 400 13px var(--font-body); color: var(--text-muted); padding: 6px 0; }
+  .tc-comment {
+    padding: 10px 0;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .tc-comment:first-child { border-top: 0; }
+  .tc-comment__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tc-comment__by {
+    display: inline-block;
+    font: 700 12px var(--font-body); color: var(--gold-bright);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .tc-comment__cat {
+    font: 700 11px var(--font-body); color: #b8d4ff;
+    padding: 2px 8px; border-radius: 999px;
+    background: rgba(140,190,255,0.08); border: 1px solid rgba(140,190,255,0.2);
+    letter-spacing: 0.05em;
+  }
+  .tc-comment__rating { font: 800 12px var(--font-body); color: var(--gold-bright); letter-spacing: 0.04em; }
+  .tc-comment__text {
+    margin-top: 6px;
+    font: italic 400 14px/1.5 var(--font-display, Georgia, serif);
+    color: var(--text);
+    padding-left: 12px;
+    border-left: 2px solid rgba(212,164,92,0.4);
+  }
+
+  /* Category quick-assign — chip pills inside the expanded card */
+  .tc-catpicker { margin-top: 16px; }
+  .tc-catpicker__label {
+    font: 700 11px var(--font-body); color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.14em;
+    margin-bottom: 8px;
+  }
+  .tc-catpicker__pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tc-catpicker__pills button {
+    appearance: none;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-dim);
+    padding: 7px 14px;
+    border-radius: 999px;
+    font: 600 12px var(--font-body);
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(.2,.8,.2,1);
+  }
+  .tc-catpicker__pills button:hover { background: rgba(212,164,92,0.1); color: var(--gold-bright); border-color: rgba(212,164,92,0.35); transform: translateY(-1px); }
+  .tc-catpicker__pills button:active { transform: translateY(0); }
+  .tc-catpicker__pills button.selected { background: var(--gold); color: #0a0a0d; border-color: var(--gold); font-weight: 800; }
+
+  /* "Play" hint inside the expanded card — clickable to jump to the player */
+  .tc-play {
+    margin-top: 14px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px;
+    background: rgba(212,164,92,0.1);
+    border: 1px solid rgba(212,164,92,0.3);
+    color: var(--gold-bright);
+    border-radius: 999px;
+    font: 700 12px var(--font-body);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(.2,.8,.2,1);
+  }
+  .tc-play:hover { background: rgba(212,164,92,0.18); transform: translateY(-1px); }
+  .tc-play svg { width: 14px; height: 14px; }
+
+  /* "Swipe to delete" hint for first-time mobile users — fades in once, then
+     disappears after the user has performed any gesture. */
+  .tc-swipe-hint {
+    text-align: center;
+    font: 400 11px var(--font-body);
+    color: var(--text-muted);
+    padding: 8px 0 4px;
+    opacity: 0.7;
+  }
+  @media (hover: hover) { .tc-swipe-hint { display: none; } }
   .sr-artist { font-size: 13px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .sr-status { font-size: 11px; color: var(--gold-bright); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
   .sr-row .sr-added-flag {
@@ -847,15 +1123,52 @@
   .sr-cats-inner button:hover { background: var(--gold-soft); color: var(--gold-bright); border-color: var(--gold-soft); }
   .sr-cats-inner button:active { transform: scale(0.94); }
 
-  /* ===== All overlay sort chips ===== */
-  .ao-sort {
+  /* ===== All overlay comment-status tabs — iOS-style segmented control ===== */
+  .ao-comment-tabs {
     flex-shrink: 0;
-    display: flex; gap: 8px;
-    padding: 12px 14px 8px;
-    overflow-x: auto;
-    scrollbar-width: none;
+    display: flex;
+    margin: 14px 14px 2px;
+    padding: 3px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 999px;
+    backdrop-filter: blur(10px);
+    gap: 2px;
   }
-  .ao-sort::-webkit-scrollbar { display: none; }
+  .ao-comment-tab {
+    flex: 1;
+    appearance: none;
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    padding: 7px 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 0.22s cubic-bezier(.2,.8,.2,1), color 0.18s, box-shadow 0.22s;
+    display: inline-flex; align-items: baseline; justify-content: center; gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ao-comment-tab:hover { color: var(--text); }
+  .ao-comment-tab.active {
+    background: linear-gradient(180deg, rgba(212,164,92,0.22), rgba(212,164,92,0.08));
+    color: var(--gold-bright);
+    box-shadow:
+      0 1px 0 rgba(212,164,92,0.2) inset,
+      0 4px 14px -6px rgba(212,164,92,0.45);
+  }
+  .ao-comment-tab__label {
+    font: 600 13px/1 var(--font-body);
+    letter-spacing: 0;
+  }
+  .ao-comment-tab__count {
+    font: 700 12px/1 var(--font-body);
+    opacity: 0.72;
+    letter-spacing: -0.01em;
+  }
+  .ao-comment-tab.active .ao-comment-tab__count { opacity: 0.95; }
+
+  /* ===== All overlay sort chips (kept hidden — superseded by genre filter) ===== */
+  .ao-sort { display: none; }
   .sort-chip {
     appearance: none;
     flex-shrink: 0;
@@ -871,6 +1184,55 @@
   }
   .sort-chip:hover { background: var(--surface-2); color: var(--text); }
   .sort-chip.active { background: var(--gold); color: #0a0a0d; border-color: var(--gold); }
+
+  /* ===== All overlay genre filter chips =====
+     Horizontal scroller of genre pills under the comment-status tabs.
+     Active chip = gold ring, count beside the label. Tapping a chip filters
+     the result list to that music genre — works orthogonally to С отзывом /
+     Без and to whatever wedding category the user is currently in. */
+  .ao-genres {
+    flex-shrink: 0;
+    display: flex;
+    gap: 7px;
+    padding: 10px 14px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ao-genres::-webkit-scrollbar { display: none; }
+  .genre-chip {
+    appearance: none;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 999px;
+    padding: 7px 13px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.15s;
+    font: 600 12.5px/1 var(--font-body);
+    letter-spacing: 0;
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+    display: inline-flex; align-items: baseline; gap: 6px;
+  }
+  .genre-chip:hover { color: var(--text); border-color: rgba(212,164,92,0.3); }
+  .genre-chip:active { transform: scale(0.96); }
+  .genre-chip.active {
+    background: linear-gradient(180deg, rgba(212,164,92,0.22), rgba(212,164,92,0.08));
+    color: var(--gold-bright);
+    border-color: rgba(212,164,92,0.55);
+    box-shadow: 0 1px 0 rgba(212,164,92,0.18) inset, 0 4px 14px -6px rgba(212,164,92,0.45);
+  }
+  .genre-chip__count {
+    font-weight: 700;
+    font-size: 11px;
+    opacity: 0.65;
+    letter-spacing: -0.01em;
+  }
+  .genre-chip.active .genre-chip__count { opacity: 0.95; }
+  .genre-chip[data-empty="1"] { opacity: 0.4; pointer-events: none; }
 
   /* ===== Mine overlay tabs ===== */
   .mine-tabs {
@@ -1134,10 +1496,14 @@
 
   /* ===== Category picker screen =====
      Lives in normal document flow (no position:fixed) so that
-     body.allow-scroll lets the page scroll naturally on phones. */
+     body.allow-scroll lets the page scroll naturally on phones.
+     Top padding accounts for the fixed top-bar (chip + icon-buttons). */
   #cat-picker[hidden] { display: none !important; }
   #cat-picker {
-    padding: max(28px, env(safe-area-inset-top)) 16px calc(60px + env(safe-area-inset-bottom));
+    padding-top: calc(86px + env(safe-area-inset-top));
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
     display: block;
     background: var(--bg);
     min-height: 100vh;
@@ -1359,6 +1725,33 @@
     display: flex; flex-direction: column; gap: 16px;
     max-width: 480px; margin: 0 auto;
   }
+  .add-target {
+    padding: 10px 14px;
+    background: rgba(212, 164, 92, 0.08);
+    border: 1px solid rgba(212, 164, 92, 0.22);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .add-target strong { color: var(--gold-bright); font-weight: 700; }
+  .add-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+  .add-parsed {
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .add-parsed .ap-label { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; margin-right: 6px; }
+  .add-parsed .ap-art { color: var(--gold-bright); font-weight: 700; }
+  .add-parsed .ap-sep { color: var(--text-muted); margin: 0 6px; }
   .add-field label {
     display: block;
     font-size: 11px; color: var(--text-muted);
@@ -1387,14 +1780,24 @@
     padding: 14px;
     color: var(--text-dim);
     font-size: 13px;
+    display: flex; flex-direction: column; gap: 10px;
   }
+  .add-preview.is-exact { border-color: rgba(231, 102, 102, 0.45); background: rgba(231, 102, 102, 0.06); }
+  .add-preview.is-found { border-color: rgba(212, 164, 92, 0.4); }
   .add-preview .pv-thumb {
     width: 100%; aspect-ratio: 16 / 9;
     border-radius: 10px;
     overflow: hidden;
     background: #000 center/cover no-repeat;
-    margin-bottom: 10px;
   }
+  .add-preview .pv-thumb.empty { display: none; }
+  .add-preview .pv-row { color: var(--text); font-weight: 600; }
+  .add-preview .pv-hint { color: var(--text-muted); font-size: 12px; }
+  .add-preview .pv-link { display: inline-block; color: var(--gold-bright); text-decoration: underline; font-size: 12px; }
+  .add-similar { display: flex; flex-direction: column; gap: 6px; }
+  .add-similar .as-head { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; }
+  .add-similar .as-item { padding: 8px 10px; background: rgba(255,255,255,0.025); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+  .add-similar .as-item .as-by { color: var(--text-muted); font-size: 11px; margin-left: 6px; }
 
   /* ===== Toast ===== */
   .toast {
@@ -1435,24 +1838,19 @@
 
 <!-- Top bar -->
 <div class="top-bar" id="top-bar" hidden>
-  <button class="who-chip" id="who-chip" type="button">
-    <span class="dot"></span>
-    <span id="who-name">…</span>
-  </button>
   <button class="cat-current" id="cat-current" type="button" hidden>
-    <span>Категория:</span><strong id="cat-current-name"></strong>
+    <strong id="cat-current-name"></strong>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
   </button>
   <div class="top-actions">
+    <button type="button" class="icon-btn" id="add-btn" aria-label="добавить песню">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
     <button type="button" class="icon-btn" id="search-btn" aria-label="поиск">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
     </button>
     <button type="button" class="icon-btn" id="all-btn" aria-label="все треки">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
-    </button>
-    <button type="button" class="icon-btn" id="mine-btn" aria-label="моё" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
-      <span class="badge" id="mine-badge" hidden>0</span>
     </button>
     <button type="button" class="icon-btn" id="settings-btn" aria-label="настройки">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -1478,7 +1876,6 @@
       <div class="ob-pick col" id="ob-user">
         <button type="button" data-user="Юля"><span class="av"><span class="dot"></span></span> Юля</button>
         <button type="button" data-user="Артур"><span class="av"><span class="dot"></span></span> Артур</button>
-        <button type="button" data-user="Света"><span class="av"><span class="dot"></span></span> Света</button>
       </div>
     </div>
   </div>
@@ -1486,8 +1883,6 @@
 
 <!-- Category picker -->
 <div id="cat-picker" hidden>
-  <h2>Куда сегодня · <em>выбери раздел</em></h2>
-  <div class="pick-sub">привет, <span id="cat-pick-name">…</span></div>
   <div class="cat-grid">
     <button type="button" class="cat-tile general" data-cat="">
       <div class="cat-nm">Общий</div>
@@ -1523,7 +1918,7 @@
 <!-- Discovery -->
 <div id="discovery" class="stage" hidden>
   <div class="progress-line">
-    <span class="n" id="progress-n">0</span> <span data-i18n="of"></span> <span class="n" id="progress-total">0</span> <span data-i18n="tracks"></span>
+    <span class="n" id="progress-n">…</span> <span data-i18n="of"></span> <span class="n" id="progress-total">…</span> <span data-i18n="tracks"></span>
   </div>
   <div id="card-host"></div>
 </div>
@@ -1551,13 +1946,17 @@
       <div class="ov-sub"><span id="ao-counter">…</span> <span data-i18n="tracks"></span></div>
     </div>
   </div>
-  <div class="ao-sort">
-    <button type="button" class="sort-chip active" data-sort="alpha" data-i18n="sort.alpha"></button>
-    <button type="button" class="sort-chip" data-sort="genre" data-i18n="sort.genre"></button>
-    <button type="button" class="sort-chip" data-filter="mine-commented">Я · с коммом</button>
-    <button type="button" class="sort-chip" data-filter="yula-commented">Юля · с коммом</button>
-    <button type="button" class="sort-chip" data-filter="any-commented">Любой · с коммом</button>
+  <div class="ao-comment-tabs">
+    <button type="button" class="ao-comment-tab active" data-commented="yes">
+      <span class="ao-comment-tab__label">С отзывом</span>
+      <span class="ao-comment-tab__count" id="ao-count-commented">…</span>
+    </button>
+    <button type="button" class="ao-comment-tab" data-commented="no">
+      <span class="ao-comment-tab__label">Без</span>
+      <span class="ao-comment-tab__count" id="ao-count-uncommented">…</span>
+    </button>
   </div>
+  <div class="ao-genres" id="ao-genres"></div>
   <div class="ov-body" id="all-results"></div>
 </div>
 
@@ -1608,8 +2007,12 @@
       </button>
     </div>
     <div class="set-section">
-      <h4 data-i18n="settings.send"></h4>
-      <button class="send-btn" id="send-report-btn" type="button">
+      <h4>Экспорт</h4>
+      <button class="send-btn" id="download-comments-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        <span>Скачать комментарии (файл)</span>
+      </button>
+      <button class="send-btn" id="send-report-btn" type="button" style="margin-top:8px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         <span data-i18n="settings.sendBtn"></span>
       </button>
@@ -1628,13 +2031,11 @@
   </div>
   <div class="ov-body">
     <div class="add-form">
+      <div class="add-target" id="add-target" hidden></div>
       <div class="add-field">
-        <label data-i18n="add.artistLabel"></label>
-        <input type="text" id="add-artist" autocomplete="off" autocorrect="off">
-      </div>
-      <div class="add-field">
-        <label data-i18n="add.titleLabel"></label>
-        <input type="text" id="add-title" autocomplete="off" autocorrect="off">
+        <label data-i18n="add.queryLabel"></label>
+        <input type="text" id="add-query" autocomplete="off" autocorrect="off" autocapitalize="words" data-i18n-placeholder="add.queryPlaceholder">
+        <div class="add-hint" id="add-hint" data-i18n="add.queryHint"></div>
       </div>
       <div class="add-preview" id="add-preview" hidden>
         <div class="pv-thumb" id="pv-thumb"></div>
@@ -1665,7 +2066,61 @@
   const K_NAME = 'venchanie_user_name_v2';   // localStorage now (was sessionStorage)
   const K_LANG = 'venchanie_lang_v1';
   const K_DRAFTS = 'venchanie_drafts_v1';
-  const ALLOWED_USERS = new Set(['Юля', 'Артур', 'Света']);
+  // State-version handshake: bump STATE_VERSION whenever a dev change leaves
+  // existing phones with stale "stale-replay" data that could push junk
+  // actions to the server. SURGICAL: only wipes the replay-vector keys
+  // (pending queue, card snapshots). NEVER touches identity (K_NAME),
+  // category preference (K_CAT), language (K_LANG), or drafts (K_DRAFTS) —
+  // those belong to the user, not to the dev iteration.
+  const STATE_VERSION = '2026-05-12-fresh-start';
+  const REPLAY_KEYS = ['venchanie_pending_actions_v1', 'venchanie_card_snapshots_v1'];
+  try {
+    const cur = localStorage.getItem('venchanie_state_version');
+    if (cur !== STATE_VERSION) {
+      for (const k of REPLAY_KEYS) try { localStorage.removeItem(k); } catch {}
+      localStorage.setItem('venchanie_state_version', STATE_VERSION);
+    }
+  } catch {}
+  // Cookie-backed identity backup. Safari can purge localStorage under
+  // memory pressure or private mode while keeping cookies. We mirror K_NAME
+  // and K_CAT into cookies (90-day life) so a soft localStorage loss doesn't
+  // log the user out. Read at boot AFTER the version handshake.
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp('(^|; )' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[2]) : '';
+  }
+  function setCookie(name, value, days) {
+    const exp = new Date(Date.now() + days * 24 * 3600 * 1000).toUTCString();
+    document.cookie = name + '=' + encodeURIComponent(value || '') + '; expires=' + exp + '; path=/; SameSite=Lax; Secure';
+  }
+  try {
+    // Restore K_NAME from cookie if localStorage version is empty
+    if (!localStorage.getItem('venchanie_user_name_v2')) {
+      const ck = getCookie('mm_user');
+      if (ck) localStorage.setItem('venchanie_user_name_v2', ck);
+    }
+    if (!localStorage.getItem('venchanie_cat_v1')) {
+      const ckCat = getCookie('mm_cat');
+      if (ckCat) localStorage.setItem('venchanie_cat_v1', ckCat);
+    }
+  } catch {}
+  // Manual reset hatch kept as a backup — useful if I ever need to send a
+  // recovery link to one specific phone without bumping STATE_VERSION.
+  try {
+    if (/[?&]fresh=1/.test(location.search)) {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('venchanie_')) keys.push(k);
+      }
+      for (const k of keys) try { localStorage.removeItem(k); } catch {}
+      localStorage.setItem('venchanie_state_version', STATE_VERSION);
+      history.replaceState(null, '', location.pathname);
+    }
+  } catch {}
+  const OWNER_USERS = new Set(['Юля', 'Артур']);
+  // 'Lovers' and 'DJ Микки' are group-guest identities used on /lovers and /dj.
+  const ALLOWED_USERS = new Set(['Юля', 'Артур', 'Lovers', 'DJ Микки']);
   const CATEGORIES = ['Лаунж', 'LOVERS', 'Торт', 'DJ Микки', 'Юля', 'Вилла'];
 
   /* ===== i18n ===== */
@@ -1741,11 +2196,26 @@
       'add.sub': 'Ищем на YouTube',
       'add.artistLabel': 'Артист',
       'add.titleLabel': 'Название трека',
+      'add.queryLabel': 'Имя артиста и название',
+      'add.queryPlaceholder': 'Например: ABBA — Dancing Queen',
+      'add.queryHint': 'Можно писать в одну строку, без точного написания. Поддерживаются русский, английский, итальянский, французский и любые другие языки.',
+      'add.parsedAs': 'Понял как',
       'add.submit': 'Добавить',
       'add.searching': 'Ищу на YouTube…',
       'add.found': 'Нашёл',
       'add.notFound': 'На YouTube не нашлось. Можно добавить без видео.',
       'add.exists': 'Этот трек уже в библиотеке',
+      'add.targetCat': 'Попадёт в категорию <strong>{cat}</strong>. После добавления видео найдётся автоматически.',
+      'add.targetAll': 'Попадёт в общий каталог. После добавления видео найдётся автоматически.',
+      'add.addedToCat': 'Добавлено в «{cat}»',
+      'add.exactFound': '<strong>Этот трек уже в библиотеке.</strong> Добавил{a}: {by}.',
+      'add.exactAddOnly': 'Кнопка ниже привяжет его к категории, новой записи не создаст.',
+      'add.confirmSimilar': 'В библиотеке есть похожие треки. Точно добавить как новую запись (например, кавер или ремикс)?',
+      'add.ytFound': 'Видео найдено: <a class="pv-link" href="https://www.youtube.com/watch?v={id}" target="_blank" rel="noopener">открыть на YouTube</a>',
+      'add.ytNone': 'Видео на YouTube пока не нашлось. Можно всё равно добавить — попробуем ещё раз после.',
+      'add.similarHead': 'Похожие треки уже есть:',
+      'add.similarMore': '…и ещё {n}',
+      'add.byUser': 'добавил{a}: {by}',
       'toast.failed': 'Что-то пошло не так',
       'toast.offline': 'Нет связи. Подожди и попробуй снова.',
       'toast.assigned': 'В «{cat}»',
@@ -1834,11 +2304,26 @@
       'add.sub': 'Searching on YouTube',
       'add.artistLabel': 'Artist',
       'add.titleLabel': 'Track title',
+      'add.queryLabel': 'Artist and track name',
+      'add.queryPlaceholder': 'For example: ABBA — Dancing Queen',
+      'add.queryHint': 'Write it on one line, exact spelling not required. Russian, English, Italian, French and other languages are all supported.',
+      'add.parsedAs': 'Read as',
       'add.submit': 'Add',
       'add.searching': 'Searching YouTube…',
       'add.found': 'Found',
       'add.notFound': 'Not found on YouTube. You can add without video.',
       'add.exists': 'Already in the library',
+      'add.targetCat': 'Will land in <strong>{cat}</strong>. The video will be found automatically.',
+      'add.targetAll': 'Will land in the main catalog. The video will be found automatically.',
+      'add.addedToCat': 'Added to «{cat}»',
+      'add.exactFound': '<strong>This track is already in the library.</strong> Added by: {by}.',
+      'add.exactAddOnly': 'The button below will tag it under your category — no new record.',
+      'add.confirmSimilar': 'The library already has similar tracks. Really add as a new record (e.g. a cover or remix)?',
+      'add.ytFound': 'Video found: <a class="pv-link" href="https://www.youtube.com/watch?v={id}" target="_blank" rel="noopener">open on YouTube</a>',
+      'add.ytNone': 'No YouTube video yet. You can still add — we\'ll retry later.',
+      'add.similarHead': 'Similar tracks already in library:',
+      'add.similarMore': '…and {n} more',
+      'add.byUser': 'added by: {by}',
       'toast.failed': 'Something went wrong',
       'toast.offline': 'No connection. Wait and try again.',
       'toast.assigned': 'To «{cat}»',
@@ -1865,7 +2350,7 @@
   }
   function tGender(key, params) {
     // append 'а' for female user, '' for male
-    const gend = (userName === 'Юля' || userName === 'Света') ? 'а' : '';
+    const gend = (userName === 'Юля') ? 'а' : '';
     return t(key, Object.assign({}, params, { a: gend, '0': gend }));
   }
   function applyStaticI18n() {
@@ -1874,6 +2359,9 @@
       const val = t(el.dataset.i18n);
       if (/<(em|strong|br)\b/i.test(val)) el.innerHTML = val;
       else el.textContent = val;
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      el.placeholder = t(el.dataset.i18nPlaceholder);
     });
     const smInput = document.getElementById('sm-input');
     if (smInput) smInput.placeholder = t('search.intro').split(' — ')[0];
@@ -2033,6 +2521,39 @@
       }
     } catch (e) { /* ignore */ }
   }
+  // Pipe uncaught errors to diag — otherwise silent failures (iPhone save
+  // glitches, weird mobile-browser exceptions, async chain rejections) are
+  // invisible. Truncate fields so a runaway stack trace doesn't blow out the
+  // 2000-char comment cap or the row budget. dedupe so a hot loop doesn't
+  // spam the server.
+  let _lastErrSig = '';
+  let _lastErrAt = 0;
+  function reportClientError(kind, info) {
+    const sig = kind + '|' + (info?.message || '') + '|' + (info?.source || '');
+    const now = Date.now();
+    if (sig === _lastErrSig && now - _lastErrAt < 5000) return;
+    _lastErrSig = sig; _lastErrAt = now;
+    diag(kind, {
+      message: String(info?.message || '').slice(0, 500),
+      source: String(info?.source || '').slice(0, 200),
+      line: info?.line || null,
+      col: info?.col || null,
+      stack: String(info?.stack || '').slice(0, 1500)
+    });
+  }
+  window.addEventListener('error', e => {
+    reportClientError('window_error', {
+      message: e.message, source: e.filename, line: e.lineno, col: e.colno,
+      stack: e.error?.stack
+    });
+  });
+  window.addEventListener('unhandledrejection', e => {
+    const r = e.reason;
+    reportClientError('unhandled_rejection', {
+      message: (r && r.message) || String(r || 'unknown'),
+      stack: r?.stack
+    });
+  });
 
   /* ===== API helpers ===== */
   async function apiSaveName() {
@@ -2080,6 +2601,20 @@
     qSet(q);
   }
   let draining = false;
+  // Per-item outcome tracking: after qDrain finishes, apiAction reads from
+  // this map to tell whether its specific enqueued item was accepted by the
+  // server (ok) or dropped on a 4xx (failed). Without this, dropping a 409
+  // for "comment without prior action" looked like success to the caller.
+  const drainOutcomes = new Map();
+  function recordOutcome(id, outcome) {
+    drainOutcomes.set(id, outcome);
+    // Cap the map so it doesn't grow forever — outcomes are only consumed
+    // within the immediate apiAction call that enqueued the item.
+    if (drainOutcomes.size > 200) {
+      const firstKey = drainOutcomes.keys().next().value;
+      drainOutcomes.delete(firstKey);
+    }
+  }
   async function qDrain() {
     if (draining) return;
     draining = true;
@@ -2108,6 +2643,7 @@
           break;
         }
         if (r.ok) {
+          recordOutcome(_id, 'ok');
           qRemove(_id);
           q = qGet();
           continue;
@@ -2127,6 +2663,7 @@
         }
         if (status >= 400 && status < 500) {
           diag('drain_4xx_drop', { song_id: payload.song_id, action: payload.action, status, body: bodyText.slice(0, 300) });
+          recordOutcome(_id, 'failed');
           qRemove(_id);
           q = qGet();
         } else {
@@ -2161,12 +2698,27 @@
 
   async function apiAction(payload) {
     // 1) ALWAYS enqueue first — this is the durable write.
-    qEnqueue(payload);
-    refreshUnsavedBadge();
-    // 2) Try to drain immediately (sync the queue to server).
+    const itemId = qEnqueue(payload);
+    // 2) Try to drain immediately. We DO NOT touch the unsaved-badge here:
+    //    during a normal save the item lives in the queue for ~200ms while
+    //    we POST to the server, and surfacing a red "Не отправлено" badge
+    //    for that window makes successful saves look like errors.
+    //    qDrain's finally block calls refreshUnsavedBadge — that's the only
+    //    place where the badge state reflects the true post-drain queue.
     await qDrain();
-    // 3) Tell the caller whether the queue is empty (i.e. our write reached the server)
-    return { ok: qGet().length === 0 };
+    // Read this item's drain outcome:
+    //   'ok'     — server accepted (2xx)
+    //   'failed' — server rejected with 4xx (e.g. 403 guest-category-mismatch,
+    //              409 comment-without-prior-action) → drained but NOT saved
+    //   undefined — still in queue (network failure / 5xx / transient) →
+    //              will retry, treat as not-yet-ok so callers don't celebrate
+    const outcome = drainOutcomes.get(itemId);
+    drainOutcomes.delete(itemId);
+    if (outcome === 'failed') return { ok: false, dropped: true };
+    if (outcome === 'ok') return { ok: true };
+    // Still in queue — transient, will retry later. Caller should treat as
+    // not-confirmed-yet (queue badge already shows the unsaved count).
+    return { ok: false, queued: true };
   }
   /* ===== Reconciliation =====
      Periodically (and on boot/visibility-visible) pull what the server thinks
@@ -2216,6 +2768,15 @@
       const catsMismatch = (cats && serverCats !== cats);
       const commentMismatch = (localComment && serverComment !== localComment);
       const hasAnyDelta = ratingMismatch || catsMismatch || commentMismatch;
+      // Comment-only snapshot (no rating, no cat): the comment lives in the
+      // drafts table on the server, NOT in library_actions. Pushing it as
+      // action='comment' gets 409'd by the server forever. Route to drafts
+      // and drop the snapshot.
+      if (!cats && localRating === 0 && localComment) {
+        apiDraftPush(sid, localComment).catch(() => {});
+        delete localSnaps[sidStr];
+        continue;
+      }
       if (hasAnyDelta) {
         let action;
         if (cats) action = 'assign';
@@ -2245,7 +2806,8 @@
     }
     if (resent > 0) {
       diag('recon_resent', { count: resent });
-      refreshUnsavedBadge();
+      // qDrain's finally calls refreshUnsavedBadge — don't surface red
+      // before we've even tried to send the just-resent items.
       qDrain();
     }
   }
@@ -2279,9 +2841,12 @@
       return d.results || [];
     } catch (e) { console.warn('search', e?.message); return []; }
   }
-  async function apiAllTracks(sort, offset, limit) {
+  async function apiAllTracks(sort, offset, limit, commented, genre) {
     try {
-      const r = await fetchWithRetry(`${API}/api/library/all?sort=${encodeURIComponent(sort)}&offset=${offset}&limit=${limit}&user=${encodeURIComponent(userName)}`);
+      const catQ = currentCat ? `&cat=${encodeURIComponent(currentCat)}` : '';
+      const cmQ = commented === 'yes' || commented === 'no' ? `&commented=${commented}` : '';
+      const gnQ = genre ? `&genre=${encodeURIComponent(genre)}` : '';
+      const r = await fetchWithRetry(`${API}/api/library/all?sort=${encodeURIComponent(sort)}&offset=${offset}&limit=${limit}&user=${encodeURIComponent(userName)}${catQ}${cmQ}${gnQ}`);
       if (!r.ok) return null;
       return await r.json();
     } catch (e) { console.warn('all', e?.message); return null; }
@@ -2295,7 +2860,7 @@
   }
   async function apiYouTube(songId) {
     try {
-      const r = await fetchWithRetry(`${API}/api/youtube?song_id=${songId}`, undefined, 1, 15000);
+      const r = await fetchWithRetry(`${API}/api/youtube?song_id=${songId}&user=${encodeURIComponent(userName)}`, undefined, 1, 15000);
       if (!r.ok) return null;
       return await r.json();
     } catch (e) { console.warn('youtube', e?.message); return null; }
@@ -2335,7 +2900,7 @@
   }
   async function apiSongComments(songId) {
     try {
-      const r = await fetchWithRetry(`${API}/api/song/comments?song_id=${songId}`);
+      const r = await fetchWithRetry(`${API}/api/song/comments?song_id=${songId}&user=${encodeURIComponent(userName)}`);
       if (!r.ok) return [];
       const d = await r.json();
       return d.entries || [];
@@ -2378,24 +2943,23 @@
     for (const k in screens) screens[k].hidden = (k !== name);
     topBarEl.hidden = (name !== 'discovery' && name !== 'catpick');
     document.getElementById('share-fab').hidden = (name !== 'discovery');
-    // Hide cat-current chip on the picker (we're already picking)
+    // Hide cat-current chip on the picker (we're already picking). For guests
+    // (Lovers / DJ Микки) it stays hidden everywhere — they can't switch.
     const catChip = document.getElementById('cat-current');
-    if (catChip) catChip.hidden = (name !== 'discovery');
+    const guest = (userName === 'Lovers' || userName === 'DJ Микки');
+    if (catChip) catChip.hidden = (name !== 'discovery') || guest;
     // Lock the page only in discovery mode (card has its own internal scroller).
-    // Onboarding and cat-picker rely on regular body scrolling so all content
-    // is reachable on every phone, regardless of viewport height.
     const lock = (name === 'discovery');
     document.body.classList.toggle('discovery-locked', lock);
     document.documentElement.classList.toggle('discovery-locked', lock);
+    // Guests get a much-reduced UI: no category-pill section under the card.
+    document.body.classList.toggle('guest-mode', guest);
     if (name !== 'discovery') resetAlbumColor();
   }
   function updateWhoChip() {
-    const chip = document.getElementById('who-chip');
-    chip.querySelector('#who-name').textContent = userName || '…';
-    chip.classList.remove('is-yula', 'is-arthur', 'is-sveta');
-    if (userName === 'Юля') chip.classList.add('is-yula');
-    else if (userName === 'Артур') chip.classList.add('is-arthur');
-    else if (userName === 'Света') chip.classList.add('is-sveta');
+    // The top-bar identity chip was removed — user-switching happens only in
+    // Settings now. Keep the function name for back-compat but make it a no-op
+    // beyond updating the Settings-screen username label.
     const curN = document.getElementById('cur-user-name');
     if (curN) curN.textContent = userName || '—';
   }
@@ -2405,12 +2969,15 @@
   let currentCat = lsGet(K_CAT, '') || ''; // '' = общий (no filter)
   function setCat(c) {
     currentCat = c || '';
-    if (currentCat) lsSet(K_CAT, currentCat); else lsDel(K_CAT);
-    // Reset progress counters when switching scope so renderEmpty / progress
-    // line never display stale numbers from the previous category.
+    if (currentCat) { lsSet(K_CAT, currentCat); setCookie('mm_cat', currentCat, 90); }
+    else { lsDel(K_CAT); setCookie('mm_cat', '', -1); }
+    // Reset progress to a "loading" placeholder rather than a hard "0" — the
+    // user would otherwise see "0 из 0 ТРЕКОВ" for a split second, which
+    // looks alarmingly like "all progress lost". The placeholder stays until
+    // /api/library/next responds with real totals (see line ~3552).
     progressN = 0; progressTotal = 0;
-    const pn = document.getElementById('progress-n'); if (pn) pn.textContent = '0';
-    const pt = document.getElementById('progress-total'); if (pt) pt.textContent = '0';
+    const pn = document.getElementById('progress-n'); if (pn) pn.textContent = '…';
+    const pt = document.getElementById('progress-total'); if (pt) pt.textContent = '…';
     refreshCatChip();
   }
   function refreshCatChip() {
@@ -2421,8 +2988,6 @@
   }
   function showCatPicker() {
     showScreen('catpick');
-    const nameEl = document.getElementById('cat-pick-name');
-    if (nameEl) nameEl.textContent = userName || '…';
   }
   // Wire category tile clicks
   document.querySelectorAll('#cat-picker .cat-tile').forEach(tile => {
@@ -2433,7 +2998,7 @@
         // otherwise an uncommitted comment can be stranded.
         try { if (typeof window.__flushCardSave === 'function') window.__flushCardSave(); } catch {}
         try { qFlushBeacon(); } catch {}
-        window.location.href = c === 'LOVERS' ? '/lovers.html' : '/dj.html';
+        window.location.href = c === 'LOVERS' ? '/lovers' : '/dj';
         return;
       }
       setCat(c);
@@ -2451,6 +3016,9 @@
       if (!ALLOWED_USERS.has(u)) return;
       userName = u;
       lsSet(K_NAME, u);
+      // Cookie-mirror identity so a Safari localStorage purge under memory
+      // pressure or private-mode doesn't log the user out next visit.
+      setCookie('mm_user', u, 90);
       apiSaveName();
       await bootstrapAndRecover();
       startSyncLoop();
@@ -2503,12 +3071,12 @@
     if (!song) { renderEmpty(); return; }
     currentSong = song;
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
-    const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля' || song.added_by === 'Света') ? 'а' : '')}</div>` : '';
+    const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
     // All 6 categories are pills on the card. LOVERS / DJ Микки tags here are
     // propagated to the lovers_songs / dj_songs tables on the server so the
     // shared workspaces stay in sync automatically.
-    const catsHTML = CATEGORIES.map(c => `<button type="button" class="cat-pill${(c === 'LOVERS' || c === 'DJ Микки') ? ' shared' : ''}" data-cat="${escapeHtml(c)}"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
-    const ratingHTML = Array.from({length: 10}, (_, i) => `<button type="button" class="rating-btn" data-r="${i+1}">${i+1}</button>`).join('');
+    const catsHTML = CATEGORIES.map(c => `<button type="button" class="cat-pill${(c === 'LOVERS' || c === 'DJ Микки') ? ' shared' : ''}" data-cat="${escapeHtml(c)}" aria-pressed="false"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
+    const ratingHTML = Array.from({length: 10}, (_, i) => `<button type="button" class="rating-btn" data-r="${i+1}" aria-pressed="false" aria-label="${escapeHtml(t('rating.label'))} ${i+1}">${i+1}</button>`).join('');
     const canBack = seenIdx > 0;
     const savedComment = drafts[song.id] || '';
 
@@ -2561,11 +3129,15 @@
     for (const c of initial) if (CATEGORIES.includes(c)) selectedCategories.add(c);
     for (const c of selectedCategories) {
       const pill = cardHost.querySelector(`.cat-pill[data-cat="${c.replace(/"/g, '\\"')}"]`);
-      if (pill) pill.classList.add('selected');
+      if (pill) { pill.classList.add('selected'); pill.setAttribute('aria-pressed', 'true'); }
     }
     let currentRating = snap.rating || song.my_rating || 0;
     if (currentRating) {
-      cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= currentRating));
+      cardHost.querySelectorAll('.rating-btn').forEach(x => {
+        const on = parseInt(x.dataset.r, 10) <= currentRating;
+        x.classList.toggle('filled', on);
+        x.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
     }
     const hint = document.getElementById('rating-hint');
     if (hint) {
@@ -2598,19 +3170,45 @@
       const commentEdited = ta && ta.dataset.edited === '1';
       const comment = ta ? ta.value.trim() : '';
       const cats = [...selectedCategories].join(',');
+      // Detect explicit-clear: the song HAD a server-known cat/rating, the
+      // user actively cleared it on this card. Without telling the server,
+      // COALESCE preserves the old value forever (visible after reload).
+      const clearedCategory = !cats && !!(song.my_category);
+      const clearedRating = !currentRating && !!(song.my_rating);
       const action = cats ? 'assign' : (currentRating ? 'rate' : 'skip');
       // Skip if there is nothing to save — but ALWAYS save when there's any state
+      // OR when user actively cleared a prior server-known value.
       const hasState = currentRating > 0 || selectedCategories.size > 0 || (commentEdited && (comment || ta?.dataset.edited === '1'));
-      if (!hasState && action === 'skip') return true;
+      if (!hasState && action === 'skip' && !clearedCategory && !clearedRating) return true;
       const payload = { song_id: song.id, user: userName, action };
       if (cats) payload.category = cats;
       if (currentRating) payload.rating = currentRating;
       if (commentEdited) payload.comment = comment;
       else if (comment) payload.comment = comment;
+      // Server reads `clear` and explicitly NULLs those fields, overriding the
+      // COALESCE-preserve default. Without this, "untag" actions silently no-op.
+      const clearList = [];
+      if (clearedCategory) clearList.push('category');
+      if (clearedRating) clearList.push('rating');
+      if (clearList.length) payload.clear = clearList;
       showSaveIndicator('saving');
       const res = await apiAction(payload);
-      if (res.ok) { showSaveIndicator('saved'); return true; }
-      showSaveIndicator('error');
+      if (res.ok) {
+        showSaveIndicator('saved');
+        // Sync the local song object so a back-navigation through seenStack
+        // shows the just-saved values instead of stale my_* fields.
+        if (song) {
+          if (commentEdited || comment) song.my_comment = comment;
+          if (cats) song.my_category = cats;
+          else if (clearedCategory) song.my_category = null;
+          if (currentRating) song.my_rating = currentRating;
+          else if (clearedRating) song.my_rating = null;
+        }
+        return true;
+      }
+      // Item is in the queue and will retry — don't scare the user with red.
+      // Show 'saving' so they know it's in flight.
+      showSaveIndicator('saving');
       return false;
     }
     function persistCard() { return persistNow(); } // rating/category callers
@@ -2628,8 +3226,8 @@
     cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => {
       setDirty(true);
       const cat = b.dataset.cat;
-      if (selectedCategories.has(cat)) { selectedCategories.delete(cat); b.classList.remove('selected'); }
-      else { selectedCategories.add(cat); b.classList.add('selected'); }
+      if (selectedCategories.has(cat)) { selectedCategories.delete(cat); b.classList.remove('selected'); b.setAttribute('aria-pressed', 'false'); }
+      else { selectedCategories.add(cat); b.classList.add('selected'); b.setAttribute('aria-pressed', 'true'); }
       // Local snapshot first — survives reload even if server save fails
       snapshotSet(song.id, { categories: [...selectedCategories].join(','), rating: currentRating });
       const hint = document.getElementById('rating-hint');
@@ -2643,10 +3241,14 @@
       const r = parseInt(b.dataset.r, 10);
       if (currentRating === r) {
         currentRating = 0;
-        cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.remove('filled'));
+        cardHost.querySelectorAll('.rating-btn').forEach(x => { x.classList.remove('filled'); x.setAttribute('aria-pressed', 'false'); });
       } else {
         currentRating = r;
-        cardHost.querySelectorAll('.rating-btn').forEach(x => x.classList.toggle('filled', parseInt(x.dataset.r, 10) <= r));
+        cardHost.querySelectorAll('.rating-btn').forEach(x => {
+          const on = parseInt(x.dataset.r, 10) <= r;
+          x.classList.toggle('filled', on);
+          x.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
       }
       // Local snapshot FIRST — guarantees survival even if network fails or tab is killed
       snapshotSet(song.id, { rating: currentRating, categories: [...selectedCategories].join(',') });
@@ -2688,7 +3290,7 @@
   }
 
   function renderOcEntry(e) {
-    const cls = e.user_name === 'Юля' ? 'is-yula' : e.user_name === 'Артур' ? 'is-arthur' : e.user_name === 'Света' ? 'is-sveta' : '';
+    const cls = e.user_name === 'Юля' ? 'is-yula' : e.user_name === 'Артур' ? 'is-arthur' : '';
     const initial = (e.user_name || '?')[0];
     const cmt = e.comment ? `<div class="oc-text">«${escapeHtml(e.comment)}»</div>` : '';
     return `
@@ -2771,32 +3373,35 @@
   function renderEmpty() {
     currentSong = null;
     resetAlbumColor();
-    // Distinguish "category has zero songs" from "you've processed everything".
     const inCat = currentCat;
     const isEmptyCat = inCat && progressTotal === 0;
     const isAllDone = !isEmptyCat && progressTotal > 0 && progressN >= progressTotal;
+    const isGuest = (userName === 'Lovers' || userName === 'DJ Микки');
     const heading = isEmptyCat
-      ? `В разделе «${escapeHtml(inCat)}» пока пусто`
+      ? (isGuest ? `Пока пусто` : `В разделе «${escapeHtml(inCat)}» пока пусто`)
       : escapeHtml(t('empty.h'));
     const subBody = isEmptyCat
-      ? `Сюда попадают только песни, отнесённые к этому разделу. Перейди в «Общий» и помечай оттуда.`
-      : (isAllDone ? escapeHtml(tGender('empty.body')) : escapeHtml(tGender('empty.body')));
+      ? (isGuest ? 'Скоро здесь появятся песни.' : 'Сюда попадают только песни, отнесённые к этому разделу. Перейди в «Общий» и помечай оттуда.')
+      : escapeHtml(tGender('empty.body'));
+    // Guests don't get any 'jump out of category' buttons.
+    const ownerActions = !isGuest ? `
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px">
+        ${isEmptyCat ? `<button class="empty-cta" type="button" id="empty-go-general">Перейти в Общий</button>` : ''}
+        <button class="empty-cta" type="button" id="empty-pick" style="background:transparent;color:var(--text);border:1px solid var(--line-2);box-shadow:none">Сменить раздел</button>
+        <button class="empty-cta" type="button" id="empty-all" style="background:transparent;color:var(--text-dim);border:1px dashed var(--line-2);box-shadow:none">${escapeHtml(t('empty.all'))}</button>
+      </div>` : '';
     cardHost.innerHTML = `
       <div class="empty-state">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
         <h2>${heading}</h2>
         <p>${subBody}</p>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px">
-          ${isEmptyCat ? `<button class="empty-cta" type="button" id="empty-go-general">Перейти в Общий</button>` : ''}
-          <button class="empty-cta" type="button" id="empty-pick" style="background:transparent;color:var(--text);border:1px solid var(--line-2);box-shadow:none">Сменить раздел</button>
-          <button class="empty-cta" type="button" id="empty-all" style="background:transparent;color:var(--text-dim);border:1px dashed var(--line-2);box-shadow:none">${escapeHtml(t('empty.all'))}</button>
-        </div>
+        ${ownerActions}
       </div>
     `;
     const goGeneral = document.getElementById('empty-go-general');
     if (goGeneral) goGeneral.addEventListener('click', () => { setCat(''); enterDiscovery(); });
-    document.getElementById('empty-pick').addEventListener('click', () => showCatPicker());
-    document.getElementById('empty-all').addEventListener('click', openAll);
+    document.getElementById('empty-pick')?.addEventListener('click', () => showCatPicker());
+    document.getElementById('empty-all')?.addEventListener('click', openAll);
   }
 
   /* ===== Player mount: YouTube primary + Spotify/SoundCloud/Apple fallbacks ===== */
@@ -2820,12 +3425,13 @@
       wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>${escapeHtml(lang === 'ru' ? 'Не нашлось на YouTube' : 'Not on YouTube')}</div>`;
       resetAlbumColor();
     }
-    // Always wire a "Не работает?" button — Apple/Spotify/SoundCloud probe is cheap.
+    // Always wire a "Не работает?" button. Tap → ask the server to find a
+    // different YouTube video for this song (re-resolve), and remount.
     if (fb) {
       fb.hidden = false;
       fb.innerHTML = `<button type="button" id="fb-try" data-svc="alt">${escapeHtml(t('player.notWorking'))}</button>`;
       const btn = document.getElementById('fb-try');
-      if (btn) btn.addEventListener('click', () => loadAlternatives(song));
+      if (btn) btn.addEventListener('click', () => tryAnotherVideo(song));
     }
   }
   // Track whether the user has interacted at all this session. iOS Safari and
@@ -2836,10 +3442,21 @@
   // Once we've seen ONE gesture, the flag stays true; no need to keep listening.
   window.addEventListener('pointerdown', () => { hasUserGesture = true; }, { once: true, capture: true });
   window.addEventListener('touchstart', () => { hasUserGesture = true; }, { once: true, capture: true, passive: true });
+  // Track which video IDs we've already tried per song so re-resolve doesn't
+  // loop on the same broken video.
+  const ytTried = new Map();
+  let ytMsgAbort = null;
   function mountYTIframe(wrap, videoId) {
+    const songRef = currentSong;
+    if (songRef) {
+      if (!ytTried.has(songRef.id)) ytTried.set(songRef.id, new Set());
+      ytTried.get(songRef.id).add(videoId);
+    }
     const iframe = document.createElement('iframe');
     const ap = hasUserGesture ? '1' : '0';
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=${ap}&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1`;
+    // enablejsapi lets us hear postMessage error events; doesn't require the
+    // full YT.Player API which has loading-race issues on slow connections.
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=${ap}&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
     iframe.title = 'YouTube плеер';
     iframe.allowFullscreen = true;
@@ -2849,6 +3466,54 @@
     wrap.classList.add('playing');
     wrap.classList.remove('error');
     wrap.dataset.svc = 'yt';
+    // Tear down any prior message listener — without this, every card mount
+    // leaks one (success path never removes it). After 50 cards we'd have 50
+    // listeners each holding a songRef closure.
+    if (ytMsgAbort) ytMsgAbort.abort();
+    ytMsgAbort = new AbortController();
+    // Best-effort error catch: listen for postMessage from this iframe. When
+    // YouTube can't play (embed-blocked / removed) it sends an onError event.
+    // If iOS Safari swallows the message, the user can still hit the "Не
+    // работает?" button which calls tryAnotherVideo directly.
+    const onMsg = (e) => {
+      if (e.source !== iframe.contentWindow) return;
+      let d = e.data;
+      if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
+      if (!d || typeof d !== 'object') return;
+      const err = (d.event === 'onError') ||
+                  (d.event === 'infoDelivery' && d.info && d.info.errorCode);
+      if (!err) return;
+      ytMsgAbort?.abort();
+      if (!songRef || currentSong?.id !== songRef.id) return;
+      tryAnotherVideo(songRef);
+    };
+    window.addEventListener('message', onMsg, { signal: ytMsgAbort.signal });
+    // Wake the embed's listener-mode so it starts sending events to us.
+    setTimeout(() => {
+      try { iframe.contentWindow?.postMessage('{"event":"listening"}', '*'); } catch {}
+    }, 1500);
+  }
+  // Ask the server to pick a different YouTube ID for this song, then remount.
+  async function tryAnotherVideo(song) {
+    const wrap = document.getElementById('yt-wrap');
+    if (!wrap) return;
+    const triedSet = ytTried.get(song.id) || new Set();
+    try {
+      const r = await fetchWithRetry(`${API}/api/youtube/reresolve`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ song_id: song.id, user: userName, exclude: [...triedSet] })
+      }, 1, 15000);
+      const j = await r.json();
+      if (j?.youtube_id && !triedSet.has(j.youtube_id) && currentSong?.id === song.id) {
+        song.youtube_id = j.youtube_id;
+        mountYTIframe(wrap, j.youtube_id);
+      } else {
+        // Re-resolve gave us nothing new — fall back to Spotify/SoundCloud/Apple probe.
+        loadAlternatives(song);
+      }
+    } catch (e) {
+      loadAlternatives(song);
+    }
   }
   function mountSpotifyIframe(wrap, spotifyId) {
     const iframe = document.createElement('iframe');
@@ -2891,7 +3556,7 @@
     fb.innerHTML = `<button type="button" disabled>${escapeHtml(t('player.searching'))}</button>`;
     let alts;
     try {
-      const r = await fetchWithRetry(`${API}/api/song/fallback?song_id=${song.id}`, undefined, 1, 15000);
+      const r = await fetchWithRetry(`${API}/api/song/fallback?song_id=${song.id}&user=${encodeURIComponent(userName)}`, undefined, 1, 15000);
       alts = await r.json();
     } catch (e) { alts = {}; }
     if (currentSong?.id !== song.id) return;
@@ -2942,49 +3607,67 @@
   async function act(action, category, rating) {
     if (!currentSong || actInFlight) return;
     actInFlight = true;
-    const songRef = currentSong;
-    const commentEl = document.getElementById('comment-input');
-    const comment = commentEl ? commentEl.value.trim() : '';
-    const commentEdited = commentEl ? commentEl.dataset.edited === '1' : false;
-    const payload = { song_id: songRef.id, user: userName, action };
-    if (category) payload.category = category;
-    // Send comment if it was edited (even if now empty — that means "clear");
-    // or if it's non-empty (could be pre-fill from server, no harm in re-sending).
-    if (commentEdited) payload.comment = comment;
-    else if (comment) payload.comment = comment;
-    if (rating) payload.rating = rating;
-    if (cardEl) {
-      cardEl.style.opacity = '0';
-      cardEl.style.transform = 'scale(0.97)';
-      cardEl.style.transition = 'opacity 0.22s, transform 0.22s';
-      await new Promise(r => setTimeout(r, 220));
-    }
-    const res = await apiAction(payload);
-    if (!res.ok) {
-      if (cardEl) { cardEl.style.opacity = '1'; cardEl.style.transform = 'scale(1)'; }
-      showToast(t('toast.offline'));
+    // Wrap everything in try/finally so any thrown error (localStorage quota,
+    // unexpected qDrain failure, render exception) still releases the lock.
+    // Without this the whole UI freezes — no swipes, no taps, no recovery.
+    try {
+      const songRef = currentSong;
+      const commentEl = document.getElementById('comment-input');
+      const comment = commentEl ? commentEl.value.trim() : '';
+      const commentEdited = commentEl ? commentEl.dataset.edited === '1' : false;
+      const payload = { song_id: songRef.id, user: userName, action };
+      if (category) payload.category = category;
+      // Send comment if it was edited (even if now empty — that means "clear");
+      // or if it's non-empty (could be pre-fill from server, no harm in re-sending).
+      if (commentEdited) payload.comment = comment;
+      else if (comment) payload.comment = comment;
+      if (rating) payload.rating = rating;
+      if (cardEl) {
+        cardEl.style.opacity = '0';
+        cardEl.style.transform = 'scale(0.97)';
+        cardEl.style.transition = 'opacity 0.22s, transform 0.22s';
+        await new Promise(r => setTimeout(r, 220));
+      }
+      const res = await apiAction(payload);
+      if (!res.ok) {
+        // Payload IS in the local queue and will retry (the badge "Не
+        // отправлено: N" shows the user). We still advance to the next card
+        // so mom isn't stuck waiting on a network blip.
+        diag('act_queued_offline', { song_id: songRef.id, action });
+      } else {
+        saveDraft(songRef.id, '');
+        snapshotClear(songRef.id);
+        apiDraftClear(songRef.id).catch(() => {});
+        // Sync the local song object so back-navigation shows the just-saved values.
+        if (commentEdited || comment) songRef.my_comment = comment;
+        if (category) songRef.my_category = category;
+        if (rating) songRef.my_rating = rating;
+      }
+      if (action === 'assign') {
+        const r = rating ? ` · ★${rating}` : '';
+        showToast(t('toast.assigned', { cat: t(`cat.${category}.short`) }) + r);
+      } else if (action === 'rate') {
+        showToast(t('toast.rated', { n: rating }));
+      } else if (action === 'skip') {
+        // If a comment came along, acknowledge that explicitly
+        const hadComment = (payload.comment && payload.comment.trim().length > 0);
+        showToast(hadComment ? t('toast.noteSaved') : t('toast.skipped'));
+      }
+      progressN++;
+      await loadNext();
+    } finally {
       actInFlight = false;
-      return;
     }
-    saveDraft(songRef.id, '');
-    snapshotClear(songRef.id);
-    apiDraftClear(songRef.id).catch(() => {});
-    if (action === 'assign') {
-      const r = rating ? ` · ★${rating}` : '';
-      showToast(t('toast.assigned', { cat: t(`cat.${category}.short`) }) + r);
-    } else if (action === 'rate') {
-      showToast(t('toast.rated', { n: rating }));
-    } else if (action === 'skip') {
-      // If a comment came along, acknowledge that explicitly
-      const hadComment = (payload.comment && payload.comment.trim().length > 0);
-      showToast(hadComment ? t('toast.noteSaved') : t('toast.skipped'));
-    }
-    progressN++;
-    try { await loadNext(); }
-    finally { actInFlight = false; } // keep lock until next card is mounted
   }
   async function loadNext() {
-    document.getElementById('progress-n').textContent = fmt(progressN);
+    // Only update the counter if we already have a confirmed total (user
+    // has advanced at least one card or the server responded once). At
+    // first boot progressN is 0 — showing "0" briefly looks like progress
+    // got wiped, so we keep the "…" placeholder until /api/library/next
+    // confirms the real values below.
+    if (progressN > 0 || progressTotal > 0) {
+      document.getElementById('progress-n').textContent = fmt(progressN);
+    }
     if (seenIdx < seenStack.length - 1) {
       seenIdx++;
       renderCard(seenStack[seenIdx]);
@@ -3037,12 +3720,13 @@
   }
 
   /* ===== Top-bar buttons ===== */
-  document.getElementById('who-chip').addEventListener('click', openSettings);
-  document.getElementById('search-btn').addEventListener('click', openSearch);
-  document.getElementById('all-btn').addEventListener('click', openAll);
-  document.getElementById('mine-btn').addEventListener('click', openMine);
-  document.getElementById('settings-btn').addEventListener('click', openSettings);
-  document.getElementById('share-fab').addEventListener('click', doShare);
+  // who-chip and mine-btn were removed — user switching lives only in
+  // Settings now, and Mine view is hidden.
+  document.getElementById('add-btn')?.addEventListener('click', openAdd);
+  document.getElementById('search-btn')?.addEventListener('click', openSearch);
+  document.getElementById('all-btn')?.addEventListener('click', openAll);
+  document.getElementById('settings-btn')?.addEventListener('click', openSettings);
+  document.getElementById('share-fab')?.addEventListener('click', doShare);
 
   /* ===== Overlay open/close ===== */
   function openOv(id) {
@@ -3081,7 +3765,9 @@
   const searchResults = document.getElementById('search-results');
   let searchTimer = null;
   let searchRunId = 0;
+  function isGuestUser() { return userName === 'Lovers' || userName === 'DJ Микки'; }
   function openSearch() {
+    if (isGuestUser()) return;
     openOv('search-overlay');
     smInput.value = '';
     searchResults.innerHTML = `<div class="ov-status">${escapeHtml(t('search.intro'))}</div>${addNewCta()}`;
@@ -3121,63 +3807,239 @@
     wireAddNewCta();
   }
 
-  /* ===== Result rows (shared) ===== */
+  /* ===== Result rows (shared) — Premium card UX =====
+     Each row is a self-contained .tc-card. Collapsed: title+artist+glance
+     chips. Tap anywhere on the head → smooth grid-template-rows expand
+     reveals the full thread (all users' comments + cats + ratings) plus
+     a category quick-picker. Swipe left on touch devices → reveal red
+     wash with delete action. Hover on desktop → top-right "×" appears with
+     spring scale-in. No chevrons, no clunky trash icons. */
   function renderRows(container, items) {
+    const isCatpick = container.dataset.role === 'catpick';
     const html = items.map(s => {
-      const status = s.my_category
-        ? `<div class="sr-status">${escapeHtml(t('search.assignedAs', { cat: t(`cat.${s.my_category}.short`), by: userName }))}</div>`
-        : (s.assigned_to ? `<div class="sr-status">${escapeHtml(t('search.assignedAs', { cat: t(`cat.${s.assigned_to}.short`), by: s.assigned_by }))}</div>` : '');
-      const myRating = s.my_rating ? `<div class="mi-rating"><span class="star">★</span>${s.my_rating}/10</div>` : '';
-      const addedFlag = s.added_by ? `<div class="sr-added-flag">+ ${escapeHtml(s.added_by)}</div>` : '';
+      const myCat = s.my_category;
+      const otherCat = !myCat && s.assigned_to ? s.assigned_to : null;
+      const catChip = myCat
+        ? `<span class="tc-chip tc-chip--cat" title="вы отнесли в эту категорию">📌 ${escapeHtml(t(`cat.${myCat}.short`))}</span>`
+        : (otherCat ? `<span class="tc-chip tc-chip--cat" title="${escapeHtml(s.assigned_by || '')} отнёс сюда">📌 ${escapeHtml(t(`cat.${otherCat}.short`))} · ${escapeHtml(s.assigned_by || '')}</span>` : '');
+      const cmtChip = (s.my_comment && s.my_comment.trim())
+        ? `<span class="tc-chip tc-chip--comment" title="у вас есть комментарий">💬 коммент есть</span>`
+        : '';
+      const ratingChip = s.my_rating ? `<span class="tc-chip tc-chip--rating">★ ${s.my_rating}/10</span>` : '';
+      const chipsBlock = (catChip || cmtChip || ratingChip) ? `<div class="tc-chips">${catChip}${cmtChip}${ratingChip}</div>` : '';
+      // Pre-fill my own comment in the thread (so a freshly-rendered card
+      // shows the user's own comment immediately without waiting for the
+      // /api/song/comments fetch). Other users' comments arrive on expand.
+      const seedComment = (s.my_comment && s.my_comment.trim())
+        ? `<div class="tc-comment"><div class="tc-comment__head"><span class="tc-comment__by">${escapeHtml(userName)}</span>${myCat ? '<span class="tc-comment__cat">→ ' + escapeHtml(t(`cat.${myCat}.short`) || myCat) + '</span>' : ''}${s.my_rating ? '<span class="tc-comment__rating">★ ' + s.my_rating + '/10</span>' : ''}</div><div class="tc-comment__text">«${escapeHtml(s.my_comment.trim())}»</div></div>`
+        : '';
       return `
-        <div class="sr-row" data-id="${s.id}" data-yt="${escapeHtml(s.youtube_id || '')}">
-          <div class="sr-art" id="sr-art-${s.id}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-            <div class="play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+        <div class="tc-card" data-id="${s.id}" data-yt="${escapeHtml(s.youtube_id || '')}">
+          <div class="tc-card__delete-layer" aria-hidden="true">
+            <span class="lbl">${escapeHtml(lang === 'ru' ? 'удалить' : 'delete')}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg>
           </div>
-          <div class="sr-text">
-            <div class="sr-title">${escapeHtml(s.title)}</div>
-            <div class="sr-artist">${escapeHtml(s.artist)}${s.year ? ' · ' + s.year : ''}</div>
-            ${status}
-            ${myRating}
-            ${addedFlag}
-          </div>
-          <div class="sr-actions">
-            <button class="sr-icon-btn danger" data-act="remove" aria-label="убрать"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg></button>
-            <button class="sr-add-cat" data-act="cat" aria-label="категория">+</button>
-          </div>
-        </div>
-        <div class="sr-cats">
-          <div class="sr-cats-inner">
-            ${CATEGORIES.map(c => `<button type="button" data-cat="${escapeHtml(c)}">${escapeHtml(t(`cat.${c}.short`))}</button>`).join('')}
+          <button class="tc-card__hover-delete" data-act="remove" aria-label="удалить" title="удалить из каталога"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+          <div class="tc-card__inner">
+            <div class="tc-card__head" data-act="toggle">
+              <div class="tc-card__art" id="tc-art-${s.id}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              </div>
+              <div class="tc-card__meta">
+                <div class="tc-card__title">${escapeHtml(s.title)}</div>
+                <div class="tc-card__artist">${escapeHtml(s.artist)}${s.year ? ' · ' + s.year : ''}</div>
+                ${chipsBlock}
+              </div>
+            </div>
+            <div class="tc-card__expand">
+              <div class="tc-card__expand-inner">
+                <div class="tc-card__expand-content">
+                  <div class="tc-thread" data-thread-for="${s.id}">${seedComment || '<div class="tc-thread__loading">…</div>'}</div>
+                  <div class="tc-catpicker">
+                    <div class="tc-catpicker__label">${escapeHtml(lang === 'ru' ? 'Отнести в категорию' : 'Assign to category')}</div>
+                    <div class="tc-catpicker__pills">
+                      ${CATEGORIES.map(c => `<button type="button" data-cat="${escapeHtml(c)}" ${myCat === c ? 'class="selected"' : ''}>${escapeHtml(t(`cat.${c}.short`))}</button>`).join('')}
+                    </div>
+                  </div>
+                  <button class="tc-play" data-act="play" type="button">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    ${escapeHtml(lang === 'ru' ? 'Открыть в плеере' : 'Open in player')}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       `;
     }).join('');
-    container.innerHTML = html;
+    container.innerHTML = `<div class="tc-grid">${html}</div>`;
+    // First-touch hint to teach mom about swipe-to-delete — only shows once
+    // per session via a flag in window. Mobile only.
+    if (!window.__tcSwipeHintShown && 'ontouchstart' in window) {
+      const hint = document.createElement('div');
+      hint.className = 'tc-swipe-hint';
+      hint.textContent = lang === 'ru' ? 'Свайп влево по карточке — удалить' : 'Swipe left on a card to delete';
+      container.insertBefore(hint, container.firstChild);
+      window.__tcSwipeHintShown = true;
+      setTimeout(() => { hint.style.opacity = '0'; hint.style.transition = 'opacity 1.5s'; }, 6000);
+      setTimeout(() => { hint.remove(); }, 8000);
+    }
 
-    container.querySelectorAll('.sr-row').forEach((row, i) => {
-      const songId = parseInt(row.dataset.id, 10);
-      // Tap on the row (anywhere except action buttons) → open in player
-      row.addEventListener('click', e => {
-        if (e.target.closest('.sr-icon-btn') || e.target.closest('.sr-add-cat')) return;
-        // Close any open overlay then jump to player
+    container.querySelectorAll('.tc-card').forEach((card, i) => {
+      const songId = parseInt(card.dataset.id, 10);
+      const inner = card.querySelector('.tc-card__inner');
+      const head = card.querySelector('.tc-card__head');
+      const thread = card.querySelector('.tc-thread');
+
+      /* Tap on the head area → toggle expand. Loads the full thread the
+         first time it opens, then caches. No chevron — the whole card
+         responds to the tap, iOS-style. */
+      head.addEventListener('click', async e => {
+        if (e.target.closest('.tc-card__hover-delete')) return;
+        card.classList.toggle('expanded');
+        if (card.classList.contains('expanded') && thread.dataset.loaded !== '1') {
+          // Keep the user's own seeded comment visible while we fetch others.
+          const seedHtml = thread.innerHTML;
+          const entries = await apiSongComments(songId);
+          const meaningful = (entries || []).filter(e => (e.comment && e.comment.trim()) || e.category || e.rating);
+          if (!meaningful.length) {
+            thread.innerHTML = seedHtml.includes('tc-comment')
+              ? seedHtml // already shows the user's own comment
+              : `<div class="tc-thread__empty">${escapeHtml(lang === 'ru' ? 'Пока никто не оставил комментариев.' : 'No comments yet.')}</div>`;
+          } else {
+            thread.innerHTML = meaningful.map(e => {
+              const catLabel = e.category ? '<span class="tc-comment__cat">→ ' + escapeHtml(t(`cat.${e.category}.short`) || e.category) + '</span>' : '';
+              const rt = e.rating ? '<span class="tc-comment__rating">★ ' + e.rating + '/10</span>' : '';
+              const txt = (e.comment && e.comment.trim()) ? '<div class="tc-comment__text">«' + escapeHtml(e.comment.trim()) + '»</div>' : '';
+              return `<div class="tc-comment"><div class="tc-comment__head"><span class="tc-comment__by">${escapeHtml(e.user_name || '?')}</span>${catLabel}${rt}</div>${txt}</div>`;
+            }).join('');
+          }
+          thread.dataset.loaded = '1';
+        }
+      });
+
+      /* "Open in player" button inside expanded card — closes overlay,
+         jumps the user to the song in the main feed. */
+      const playBtn = card.querySelector('[data-act="play"]');
+      if (playBtn) playBtn.addEventListener('click', e => {
+        e.stopPropagation();
         document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'));
         openSongInPlayer(items[i]);
       });
-      // "+" button still opens the category strip (for power-user quick-assign without playing)
-      const addBtn = row.querySelector('[data-act="cat"]');
-      if (addBtn) addBtn.addEventListener('click', e => { e.stopPropagation(); toggleRow(row); });
-      const remBtn = row.querySelector('[data-act="remove"]');
-      if (remBtn) remBtn.addEventListener('click', async e => {
+
+      /* Category picker inside expanded card — pills, tap to assign. */
+      card.querySelectorAll('.tc-catpicker__pills button').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const cat = btn.dataset.cat;
+          // Visual: mark immediately, others un-mark
+          card.querySelectorAll('.tc-catpicker__pills button.selected').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          const result = await apiAction({ song_id: songId, user: userName, action: 'assign', category: cat });
+          if (result.ok || result.queued) {
+            showToast(t('toast.assigned', { cat: t(`cat.${cat}.short`) }));
+            // Refresh "my cat" chip on the collapsed head without re-rendering everything
+            items[i].my_category = cat;
+            const oldChips = card.querySelector('.tc-chips');
+            if (oldChips) {
+              const hasCat = oldChips.querySelector('.tc-chip--cat');
+              const newChipHtml = `<span class="tc-chip tc-chip--cat" title="вы отнесли в эту категорию">📌 ${escapeHtml(t(`cat.${cat}.short`))}</span>`;
+              if (hasCat) hasCat.outerHTML = newChipHtml;
+              else oldChips.insertAdjacentHTML('afterbegin', newChipHtml);
+            }
+            // Mark thread as stale so next expand re-fetches with the new tag
+            thread.dataset.loaded = '0';
+          } else {
+            showToast(t('toast.failed'));
+          }
+        });
+      });
+
+      /* Desktop hover-delete button — graceful confirm + fade-slide-out. */
+      const hoverDel = card.querySelector('.tc-card__hover-delete');
+      if (hoverDel) hoverDel.addEventListener('click', async e => {
         e.stopPropagation();
         const song = items[i];
         const ok = confirm(t('confirm.remove', { t: `${song.artist} — ${song.title}` }));
         if (!ok) return;
         const r = await apiRemoveSong(songId);
-        if (r.ok) { showToast(t('toast.removed')); row.remove(); row.nextElementSibling?.remove(); }
-        else showToast(t('toast.failed'));
+        if (r.ok) {
+          showToast(t('toast.removed'));
+          card.classList.add('deleting');
+          setTimeout(() => card.remove(), 420);
+        } else showToast(t('toast.failed'));
       });
+
+      /* Touch swipe-to-delete (mobile only). Drags .tc-card__inner left,
+         reveals the red delete layer behind. Past 35% of card width OR
+         the user releases with horizontal velocity, commit deletion with
+         a final slide-out + shrink. Below threshold → spring back. */
+      let startX = 0, startY = 0, startT = 0, dragX = 0, locked = false, touching = false;
+      inner.addEventListener('touchstart', e => {
+        if (card.classList.contains('expanded')) return; // don't fight scroll inside expanded thread
+        const tch = e.touches[0];
+        startX = tch.clientX; startY = tch.clientY; startT = Date.now();
+        touching = true; locked = false; dragX = 0;
+      }, { passive: true });
+      inner.addEventListener('touchmove', e => {
+        if (!touching) return;
+        const tch = e.touches[0];
+        const dx = tch.clientX - startX;
+        const dy = tch.clientY - startY;
+        if (!locked) {
+          // Wait until the user clearly chose horizontal motion before
+          // claiming the gesture — otherwise we'd block vertical scroll.
+          if (Math.abs(dx) > Math.abs(dy) + 4 && Math.abs(dx) > 8) {
+            locked = true;
+            card.classList.add('swiping');
+          } else if (Math.abs(dy) > Math.abs(dx) + 4) {
+            touching = false;
+            return;
+          }
+        }
+        if (locked) {
+          dragX = Math.min(0, dx); // only allow left drag
+          inner.style.transform = `translateX(${dragX}px)`;
+          // Visual armed feedback past the threshold
+          const w = card.offsetWidth;
+          if (Math.abs(dragX) > w * 0.35) card.classList.add('swipe-armed');
+          else card.classList.remove('swipe-armed');
+        }
+      }, { passive: true });
+      inner.addEventListener('touchend', async () => {
+        if (!touching) return;
+        touching = false;
+        card.classList.remove('swiping');
+        if (!locked) return;
+        const w = card.offsetWidth;
+        const v = Math.abs(dragX) / Math.max(1, Date.now() - startT); // px/ms
+        const past = Math.abs(dragX) > w * 0.35 || v > 0.5;
+        if (past) {
+          // Commit delete with smooth slide-out
+          inner.style.transform = `translateX(-${w}px)`;
+          card.classList.add('deleting');
+          const song = items[i];
+          const r = await apiRemoveSong(songId);
+          if (r.ok) {
+            showToast(t('toast.removed'));
+            setTimeout(() => card.remove(), 420);
+          } else {
+            // Revert if server refused
+            showToast(t('toast.failed'));
+            inner.style.transform = '';
+            card.classList.remove('deleting', 'swipe-armed');
+          }
+        } else {
+          // Spring back to rest
+          inner.style.transform = '';
+          card.classList.remove('swipe-armed');
+        }
+      }, { passive: true });
+      inner.addEventListener('touchcancel', () => {
+        touching = false; locked = false;
+        inner.style.transform = '';
+        card.classList.remove('swiping', 'swipe-armed');
+      }, { passive: true });
     });
     container.querySelectorAll('.sr-cats-inner button').forEach(btn => {
       btn.addEventListener('click', async e => {
@@ -3199,8 +4061,11 @@
     });
     items.forEach(s => {
       if (s.youtube_id) {
-        const el = document.getElementById(`sr-art-${s.id}`);
-        if (el) el.style.backgroundImage = `url("https://i.ytimg.com/vi/${s.youtube_id}/default.jpg")`;
+        const el = document.getElementById(`tc-art-${s.id}`);
+        if (el) {
+          el.style.backgroundImage = `url("https://i.ytimg.com/vi/${s.youtube_id}/mqdefault.jpg")`;
+          el.classList.add('has-thumb');
+        }
       }
     });
   }
@@ -3225,18 +4090,31 @@
   /* ===== All-tracks overlay ===== */
   let aoSort = 'alpha';
   let aoFilter = null; // null = no filter, otherwise 'mine-commented' | 'yula-commented' | 'any-commented'
+  // aoCommented: 'yes' = only tracks that have comments (default), 'no' = only
+  // tracks without comments. User asked for two tabs at the top of "Все треки"
+  // so the catalogue is split by whether anyone has weighed in yet.
+  let aoCommented = 'yes';
+  // aoGenre: null = all genres, else one of GENRES. Filter chips below the
+  // tabs control this. Works orthogonally to currentCat + aoCommented.
+  let aoGenre = null;
   let aoOffset = 0;
   let aoLoading = false;
   let aoDone = false;
   const aoResults = document.getElementById('all-results');
+  const aoGenresEl = document.getElementById('ao-genres');
   function openAll() {
+    if (isGuestUser()) return;
     openOv('all-overlay');
     aoSort = 'alpha';
     aoFilter = null;
+    aoCommented = 'yes';
+    aoGenre = null;
     aoOffset = 0;
     aoDone = false;
     aoResults.innerHTML = `<div class="ov-status">…</div>`;
+    aoGenresEl.innerHTML = '';
     document.querySelectorAll('.sort-chip').forEach(c => c.classList.toggle('active', c.dataset.sort === aoSort && !c.dataset.filter));
+    document.querySelectorAll('.ao-comment-tab').forEach(b => b.classList.toggle('active', b.dataset.commented === aoCommented));
     loadAllPage();
   }
   document.querySelectorAll('.sort-chip').forEach(c => {
@@ -3256,6 +4134,54 @@
       loadAllPage();
     });
   });
+  document.querySelectorAll('.ao-comment-tab').forEach(b => {
+    b.addEventListener('click', () => {
+      const next = b.dataset.commented;
+      if (next === aoCommented) return;
+      aoCommented = next;
+      aoGenre = null;
+      aoOffset = 0;
+      aoDone = false;
+      aoLastCat = null;
+      aoFilter = null;
+      document.querySelectorAll('.ao-comment-tab').forEach(x => x.classList.toggle('active', x === b));
+      aoResults.innerHTML = `<div class="ov-status">Загружаю…</div>`;
+      loadAllPage();
+    });
+  });
+
+  /* Build / refresh the horizontal genre filter row. Called every page-load
+     so counts stay in sync with current cat + comment-status. First chip is
+     a sticky "Все" reset that clears the genre filter. */
+  function renderGenreChips(genres, counts) {
+    if (!Array.isArray(genres) || !genres.length) {
+      aoGenresEl.innerHTML = '';
+      return;
+    }
+    const totalAcross = Object.values(counts || {}).reduce((a, b) => a + b, 0);
+    const allChip = `<button type="button" class="genre-chip ${aoGenre === null ? 'active' : ''}" data-genre=""><span class="genre-chip__label">Все</span><span class="genre-chip__count">${fmt(totalAcross)}</span></button>`;
+    const rest = genres.map(g => {
+      const n = counts && counts[g] ? counts[g] : 0;
+      const cls = 'genre-chip' + (aoGenre === g ? ' active' : '');
+      const empty = n === 0 ? ' data-empty="1"' : '';
+      return `<button type="button" class="${cls}" data-genre="${escapeHtml(g)}"${empty}><span class="genre-chip__label">${escapeHtml(g)}</span><span class="genre-chip__count">${fmt(n)}</span></button>`;
+    }).join('');
+    aoGenresEl.innerHTML = allChip + rest;
+    aoGenresEl.querySelectorAll('.genre-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const next = btn.dataset.genre || null;
+        if (next === aoGenre) return;
+        aoGenre = next;
+        aoOffset = 0;
+        aoDone = false;
+        aoLastCat = null;
+        aoFilter = null;
+        aoGenresEl.querySelectorAll('.genre-chip').forEach(x => x.classList.toggle('active', x === btn));
+        aoResults.innerHTML = `<div class="ov-status">Загружаю…</div>`;
+        loadAllPage();
+      });
+    });
+  }
   aoResults.addEventListener('scroll', () => {
     if (aoLoading || aoDone) return;
     if (aoResults.scrollTop + aoResults.clientHeight > aoResults.scrollHeight - 200) loadAllPage();
@@ -3265,6 +4191,7 @@
     if (aoLoading || aoDone) return;
     aoLoading = true;
     // Filter mode hits the commented-songs endpoint instead of the catalog.
+    // Otherwise apiAllTracks honours the aoCommented tab (yes/no) and genre.
     let d;
     if (aoFilter) {
       const who = aoFilter === 'mine-commented' ? userName
@@ -3272,14 +4199,41 @@
                 : 'ANY';
       d = await apiCommentedSongs(who, aoOffset, 100);
     } else {
-      d = await apiAllTracks(aoSort, aoOffset, 50);
+      d = await apiAllTracks(aoSort, aoOffset, 50, aoCommented, aoGenre);
     }
     aoLoading = false;
     if (!d) return;
     document.getElementById('ao-counter').textContent = fmt(d.total);
+    // Refresh the two tab count badges if the API reported them.
+    if (typeof d.total_commented === 'number') {
+      const el = document.getElementById('ao-count-commented');
+      if (el) el.textContent = fmt(d.total_commented);
+    }
+    if (typeof d.total_uncommented === 'number') {
+      const el = document.getElementById('ao-count-uncommented');
+      if (el) el.textContent = fmt(d.total_uncommented);
+    }
+    // Render / refresh the genre chip row on every page-1 load — counts depend
+    // on current cat + commented filter, so we re-render rather than persist.
+    if (aoOffset === 0 && Array.isArray(d.genres)) {
+      renderGenreChips(d.genres, d.genre_counts || {});
+    }
     if (aoOffset === 0) { aoResults.innerHTML = ''; aoLastCat = null; }
     if (d.results.length === 0) {
-      const empty = aoFilter ? 'Пока нет песен с комментариями' : t('search.empty');
+      let empty;
+      if (aoFilter) {
+        empty = 'Пока нет песен с комментариями';
+      } else if (aoGenre) {
+        empty = aoCommented === 'yes'
+          ? `В жанре «${aoGenre}» пока никто не оставил отзыв`
+          : `В жанре «${aoGenre}» все треки уже с отзывом`;
+      } else if (aoCommented === 'yes') {
+        empty = 'Пока никто не оставил отзыв';
+      } else if (aoCommented === 'no') {
+        empty = 'Все треки уже с отзывом — больше не осталось';
+      } else {
+        empty = t('search.empty');
+      }
       if (aoOffset === 0) aoResults.innerHTML = `<div class="ov-status">${escapeHtml(empty)}</div>`;
       aoDone = true;
       return;
@@ -3468,14 +4422,17 @@
       const txt = ta.value.trim();
       editor.querySelector('.mce-save').disabled = true;
       const r = await apiAction({ song_id: songId, user: userName, action: 'comment', comment: txt });
-      if (r.ok) { showToast(t('save.saved')); it.comment = txt; renderMinePicks(); }
+      // Queued = transient (will retry via drain). Treat as save for UX —
+      // don't re-enable the button or the user will tap again and duplicate.
+      // Only dropped (4xx) is a true permanent fail.
+      if (r.ok || r.queued) { showToast(t('save.saved')); it.comment = txt; renderMinePicks(); }
       else { showToast(t('toast.failed')); editor.querySelector('.mce-save').disabled = false; }
     });
     const delBtn = editor.querySelector('.mce-delete');
     if (delBtn) delBtn.addEventListener('click', async () => {
       delBtn.disabled = true;
       const r = await apiAction({ song_id: songId, user: userName, action: 'comment', comment: '' });
-      if (r.ok) { showToast(t('save.saved')); it.comment = ''; renderMinePicks(); }
+      if (r.ok || r.queued) { showToast(t('save.saved')); it.comment = ''; renderMinePicks(); }
       else { showToast(t('toast.failed')); delBtn.disabled = false; }
     });
   }
@@ -3529,7 +4486,7 @@
       return;
     }
     const html = events.map(e => {
-      const gend = (e.by_user === 'Юля' || e.by_user === 'Света') ? 'а' : '';
+      const gend = (e.by_user === 'Юля') ? 'а' : '';
       const headline = e.kind === 'add'
         ? t('activity.added', { by: e.by_user }).replace('{a}', gend)
         : t('activity.removed', { by: e.by_user }).replace('{a}', gend);
@@ -3573,14 +4530,17 @@
       // Header counter: prefer ratings (the primary metric) when there are any
       document.getElementById('mine-counter').textContent = fmt(rated || m.length);
       const badge = document.getElementById('mine-badge');
-      const n = rated || m.length;
-      if (n > 0) { badge.hidden = false; badge.textContent = n; }
-      else badge.hidden = true;
+      if (badge) {
+        const n = rated || m.length;
+        if (n > 0) { badge.hidden = false; badge.textContent = n; }
+        else badge.hidden = true;
+      }
     } catch (e) {}
   }
 
   /* ===== Settings overlay ===== */
   function openSettings() {
+    if (isGuestUser()) return;
     openOv('settings-overlay');
     updateWhoChip();
     document.querySelectorAll('#seg-lang button').forEach(b => b.classList.toggle('active', b.dataset.val === lang));
@@ -3613,56 +4573,216 @@
     if (r.ok) showToast(t('toast.reportSent'));
     else showToast(t('toast.failed'));
   });
+  // Download commented songs as a .txt file. Pulls from /api/share-text which
+  // now returns only songs that have at least one comment, grouped by category.
+  document.getElementById('download-comments-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('download-comments-btn');
+    btn.disabled = true;
+    try {
+      const r = await fetchWithRetry(`${API}/api/share-text?user=${encodeURIComponent(userName)}`, {}, 2, 20000);
+      if (!r.ok) throw new Error('http');
+      const d = await r.json();
+      const text = (d.text || '').trim() || 'Пока нет комментариев.';
+      const blob = new Blob([text + '\n'], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const dt = new Date().toISOString().slice(0, 10);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `комментарии-${dt}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('Файл сохранён');
+    } catch (e) {
+      showToast('Не удалось скачать');
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   /* ===== Add-song overlay ===== */
   let addPreviewTimer = null;
+  let addPreviewRunId = 0; // drop stale responses when user keeps typing
+  let addPreviewYtId = null; // resolved YouTube id for the current preview (reused on submit)
+  let addPreviewExistingId = null; // if preview hit an exact match, its song_id
+  let addPreviewSimilarCount = 0; // # fuzzy hits — used to gate submit with a confirm()
+  let addParsedArtist = ''; // what the server understood as artist (from split or YouTube title)
+  let addParsedTitle = '';  // ditto for title
+  const addPreviewCache = new Map(); // key = lowered single-line query
   function openAdd() {
     openOv('add-overlay');
-    document.getElementById('add-artist').value = '';
-    document.getElementById('add-title').value = '';
+    document.getElementById('add-query').value = '';
     document.getElementById('add-preview').hidden = true;
-    setTimeout(() => document.getElementById('add-artist').focus(), 280);
-  }
-  ['add-artist', 'add-title'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => {
-      if (addPreviewTimer) clearTimeout(addPreviewTimer);
-      const artist = document.getElementById('add-artist').value.trim();
-      const title = document.getElementById('add-title').value.trim();
-      if (artist.length < 2 || title.length < 2) {
-        document.getElementById('add-preview').hidden = true;
-        return;
+    addPreviewYtId = null;
+    addPreviewExistingId = null;
+    addPreviewSimilarCount = 0;
+    addParsedArtist = '';
+    addParsedTitle = '';
+    // Show where this track will land. currentCat is forced to the guest's
+    // own cat for Lovers / DJ Микки, so guests always see their target.
+    const target = document.getElementById('add-target');
+    if (target) {
+      if (currentCat) {
+        const catLabel = t(`cat.${currentCat}.short`) || currentCat;
+        target.innerHTML = t('add.targetCat', { cat: escapeHtml(catLabel) });
+      } else {
+        target.innerHTML = t('add.targetAll');
       }
-      addPreviewTimer = setTimeout(() => previewAdd(artist, title), 450);
-    });
+      target.hidden = false;
+    }
+    setTimeout(() => document.getElementById('add-query').focus(), 280);
+  }
+  document.getElementById('add-query').addEventListener('input', () => {
+    if (addPreviewTimer) clearTimeout(addPreviewTimer);
+    const q = document.getElementById('add-query').value.trim();
+    // Reset preview state on every keystroke so a stale YT id from a previous
+    // query never gets bound to a different song on submit.
+    addPreviewYtId = null;
+    addPreviewExistingId = null;
+    addPreviewSimilarCount = 0;
+    addParsedArtist = '';
+    addParsedTitle = '';
+    if (q.length < 3) {
+      document.getElementById('add-preview').hidden = true;
+      return;
+    }
+    // 700ms after the user stops typing — long enough not to fire on every
+    // character (each call hits YouTube), short enough to feel instant.
+    addPreviewTimer = setTimeout(() => previewAdd(q), 700);
   });
-  async function previewAdd(artist, title) {
+  async function previewAdd(q) {
     const prev = document.getElementById('add-preview');
     const thumb = document.getElementById('pv-thumb');
     const status = document.getElementById('pv-status');
     prev.hidden = false;
+    prev.classList.remove('is-exact', 'is-found');
     thumb.style.backgroundImage = '';
-    status.textContent = t('add.searching');
-    // Use a temporary endpoint pattern: ask the server to search and tell us a video ID without saving
-    // We can use the /api/youtube?artist=...&title=... but it requires song_id. So let's just save first.
-    // Actually we'll do a one-shot scrape from the client: try YouTube oembed via noembed.com? Not reliable.
-    // Simpler: just show preview based on what user typed; actual YT lookup happens after save.
-    status.textContent = lang === 'ru' ? 'Готово к добавлению. После сохранения найдём видео на YouTube.' : 'Ready to add. We\'ll find a YouTube video after saving.';
+    thumb.classList.add('empty');
+    status.innerHTML = `<div class="pv-hint">${escapeHtml(t('add.searching'))}</div>`;
+    const runId = ++addPreviewRunId;
+    const cacheKey = q.toLowerCase();
+    let data;
+    if (addPreviewCache.has(cacheKey)) {
+      data = addPreviewCache.get(cacheKey);
+    } else {
+      try {
+        const r = await fetchWithRetry(
+          `${API}/api/library/preview?q=${encodeURIComponent(q)}&user=${encodeURIComponent(userName)}`,
+          undefined, 1, 20000
+        );
+        if (!r.ok) { if (runId === addPreviewRunId) { status.innerHTML = `<div class="pv-hint">${escapeHtml(t('add.ytNone'))}</div>`; } return; }
+        data = await r.json();
+        addPreviewCache.set(cacheKey, data);
+      } catch (e) {
+        if (runId === addPreviewRunId) status.innerHTML = `<div class="pv-hint">${escapeHtml(t('add.ytNone'))}</div>`;
+        return;
+      }
+    }
+    if (runId !== addPreviewRunId) return;
+    addPreviewYtId = data.youtube_id || null;
+    addPreviewExistingId = data.exact?.id || null;
+    addPreviewSimilarCount = (!data.exact && Array.isArray(data.similar)) ? data.similar.length : 0;
+    // Server parsed the single-line query into canonical artist/title (either
+    // by separator-split or by reading the YouTube result's title). Use those
+    // on submit so library_actions stores clean rows.
+    addParsedArtist = (data.exact?.artist) || data.artist || '';
+    addParsedTitle  = (data.exact?.title)  || data.title  || '';
+    if (addPreviewYtId) {
+      thumb.style.backgroundImage = `url(https://i.ytimg.com/vi/${addPreviewYtId}/mqdefault.jpg)`;
+      thumb.classList.remove('empty');
+    }
+    let html = '';
+    // Show how the server understood the input so the user can see if the
+    // parse went wrong (and add a "Artist — Title" separator manually).
+    if (addParsedArtist && addParsedTitle) {
+      html += `<div class="add-parsed"><span class="ap-label">${escapeHtml(t('add.parsedAs'))}</span><span class="ap-art">${escapeHtml(addParsedArtist)}</span><span class="ap-sep">—</span><span>${escapeHtml(addParsedTitle)}</span></div>`;
+    }
+    if (data.exact) {
+      prev.classList.add('is-exact');
+      const aSuffix = (data.exact.added_by === 'Юля' ? 'а' : '');
+      html += `<div class="pv-row">${t('add.exactFound', { a: aSuffix, by: escapeHtml(data.exact.added_by || '?') })}</div>`;
+      html += `<div class="pv-hint">${escapeHtml(t('add.exactAddOnly'))}</div>`;
+    } else if (addPreviewYtId) {
+      prev.classList.add('is-found');
+      html += `<div class="pv-row">${t('add.ytFound', { id: encodeURIComponent(addPreviewYtId) })}</div>`;
+    } else {
+      html += `<div class="pv-hint">${escapeHtml(t('add.ytNone'))}</div>`;
+    }
+    if (!data.exact && Array.isArray(data.similar) && data.similar.length) {
+      const items = data.similar.slice(0, 4).map(s => {
+        const aSuffix = (s.added_by === 'Юля' ? 'а' : '');
+        const by = s.added_by ? `<span class="as-by">${escapeHtml(t('add.byUser', { a: aSuffix, by: s.added_by }))}</span>` : '';
+        return `<div class="as-item">${escapeHtml(s.artist)} — ${escapeHtml(s.title)}${by}</div>`;
+      }).join('');
+      const more = data.similar.length > 4 ? `<div class="pv-hint">${escapeHtml(t('add.similarMore', { n: data.similar.length - 4 }))}</div>` : '';
+      html += `<div class="add-similar"><div class="as-head">${escapeHtml(t('add.similarHead'))}</div>${items}${more}</div>`;
+    }
+    status.innerHTML = html;
   }
   document.getElementById('add-submit').addEventListener('click', async () => {
-    const artist = document.getElementById('add-artist').value.trim();
-    const title = document.getElementById('add-title').value.trim();
-    if (!artist || !title) { showToast(t('toast.failed')); return; }
+    const queryStr = document.getElementById('add-query').value.trim();
+    // The server's preview either parsed the single-line query into a clean
+    // pair OR pulled the canonical pair from the YouTube result's title. We
+    // submit those exact values so the library row is stored cleanly even
+    // when mom typed something like "abba dancing queen" with no separator.
+    let artist = addParsedArtist;
+    let title = addParsedTitle;
+    if (!artist || !title) {
+      // Preview hasn't returned yet (user clicked Add immediately) or the
+      // server couldn't split. Try the local same heuristic; otherwise show
+      // an inline hint and bail.
+      const m = queryStr.match(/^(.+?)\s+[-–—:]\s+(.+)$/);
+      if (m) { artist = m[1].trim(); title = m[2].trim(); }
+    }
+    if (!artist || !title) {
+      showToast(t('add.queryHint'));
+      return;
+    }
+    // If the preview surfaced fuzzy-similar tracks but NO exact match, the
+    // user might be about to create a duplicate (or a cover/remix that IS a
+    // distinct track). Either way, force them to confirm explicitly before
+    // we commit a new library row. confirm() is the dumbest, most native UX
+    // (mom can't miss it on iOS) — anything fancier risks being swiped past.
+    if (addPreviewSimilarCount > 0 && !addPreviewExistingId) {
+      const ok = window.confirm(t('add.confirmSimilar'));
+      if (!ok) return;
+    }
     const btn = document.getElementById('add-submit');
     btn.disabled = true;
-    const r = await apiAddSong(artist, title, null);
+    // Fast path: preview already told us the row exists — skip the add POST.
+    // Pass through the YT id from preview if we have one so the server
+    // doesn't redo the scrape we already did.
+    let newSongId;
+    let added = false;
+    if (addPreviewExistingId) {
+      newSongId = addPreviewExistingId;
+      added = true;
+    } else {
+      const r = await apiAddSong(artist, title, addPreviewYtId);
+      newSongId = r.song_id;
+      added = r.ok || r.error === 'already exists';
+      if (!added) { btn.disabled = false; showToast(t('toast.failed')); return; }
+    }
     btn.disabled = false;
-    if (r.ok) {
-      showToast(t('toast.added'));
+    if (added) {
       closeOv('add-overlay');
-      // Pre-resolve YouTube ID so it's cached for everyone
-      if (r.song_id) { apiYouTube(r.song_id).catch(()=>{}); }
-    } else if (r.error === 'already exists') {
-      showToast(t('add.exists'));
+      // Pre-resolve YouTube ID server-side only if we didn't already pass one.
+      if (newSongId && !addPreviewYtId) apiYouTube(newSongId).catch(()=>{});
+      // Auto-assign to the user's current category so it lands where they
+      // were looking. For guests this is always their own cat; for owners on
+      // 'общий' (currentCat = '') the song just sits in the catalog.
+      if (newSongId && currentCat) {
+        const assignRes = await apiAction({ song_id: newSongId, user: userName, action: 'assign', category: currentCat });
+        if (assignRes.ok || assignRes.queued) {
+          const catLabel = t(`cat.${currentCat}.short`) || currentCat;
+          showToast(t('add.addedToCat', { cat: catLabel }));
+        } else {
+          showToast(t('toast.added'));
+        }
+      } else {
+        showToast(t('toast.added'));
+      }
     } else {
       showToast(t('toast.failed'));
     }
@@ -3678,6 +4798,7 @@
     } catch (e) { return ''; }
   }
   async function doShare() {
+    if (isGuestUser()) return;
     const text = await buildShareText();
     if (!text) { showToast(t('toast.failed')); return; }
     const payload = { title: t('share.title'), text: text, url: 'https://akoev.com/' };
@@ -3780,15 +4901,21 @@
       const hasState = s.rating || s.categories || (s.comment !== undefined && s.comment !== null);
       if (!hasState) { snapshotClear(sid); continue; }
       const cats = (s.categories || '').split(',').filter(Boolean).join(',');
-      // Comment-only snapshots use 'comment' action (server stores via drafts).
-      // Anything with rating or category uses 'assign'/'rate' so it lands in
-      // library_actions and counts toward progress.
+      const sidInt = parseInt(sid, 10);
+      // Comment-only snapshot: route to drafts API (the comment belongs in
+      // the drafts table, not library_actions). Pushing as action='comment'
+      // would 409 from the server. Drop the snapshot — K_DRAFTS still keeps
+      // the comment locally for next-card pre-fill.
+      if (!cats && !s.rating && s.comment) {
+        apiDraftPush(sidInt, s.comment).catch(() => {});
+        snapshotClear(sid);
+        continue;
+      }
       let action;
       if (cats) action = 'assign';
       else if (s.rating) action = 'rate';
-      else if (s.comment !== undefined && s.comment !== null) action = 'comment';
       else action = 'skip';
-      const payload = { song_id: parseInt(sid, 10), user: userName, action };
+      const payload = { song_id: sidInt, user: userName, action };
       if (cats) payload.category = cats;
       if (s.rating) payload.rating = s.rating;
       // Include comment even if it's an empty string — that signals "user
@@ -3811,12 +4938,41 @@
   if (_ub) _ub.addEventListener('click', () => { diag('manual_retry', { count: qGet().length }); qDrain().then(refreshUnsavedBadge); });
 
   applyStaticI18n();
+
+  // Path-based guest entry: /lovers or /dj. If the visitor isn't an owner
+  // (Юля/Артур from prior main-app visit), they post as the group name and
+  // are locked to that category. Owners visiting /lovers or /dj keep their
+  // identity and just land on that category by default.
+  const path = location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase().split('.')[0];
+  const guestCat = (path === 'lovers') ? 'LOVERS'
+                 : (path === 'dj') ? 'DJ Микки'
+                 : null;
+  const isOwner = (userName === 'Юля' || userName === 'Артур');
+  const isGuest = (userName === 'Lovers' || userName === 'DJ Микки');
+  // Stale-guest cleanup: a guest user who lands on root (no guestCat path)
+  // shouldn't see the owners' cat-picker. Send them back to their own portal,
+  // which re-anchors the guest scope and avoids confusing assign failures.
+  if (!guestCat && isGuest) {
+    const portal = userName === 'Lovers' ? '/lovers' : '/dj';
+    window.location.replace(portal);
+    return;
+  }
+  if (guestCat && !isOwner) {
+    // Guest mode — auto-identify and lock to the category.
+    userName = guestCat === 'LOVERS' ? 'Lovers' : 'DJ Микки';
+    lsSet(K_NAME, userName);
+    setCookie('mm_user', userName, 90);
+    setCat(guestCat);
+  }
+
   if (!userName || !ALLOWED_USERS.has(userName)) {
     showScreen('ob');
   } else {
     updateWhoChip();
-    // Always start at category picker — user chooses category each session.
-    bootstrapAndRecover().then(() => showCatPicker());
+    // Guest mode and owners landing on /lovers or /dj skip the picker.
+    const goStraightToDiscovery = guestCat || !!currentCat;
+    if (guestCat && isOwner) setCat(guestCat);
+    bootstrapAndRecover().then(() => goStraightToDiscovery ? enterDiscovery() : showCatPicker());
     startSyncLoop();
   }
 })();
