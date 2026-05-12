@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-audit-pass4 -->
+<!-- build: 2026-05-12T-trash-and-wal -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -860,6 +860,51 @@
     transition: transform 0.15s;
   }
   .empty-state .empty-cta:active { transform: scale(0.97); }
+
+  /* ===== Trash bin rows ===== */
+  .trash-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    margin-bottom: 10px;
+  }
+  .trash-row__main { flex: 1; min-width: 0; }
+  .trash-row__title {
+    font: 600 16px/1.25 var(--font-body);
+    color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .trash-row__artist {
+    font: 400 13px/1.3 var(--font-body);
+    color: var(--text-dim);
+    margin-top: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .trash-row__meta {
+    margin-top: 6px;
+    font: 600 10px/1.2 var(--font-body);
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+  .trash-row__restore {
+    appearance: none; flex-shrink: 0;
+    background: rgba(212,164,92,0.18);
+    border: 1px solid rgba(212,164,92,0.45);
+    color: var(--gold-bright);
+    padding: 10px 16px;
+    border-radius: 999px;
+    font: 700 12px/1 var(--font-body);
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    min-height: 40px;
+    transition: background 0.18s, transform 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .trash-row__restore:hover { background: rgba(212,164,92,0.30); }
+  .trash-row__restore:active { transform: scale(0.96); }
+  .trash-row__restore:disabled { opacity: 0.6; cursor: default; }
 
   /* ===== Overlay base (shared by search, all, mine, settings, add) ===== */
   .overlay {
@@ -2171,6 +2216,17 @@
       </div>
     </div>
     <div class="set-section">
+      <h4>Корзина</h4>
+      <button class="set-row" id="open-trash-btn" type="button">
+        <span class="sr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></span>
+        <span class="sr-main">
+          <span class="sr-h">Удалённые треки</span>
+          <span class="sr-sub" id="trash-count-sub">Можно посмотреть и вернуть</span>
+        </span>
+        <span class="sr-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+      </button>
+    </div>
+    <div class="set-section">
       <h4 data-i18n="settings.who"></h4>
       <button class="set-row" id="switch-user-btn" type="button">
         <span class="sr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
@@ -2192,6 +2248,21 @@
         <span data-i18n="settings.sendBtn"></span>
       </button>
     </div>
+  </div>
+</div>
+
+<!-- Trash bin overlay: shows soft-deleted songs (still in DB) so the user
+     can review what was removed and restore anything she wants back. -->
+<div class="overlay" id="trash-overlay">
+  <div class="ov-header">
+    <button class="ov-close" id="trash-close" type="button" aria-label="закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <div class="ov-title-wrap">
+      <div class="ov-title">Корзина</div>
+      <div class="ov-sub"><span id="trash-counter">0</span> · треки можно вернуть</div>
+    </div>
+  </div>
+  <div class="ov-body" id="trash-body">
+    <div class="ov-status">…</div>
   </div>
 </div>
 
@@ -2782,9 +2853,21 @@
      via navigator.sendBeacon — the browser guarantees delivery even after
      the tab is hidden / closed. */
   const Q_KEY = 'venchanie_pending_actions_v1';
-  function qGet() { return lsGetJSON(Q_KEY, []); }
+  function qGet() {
+    // Guard against a corrupt queue blob taking out the entire boot — a
+    // partial JSON write (rare iOS Safari hard-crash mid-setItem) would
+    // make lsGetJSON throw inside a try/catch and return the default `[]`.
+    // We additionally validate that what came back is an array of objects;
+    // any garbage shape gets discarded with a diag entry instead of crashing.
+    const raw = lsGetJSON(Q_KEY, []);
+    if (!Array.isArray(raw)) { try { diag('queue_corrupt_reset', {}); } catch {} return []; }
+    return raw.filter(x => x && typeof x === 'object' && typeof x.song_id === 'number');
+  }
   function qSet(arr) { lsSetJSON(Q_KEY, arr); }
-  const Q_CAP = 500; // Pathological-growth guard for localStorage (iOS ~5MB).
+  // Raised from 500 → 5000 so a long offline session (e.g. mom flies to France
+  // with no signal for hours) can hold every single action she made on the way.
+  // 5000 × ~200 bytes = ~1 MB, well under the ~5 MB iOS localStorage cap.
+  const Q_CAP = 5000;
   function qEnqueue(payload) {
     const q = qGet();
     // Idempotency: collapse consecutive entries that target the same logical
@@ -3104,6 +3187,13 @@
       const r = await fetchWithRetry(`${API}/api/library/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ song_id: songId, by: userName }) });
       return { ok: r.ok };
     } catch (e) { console.warn('restore', e?.message); return { ok: false }; }
+  }
+  async function apiTrashList() {
+    try {
+      const r = await fetchWithRetry(`${API}/api/library/trash?user=${encodeURIComponent(userName)}&limit=500`);
+      if (!r.ok) return { songs: [] };
+      return await r.json();
+    } catch (e) { console.warn('trash list', e?.message); return { songs: [] }; }
   }
   async function apiActivity() {
     try {
@@ -4157,6 +4247,60 @@
   document.getElementById('all-close').addEventListener('click', () => closeOv('all-overlay'));
   document.getElementById('mine-close').addEventListener('click', () => closeOv('mine-overlay'));
   document.getElementById('settings-close').addEventListener('click', () => closeOv('settings-overlay'));
+  document.getElementById('trash-close')?.addEventListener('click', () => closeOv('trash-overlay'));
+  document.getElementById('open-trash-btn')?.addEventListener('click', () => openTrash());
+  /* Render the soft-deleted catalogue. Each row has a one-tap "Вернуть"
+     button that calls /api/library/restore — server flips removed_at back
+     to NULL and the song reappears in the main feed within the next
+     periodic-sync cycle (~30s) or immediately if mom reloads. */
+  async function openTrash() {
+    closeOv('settings-overlay');
+    openOv('trash-overlay');
+    const body = document.getElementById('trash-body');
+    body.innerHTML = '<div class="ov-status">Загружаю…</div>';
+    const r = await apiTrashList();
+    const songs = r.songs || [];
+    document.getElementById('trash-counter').textContent = fmt(songs.length);
+    if (!songs.length) {
+      body.innerHTML = '<div class="ov-status">Корзина пуста — ни одного удалённого трека.</div>';
+      return;
+    }
+    body.innerHTML = songs.map(s => {
+      const when = s.removed_at ? new Date(s.removed_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      const who = s.removed_by ? `<span class="trash-row__who">удалил${(s.removed_by === 'Юля') ? 'а' : ''} ${escapeHtml(s.removed_by)}</span>` : '';
+      return `
+        <div class="trash-row" data-id="${s.id}">
+          <div class="trash-row__main">
+            <div class="trash-row__title">${escapeHtml(s.title)}</div>
+            <div class="trash-row__artist">${escapeHtml(s.artist)}${s.year ? ' · ' + s.year : ''}</div>
+            <div class="trash-row__meta">${who}${when ? ' · ' + escapeHtml(when) : ''}</div>
+          </div>
+          <button type="button" class="trash-row__restore" data-id="${s.id}">Вернуть</button>
+        </div>
+      `;
+    }).join('');
+    body.querySelectorAll('.trash-row__restore').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = parseInt(btn.dataset.id, 10);
+        btn.disabled = true;
+        btn.textContent = 'Возвращаю…';
+        const res = await apiRestoreSong(id);
+        if (res.ok) {
+          showToast('Возвращено в библиотеку');
+          // Remove the row from view — song is no longer in trash.
+          const row = btn.closest('.trash-row');
+          if (row) row.remove();
+          const remaining = body.querySelectorAll('.trash-row').length;
+          document.getElementById('trash-counter').textContent = fmt(remaining);
+          if (remaining === 0) body.innerHTML = '<div class="ov-status">Корзина пуста — ни одного удалённого трека.</div>';
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Вернуть';
+          showToast('Не удалось — попробуй ещё раз');
+        }
+      });
+    });
+  }
   document.getElementById('add-close').addEventListener('click', () => closeOv('add-overlay'));
 
   /* ===== Search overlay ===== */
