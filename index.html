@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-song-plaque -->
+<!-- build: 2026-05-12T-unique-palette -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3402,6 +3402,84 @@
   }
 
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  /* ===== Per-song color identity =====
+     Every track gets its OWN palette so two songs side by side never feel
+     identical. The pick is deterministic — same song.id always yields the
+     same colors — and biased by genre family + decade so the colour feels
+     authentic to the track (Шансон won't look like Электроника).
+
+     Each entry = [c1, c2] RGB triplet strings. c1 drives the dominant blob
+     and title-gradient start; c2 the secondary blob and title-gradient end. */
+  const SONG_PALETTES = [
+    // Warm sunset family — pop, эстрада, r&b
+    ['244 114 182', '252 211 77'],  // 0  rose → gold
+    ['253 164 175', '252 211 77'],  // 1  coral → gold
+    ['244 114 182', '167 139 250'],  // 2  rose → lavender
+    ['255 138 101', '255 213 79'],  // 3  sunset orange → amber
+    ['236 72 153',  '253 186 116'],  // 4  hot pink → peach
+    // Fire family — rock
+    ['239 68 68',   '252 165 80'],  // 5  red → ember
+    ['220 38 38',   '253 224 71'],  // 6  crimson → bright gold
+    ['185 28 28',   '254 215 170'],  // 7  blood red → cream
+    // Ocean / cool family — chill, electronic, lounge
+    ['103 232 249', '167 139 250'],  // 8  cyan → lavender
+    ['56 189 248',  '147 197 253'],  // 9  sky → soft blue
+    ['134 239 172', '103 232 249'],  // 10 mint → cyan
+    ['125 211 252', '196 181 253'],  // 11 light cyan → lilac
+    ['74 222 128',  '34 211 238'],   // 12 emerald → cyan
+    // Neon — hip-hop, electronic
+    ['168 85 247',  '236 72 153'],   // 13 purple → magenta
+    ['167 139 250', '244 114 182'],  // 14 lavender → rose
+    ['139 92 246',  '34 211 238'],   // 15 violet → cyan
+    // Royal / jewel — classical, jazz
+    ['252 211 77',  '253 186 116'],  // 16 gold → peach
+    ['234 179 8',   '202 138 4'],    // 17 deep gold → bronze
+    ['232 232 220', '252 211 77'],   // 18 cream → gold
+    ['250 204 21',  '244 114 182'],  // 19 sunburst → rose
+    // Earth / vintage — шансон, кантри, older
+    ['180 100 100', '252 211 77'],   // 20 maroon → gold
+    ['161 98 7',    '253 186 116'],  // 21 cognac → peach
+    ['253 186 116', '134 239 172'],  // 22 peach → mint
+    ['202 138 4',   '244 114 182'],  // 23 amber → rose
+  ];
+  // Genre → preferred palette indices (each family is a small bucket).
+  // Picking within the family by hash keeps adjacent same-genre tracks
+  // visually distinct without breaking the "Pop feels warm, Электроника
+  // feels cool" intuition.
+  const GENRE_FAMILY = {
+    'Поп':         [0, 1, 2, 3, 4, 14, 19],
+    'Эстрада':     [0, 1, 2, 3, 4, 19, 22],
+    'R&B':         [2, 4, 13, 14, 19],
+    'Рок':         [5, 6, 7, 21, 20],
+    'Электроника': [8, 11, 13, 15, 9],
+    'Чилл':        [8, 9, 10, 11, 12],
+    'Хип-хоп':     [13, 14, 15, 4, 2],
+    'Джаз':        [16, 17, 18, 19, 20],
+    'Классика':    [18, 16, 17, 19, 11],
+    'Шансон':      [20, 21, 23, 17],
+    'Кантри':      [22, 21, 10, 16],
+    'Прочее':      [0, 8, 16, 20, 13, 5],
+  };
+  // Fast 32-bit FNV-ish hash on an int. Deterministic and uniform enough
+  // for picking a palette index — no need for crypto.
+  function songHash(n) {
+    let h = (n | 0) ^ 0x9e3779b1;
+    h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+    h = (h ^ (h >>> 16)) >>> 0;
+    return h;
+  }
+  function songPalette(song) {
+    const fam = GENRE_FAMILY[song?.genre] || GENRE_FAMILY['Прочее'];
+    // Mix song id with year + first-letter codes so even cluster of sequential
+    // ids feels varied (D1 inserts often land in chunks of similar genre).
+    const seed = (song?.id || 0)
+      + ((song?.year && song.year > 0) ? song.year * 31 : 0)
+      + (String(song?.artist || '').charCodeAt(0) * 7919);
+    const idx = fam[songHash(seed) % fam.length];
+    return SONG_PALETTES[idx] || SONG_PALETTES[0];
+  }
   function fmt(n) { return new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : 'en-US').format(n); }
   function timeAgo(ts) {
     const diff = Date.now() - ts;
@@ -4208,26 +4286,12 @@
     const yearStr = song.year ? `<span class="year">${song.year}</span>` : '';
     const noYearCls = song.year ? '' : ' no-year';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
-    /* Per-song colour palette — drives the .meta gradient backdrop, title
-       text-gradient, and corner blooms. Mapped from genre so every Поп
-       track shares one rose-gold flavour, every Рок track shares
-       orange-red, etc. — gives mom a tactile sense of "yes this looks
-       like a Pop song" before she even reads the artist. */
-    const GENRE_COLORS = {
-      'Поп':         ['244 114 182', '252 211 77'],   // rose → gold
-      'Рок':         ['239 68 68',   '252 165 80'],   // red → ember
-      'Электроника': ['103 232 249', '167 139 250'],  // cyan → lavender
-      'Хип-хоп':     ['167 139 250', '244 114 182'],  // lavender → rose
-      'R&B':         ['244 114 182', '167 139 250'],  // rose → lavender
-      'Чилл':        ['134 239 172', '103 232 249'],  // mint → cyan
-      'Джаз':        ['252 211 77',  '253 186 116'],  // gold → peach
-      'Классика':    ['232 232 220', '252 211 77'],   // cream → gold
-      'Эстрада':     ['253 186 116', '244 114 182'],  // peach → rose
-      'Шансон':      ['180 100 100', '252 211 77'],   // maroon → gold
-      'Кантри':      ['253 186 116', '134 239 172'],  // peach → mint
-      'Прочее':      ['212 164 92',  '244 114 182'],  // gold → rose
-    };
-    const palette = GENRE_COLORS[song.genre] || GENRE_COLORS['Прочее'];
+    /* Per-song colour palette — UNIQUE per track. Each song gets its own
+       tactile colour identity from a curated 24-palette set tuned by genre
+       family, decade, and a stable hash of the song id. Two adjacent tracks
+       within the same genre look related but distinct, so mom feels
+       "this is a different song" before she reads the title. */
+    const palette = songPalette(song);
     const songStyle = `--song-c1:${palette[0]};--song-c2:${palette[1]};`;
     // All 6 categories are pills on the card. LOVERS / DJ Микки tags here are
     // propagated to the lovers_songs / dj_songs tables on the server so the
