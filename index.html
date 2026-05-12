@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-audit-fixes -->
+<!-- build: 2026-05-12T-audit-fixes-2 -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -409,6 +409,23 @@
     /* Above the iframe so a still-loading YT screen never bleeds through. */
     z-index: 2;
   }
+  /* Subtle "still working on it" label that appears only when the loading
+     state lasts long enough to need an explanation (>1.5s). Avoids feeling
+     broken on slow networks or during multi-attempt YT recovery. */
+  .yt-wrap.loading::after {
+    content: attr(data-loading-label);
+    position: absolute; left: 50%; bottom: 18%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.55);
+    font: 600 12px/1.2 var(--font-body);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0;
+    animation: yt-loading-label 1.4s ease-out 1.5s forwards;
+    z-index: 3;
+    pointer-events: none;
+  }
+  @keyframes yt-loading-label { from { opacity: 0; } to { opacity: 1; } }
   @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
   .yt-wrap.error {
     display: flex; flex-direction: column;
@@ -2145,16 +2162,35 @@
   const K_DRAFTS = 'venchanie_drafts_v1';
   // State-version handshake: bump STATE_VERSION whenever a dev change leaves
   // existing phones with stale "stale-replay" data that could push junk
-  // actions to the server. SURGICAL: only wipes the replay-vector keys
-  // (pending queue, card snapshots). NEVER touches identity (K_NAME),
-  // category preference (K_CAT), language (K_LANG), or drafts (K_DRAFTS) —
-  // those belong to the user, not to the dev iteration.
+  // actions to the server. SURGICAL: only wipes card snapshots (server is
+  // source of truth, can be re-fetched). The pending action queue is NOT
+  // wiped — it gets a best-effort sendBeacon flush right here so any items
+  // queued from before the deploy still get delivered, then drained on the
+  // next boot pass as well. NEVER touches identity (K_NAME), category
+  // preference (K_CAT), language (K_LANG), or drafts (K_DRAFTS).
   const STATE_VERSION = '2026-05-12-fresh-start';
-  const REPLAY_KEYS = ['venchanie_pending_actions_v1', 'venchanie_card_snapshots_v1'];
   try {
     const cur = localStorage.getItem('venchanie_state_version');
     if (cur !== STATE_VERSION) {
-      for (const k of REPLAY_KEYS) try { localStorage.removeItem(k); } catch {}
+      // First, fire-and-forget every queued action via sendBeacon so we
+      // don't lose user actions to a structural-version mismatch. Worst
+      // case: the server payload shape changed and the beacon 400s — fine,
+      // the row never existed. Best case: every pending action lands.
+      try {
+        const Q = JSON.parse(localStorage.getItem('venchanie_pending_actions_v1') || '[]');
+        if (Array.isArray(Q) && Q.length && typeof navigator !== 'undefined' && navigator.sendBeacon) {
+          for (const item of Q) {
+            try {
+              const { _id, _t, _attempts, ...payload } = item;
+              const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+              navigator.sendBeacon('https://api.akoev.com/api/library/action', blob);
+            } catch {}
+          }
+        }
+      } catch {}
+      // Snapshots are regenerable from server `my_*` fields on next load,
+      // so wiping them on version-bump is safe.
+      try { localStorage.removeItem('venchanie_card_snapshots_v1'); } catch {}
       localStorage.setItem('venchanie_state_version', STATE_VERSION);
     }
   } catch {}
@@ -2171,14 +2207,26 @@
     document.cookie = name + '=' + encodeURIComponent(value || '') + '; expires=' + exp + '; path=/; SameSite=Lax; Secure';
   }
   try {
-    // Restore K_NAME from cookie if localStorage version is empty
-    if (!localStorage.getItem('venchanie_user_name_v2')) {
-      const ck = getCookie('mm_user');
-      if (ck) localStorage.setItem('venchanie_user_name_v2', ck);
+    // Bidirectional sync between localStorage and the cookie backup. localStorage
+    // is the source of truth in this app; the cookie is just a memory-pressure
+    // safety net. If localStorage is empty we restore from cookie. If both
+    // exist and disagree, we trust localStorage and overwrite the stale cookie
+    // — otherwise a Safari purge that kept the cookie but dropped localStorage,
+    // immediately followed by a new identity pick, would leave a stale cookie
+    // forever quietly re-bleeding the old name on every cold boot.
+    const lsName = localStorage.getItem('venchanie_user_name_v2');
+    const ckName = getCookie('mm_user');
+    if (!lsName && ckName) {
+      localStorage.setItem('venchanie_user_name_v2', ckName);
+    } else if (lsName && ckName && lsName !== ckName) {
+      setCookie('mm_user', lsName, 90);
     }
-    if (!localStorage.getItem('venchanie_cat_v1')) {
-      const ckCat = getCookie('mm_cat');
-      if (ckCat) localStorage.setItem('venchanie_cat_v1', ckCat);
+    const lsCat = localStorage.getItem('venchanie_cat_v1');
+    const ckCat = getCookie('mm_cat');
+    if (!lsCat && ckCat) {
+      localStorage.setItem('venchanie_cat_v1', ckCat);
+    } else if (lsCat && ckCat && lsCat !== ckCat) {
+      setCookie('mm_cat', lsCat, 90);
     }
   } catch {}
   // Manual reset hatch kept as a backup — useful if I ever need to send a
@@ -2658,9 +2706,18 @@
   const Q_CAP = 500; // Pathological-growth guard for localStorage (iOS ~5MB).
   function qEnqueue(payload) {
     const q = qGet();
-    // Idempotency: collapse consecutive entries for the same (song_id, user, action) — last write wins.
-    const key = `${payload.song_id}|${payload.user}|${payload.action}|${payload.category||''}`;
-    const idx = q.findIndex(x => `${x.song_id}|${x.user}|${x.action}|${x.category||''}` === key);
+    // Idempotency: collapse consecutive entries that target the same logical
+    // state for the same (song_id, user). The key includes `clear` shape AND
+    // whether a comment is present — without those, a "clear rating" payload
+    // would silently collapse with a fresh "rate 7", and a comment-only
+    // update would collapse with a category assign of the same song.
+    const buildKey = (p) => {
+      const hasComment = p && p.comment != null && String(p.comment).trim() !== '';
+      const clearStr = Array.isArray(p?.clear) ? p.clear.slice().sort().join(',') : '';
+      return `${p.song_id}|${p.user}|${p.action}|${p.category||''}|c=${hasComment?1:0}|clr=${clearStr}`;
+    };
+    const key = buildKey(payload);
+    const idx = q.findIndex(x => buildKey(x) === key);
     const item = Object.assign({}, payload, { _id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), _t: Date.now() });
     if (idx >= 0) q[idx] = item;
     else if (q.length < Q_CAP) q.push(item);
@@ -2939,6 +2996,13 @@
     try {
       const r = await fetchWithRetry(`${API}/api/library/add`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ artist, title, youtube_id, by: userName }) });
       const d = await r.json();
+      // Drop preview-cache entries that might be stale after a successful add
+      // (the duplicate-warning path keys off "exact?" being absent). Without
+      // this, if mom re-types the same query she'd see "Found, can add"
+      // instead of the now-correct "already in library".
+      if (r.ok && typeof addPreviewCache !== 'undefined' && addPreviewCache.clear) {
+        try { addPreviewCache.clear(); } catch {}
+      }
       return Object.assign({ ok: r.ok }, d);
     } catch (e) { console.warn('add', e?.message); return { ok: false }; }
   }
@@ -3152,6 +3216,12 @@
     if (typeof ytMsgAbort !== 'undefined' && ytMsgAbort) {
       ytMsgAbort.abort(); ytMsgAbort = null;
     }
+    // Bound `ytTried` to current-song-only — without this it accumulates a
+    // Set per song for the whole browser session. Mom could see hundreds of
+    // songs; each set stays in memory forever.
+    if (typeof ytTried !== 'undefined' && ytTried && currentSong && currentSong.id !== song.id) {
+      ytTried.delete(currentSong.id);
+    }
     currentSong = song;
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
@@ -3208,8 +3278,18 @@
 
     // Pre-fill state from prior user actions OR from the song's suggested categories.
     // Multi-category: selectedCategories is a Set of canonical category names.
-    // ALSO honour any pending localStorage snapshot for this song (last-write-wins).
-    const snap = snapshots[song.id] || {};
+    // We honour a pending localStorage snapshot ONLY if it's fresh (<30 min).
+    // Older snapshots usually mean the user acted on this card on another
+    // device since then, and the server's my_* fields are the source of truth.
+    // Snapshots without a ts are treated as fresh for back-compat.
+    const SNAPSHOT_TTL_MS = 30 * 60 * 1000;
+    const rawSnap = snapshots[song.id] || {};
+    const snap = (!rawSnap.ts || (Date.now() - rawSnap.ts) <= SNAPSHOT_TTL_MS) ? rawSnap : {};
+    if (rawSnap.ts && (Date.now() - rawSnap.ts) > SNAPSHOT_TTL_MS) {
+      // Stale snapshot — prune from localStorage so a server-true card paint
+      // doesn't keep stale data around for the next visit.
+      try { snapshotClear(song.id); } catch {}
+    }
     const selectedCategories = new Set();
     const myCats = (snap.categories != null ? snap.categories : (song.my_category || '')).split(',').filter(Boolean);
     const suggested = (song.suggested_categories || '').split(',').filter(Boolean);
@@ -3240,13 +3320,16 @@
     }
 
     // Dirty flag — set when the user actively touches the card (cat pill or
-    // comment input). Pre-filled state from server/snapshot does NOT count as
-    // dirty. We use it to decide whether 'Дальше' should commit a record or
-    // just skip the song (letting it return later for review).
-    let cardDirty = false;
-    // Mirror dirty state onto the card element so the swipe handler (outside
-    // this closure) can read it. Keeps the source of truth here.
+    // comment input). Pre-filled state from server is NOT dirty (server is the
+    // source of truth, no need to re-save). BUT pre-filled state from a LOCAL
+    // SNAPSHOT counts as dirty: the snapshot exists precisely because the
+    // user edited the card before navigating away and we haven't yet flushed
+    // to server. Without this, a swipe on a card prefilled from snapshot
+    // would `advanceWithoutSave` and silently drop the snapshot's contents.
+    const hasLocalSnapshot = !!(snap && (snap.comment || snap.rating || snap.categories));
+    let cardDirty = hasLocalSnapshot;
     function setDirty(v) { cardDirty = v; if (cardEl) cardEl.dataset.dirty = v ? '1' : '0'; }
+    if (hasLocalSnapshot && cardEl) cardEl.dataset.dirty = '1';
     // Persist current card state (rating/categories/comment) without advancing.
     // Rating/category taps fire IMMEDIATELY — no debounce — so brief navigations
     // never lose data. Comment typing is debounced (800ms) to batch keystrokes.
@@ -3346,7 +3429,6 @@
       persistCard();
     }));
     const ta = document.getElementById('comment-input');
-    let commentServerTimer = null;
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
@@ -3355,8 +3437,11 @@
       saveDraft(song.id, ta.value);
       snapshotSet(song.id, { comment: ta.value });
       // Debounce server-side draft push by 800ms so we don't flood the API.
-      if (commentServerTimer) clearTimeout(commentServerTimer);
-      commentServerTimer = setTimeout(() => apiDraftPush(song.id, ta.value).catch(() => {}), 800);
+      // Timer is held on `window` so act() can cancel it before the late
+      // push fires for an already-committed card — otherwise a stale draft
+      // re-appears on the server after the row was supposed to be cleared.
+      if (window.__draftTimer) clearTimeout(window.__draftTimer);
+      window.__draftTimer = setTimeout(() => apiDraftPush(song.id, ta.value).catch(() => {}), 800);
       if (currentRating > 0 || selectedCategories.size > 0) {
         persistCardDebounced();
       } else {
@@ -3656,9 +3741,12 @@
     if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
     if (ytMsgAbort) { ytMsgAbort.abort(); ytMsgAbort = null; }
     wrap.innerHTML = '';
-    wrap.classList.remove('playing', 'error');
+    wrap.classList.remove('playing', 'error', 'alive');
     wrap.classList.add('loading');
     wrap.dataset.svc = '';
+    // First attempt = silent shimmer ("Loading…"); subsequent attempts
+    // surface that we're working on it so the user knows something is happening.
+    wrap.dataset.loadingLabel = (ytAttempt > 0) ? (lang === 'ru' ? 'Подбираем рабочее видео…' : 'Finding a working version…') : '';
     if (ytAttempt >= MAX_YT_ATTEMPTS) {
       wrap.classList.remove('loading');
       wrap.classList.add('error');
@@ -3814,6 +3902,10 @@
         // so mom isn't stuck waiting on a network blip.
         diag('act_queued_offline', { song_id: songRef.id, action });
       } else {
+        // Cancel any pending debounced draft push for this card — without
+        // this, a 700ms-old typed comment would re-create the server draft
+        // moments after we just told the server to clear it.
+        if (window.__draftTimer) { clearTimeout(window.__draftTimer); window.__draftTimer = null; }
         saveDraft(songRef.id, '');
         snapshotClear(songRef.id);
         apiDraftClear(songRef.id).catch(() => {});
@@ -4076,6 +4168,10 @@
       head.addEventListener('click', async e => {
         if (e.target.closest('.tc-card__hover-delete')) return;
         card.classList.toggle('expanded');
+        // Clear any partial swipe transform — if the user started dragging
+        // and then tapped to expand instead, the leftover translateX on the
+        // inner could leave the card visually offset.
+        if (inner) { inner.style.transform = ''; card.classList.remove('swipe-armed', 'swiping'); }
         if (card.classList.contains('expanded') && thread.dataset.loaded !== '1') {
           // Keep the user's own seeded comment visible while we fetch others.
           const seedHtml = thread.innerHTML;
@@ -4098,12 +4194,18 @@
       });
 
       /* "Open in player" button inside expanded card — closes overlay,
-         jumps the user to the song in the main feed. */
+         jumps the user to the song in the main feed. Look up the song by
+         the card's data-id (the source of truth in the DOM) rather than
+         the closure-captured `items[i]` — if a row is deleted (swipe or
+         hover-delete) between render and tap, the index in the array
+         points at the wrong song. */
       const playBtn = card.querySelector('[data-act="play"]');
       if (playBtn) playBtn.addEventListener('click', e => {
         e.stopPropagation();
         document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'));
-        openSongInPlayer(items[i]);
+        const liveId = parseInt(card.dataset.id, 10);
+        const song = items.find(s => s.id === liveId) || items[i];
+        if (song) openSongInPlayer(song);
       });
 
       /* Category picker inside expanded card — pills, tap to assign. */
@@ -5019,13 +5121,20 @@
     periodicSyncDebounced();
   }
 
-  // Pull server-side drafts on boot and merge into localStorage (server wins if newer)
+  // Pull server-side drafts on boot. Local draft wins over server draft when
+  // both are non-empty — Mom may have typed a fresh note offline that hasn't
+  // synced yet, and we don't want a stale server draft (e.g. Артур's earlier
+  // edit on desktop) to clobber it on resume. Server fills only the slots
+  // where there's no local draft.
   async function bootstrapDrafts() {
     if (!userName || !ALLOWED_USERS.has(userName)) return;
     const serverDrafts = await apiDraftsPull();
     for (const d of serverDrafts) {
       if (d.comment && d.comment.trim()) {
-        drafts[d.song_id] = d.comment;
+        const local = drafts[d.song_id];
+        if (!local || !String(local).trim()) {
+          drafts[d.song_id] = d.comment;
+        }
       }
     }
     lsSetJSON(K_DRAFTS, drafts);
