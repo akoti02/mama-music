@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-genre-filter -->
+<!-- build: 2026-05-12T-cleanup -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2851,13 +2851,6 @@
       return await r.json();
     } catch (e) { console.warn('all', e?.message); return null; }
   }
-  async function apiCommentedSongs(who, offset, limit) {
-    try {
-      const r = await fetchWithRetry(`${API}/api/library/commented?by=${encodeURIComponent(who)}&user=${encodeURIComponent(userName)}&offset=${offset}&limit=${limit}`);
-      if (!r.ok) return null;
-      return await r.json();
-    } catch (e) { console.warn('commented', e?.message); return null; }
-  }
   async function apiYouTube(songId) {
     try {
       const r = await fetchWithRetry(`${API}/api/youtube?song_id=${songId}&user=${encodeURIComponent(userName)}`, undefined, 1, 15000);
@@ -4087,15 +4080,13 @@
     renderCard(song);
   }
 
-  /* ===== All-tracks overlay ===== */
-  let aoSort = 'alpha';
-  let aoFilter = null; // null = no filter, otherwise 'mine-commented' | 'yula-commented' | 'any-commented'
-  // aoCommented: 'yes' = only tracks that have comments (default), 'no' = only
-  // tracks without comments. User asked for two tabs at the top of "Все треки"
-  // so the catalogue is split by whether anyone has weighed in yet.
+  /* ===== All-tracks overlay =====
+     Sort is fixed alpha (still passed to the API as ORDER BY hint). The two
+     active controls are the «С отзывом / Без» segmented tabs (aoCommented) and
+     the horizontal genre-filter chip row (aoGenre). Both work orthogonally to
+     whatever wedding category (currentCat) the user is currently in. */
+  const aoSort = 'alpha';
   let aoCommented = 'yes';
-  // aoGenre: null = all genres, else one of GENRES. Filter chips below the
-  // tabs control this. Works orthogonally to currentCat + aoCommented.
   let aoGenre = null;
   let aoOffset = 0;
   let aoLoading = false;
@@ -4105,35 +4096,15 @@
   function openAll() {
     if (isGuestUser()) return;
     openOv('all-overlay');
-    aoSort = 'alpha';
-    aoFilter = null;
     aoCommented = 'yes';
     aoGenre = null;
     aoOffset = 0;
     aoDone = false;
     aoResults.innerHTML = `<div class="ov-status">…</div>`;
     aoGenresEl.innerHTML = '';
-    document.querySelectorAll('.sort-chip').forEach(c => c.classList.toggle('active', c.dataset.sort === aoSort && !c.dataset.filter));
     document.querySelectorAll('.ao-comment-tab').forEach(b => b.classList.toggle('active', b.dataset.commented === aoCommented));
     loadAllPage();
   }
-  document.querySelectorAll('.sort-chip').forEach(c => {
-    c.addEventListener('click', () => {
-      if (c.dataset.filter) {
-        aoFilter = c.dataset.filter;
-        aoSort = 'alpha';
-      } else {
-        aoSort = c.dataset.sort;
-        aoFilter = null;
-      }
-      aoOffset = 0;
-      aoDone = false;
-      aoLastCat = null;
-      document.querySelectorAll('.sort-chip').forEach(x => x.classList.toggle('active', c === x));
-      aoResults.innerHTML = `<div class="ov-status">Загружаю…</div>`;
-      loadAllPage();
-    });
-  });
   document.querySelectorAll('.ao-comment-tab').forEach(b => {
     b.addEventListener('click', () => {
       const next = b.dataset.commented;
@@ -4142,8 +4113,6 @@
       aoGenre = null;
       aoOffset = 0;
       aoDone = false;
-      aoLastCat = null;
-      aoFilter = null;
       document.querySelectorAll('.ao-comment-tab').forEach(x => x.classList.toggle('active', x === b));
       aoResults.innerHTML = `<div class="ov-status">Загружаю…</div>`;
       loadAllPage();
@@ -4174,8 +4143,6 @@
         aoGenre = next;
         aoOffset = 0;
         aoDone = false;
-        aoLastCat = null;
-        aoFilter = null;
         aoGenresEl.querySelectorAll('.genre-chip').forEach(x => x.classList.toggle('active', x === btn));
         aoResults.innerHTML = `<div class="ov-status">Загружаю…</div>`;
         loadAllPage();
@@ -4186,21 +4153,10 @@
     if (aoLoading || aoDone) return;
     if (aoResults.scrollTop + aoResults.clientHeight > aoResults.scrollHeight - 200) loadAllPage();
   });
-  let aoLastCat = null; // track the last group header rendered for sort=genre
   async function loadAllPage() {
     if (aoLoading || aoDone) return;
     aoLoading = true;
-    // Filter mode hits the commented-songs endpoint instead of the catalog.
-    // Otherwise apiAllTracks honours the aoCommented tab (yes/no) and genre.
-    let d;
-    if (aoFilter) {
-      const who = aoFilter === 'mine-commented' ? userName
-                : aoFilter === 'yula-commented' ? 'Юля'
-                : 'ANY';
-      d = await apiCommentedSongs(who, aoOffset, 100);
-    } else {
-      d = await apiAllTracks(aoSort, aoOffset, 50, aoCommented, aoGenre);
-    }
+    const d = await apiAllTracks(aoSort, aoOffset, 50, aoCommented, aoGenre);
     aoLoading = false;
     if (!d) return;
     document.getElementById('ao-counter').textContent = fmt(d.total);
@@ -4218,12 +4174,10 @@
     if (aoOffset === 0 && Array.isArray(d.genres)) {
       renderGenreChips(d.genres, d.genre_counts || {});
     }
-    if (aoOffset === 0) { aoResults.innerHTML = ''; aoLastCat = null; }
+    if (aoOffset === 0) { aoResults.innerHTML = ''; }
     if (d.results.length === 0) {
       let empty;
-      if (aoFilter) {
-        empty = 'Пока нет песен с комментариями';
-      } else if (aoGenre) {
+      if (aoGenre) {
         empty = aoCommented === 'yes'
           ? `В жанре «${aoGenre}» пока никто не оставил отзыв`
           : `В жанре «${aoGenre}» все треки уже с отзывом`;
@@ -4238,40 +4192,9 @@
       aoDone = true;
       return;
     }
-    if (aoSort === 'genre') {
-      // Insert a section header each time the assigned_to category changes
-      const wrap = document.createElement('div');
-      aoResults.appendChild(wrap);
-      let bufferStart = 0;
-      for (let i = 0; i < d.results.length; i++) {
-        const cat = d.results[i].assigned_to || null;
-        if (cat !== aoLastCat) {
-          // Flush previous buffer
-          if (i > bufferStart) {
-            const sub = document.createElement('div');
-            wrap.appendChild(sub);
-            renderRows(sub, d.results.slice(bufferStart, i));
-          }
-          const head = document.createElement('div');
-          head.className = 'mine-group-head';
-          head.style.cssText = 'margin: 18px 0 10px';
-          head.innerHTML = `<div class="mine-group-name">${escapeHtml(cat ? t(`cat.${cat}.short`) : t('sort.uncat'))}</div>`;
-          wrap.appendChild(head);
-          aoLastCat = cat;
-          bufferStart = i;
-        }
-      }
-      // Final buffer
-      if (bufferStart < d.results.length) {
-        const sub = document.createElement('div');
-        wrap.appendChild(sub);
-        renderRows(sub, d.results.slice(bufferStart));
-      }
-    } else {
-      const wrap = document.createElement('div');
-      aoResults.appendChild(wrap);
-      renderRows(wrap, d.results);
-    }
+    const wrap = document.createElement('div');
+    aoResults.appendChild(wrap);
+    renderRows(wrap, d.results);
     aoOffset += d.results.length;
     if (aoOffset >= d.total) aoDone = true;
   }
@@ -4839,7 +4762,7 @@
         // Library content changed — refresh open overlays
         if (document.getElementById('mine-overlay')?.classList.contains('open')) renderMine();
         if (document.getElementById('all-overlay')?.classList.contains('open')) {
-          aoOffset = 0; aoDone = false; aoLastCat = null;
+          aoOffset = 0; aoDone = false;
           document.getElementById('all-results').innerHTML = '<div class="ov-status">…</div>';
           loadAllPage();
         }
