@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-name-gate-and-lock -->
+<!-- build: 2026-05-12T-readable-and-tidy -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,12 +25,12 @@
     --line: rgba(255, 255, 255, 0.075);
     --line-2: rgba(255, 255, 255, 0.14);
     --text: #f5f5f7;
-    /* Visual hierarchy: text (brightest) > text-dim > text-muted (subtle but
-       still readable). Both pass WCAG AA on the dark surface; dim is for
-       secondary lines, muted for tiny tertiary labels. Gap between them
-       widened so labels don't visually merge into the same tone. */
-    --text-dim: #c4c4cc;
-    --text-muted: #98989f;
+    /* Visual hierarchy: text (brightest) > text-dim > text-muted. Bolder
+       values than the cautious palette before — mom over 50 reads better
+       on dark UI when the secondary/tertiary tones are pushed brighter,
+       and the contrast against gold accents stays clean. */
+    --text-dim: #d4d4dc;
+    --text-muted: #afafb6;
     --gold: #d4a45c;
     --gold-bright: #ecc380;
     --gold-soft: rgba(212, 164, 92, 0.18);
@@ -101,83 +101,26 @@
     }
   }
 
-  /* ===== Welcome-back banner =====
-     Slides in from the top on owner cold-boot when identity was restored
-     silently from cookie / localStorage. Gives a one-tap "Сменить" exit so
-     a mis-attributed identity (e.g. Артур's cookie still on mom's phone)
-     gets noticed instead of silently accumulating rows under the wrong user. */
-  .welcome-back {
-    position: fixed; left: 0; right: 0;
-    /* Sit BELOW the top-bar (which is z:100, ~58px tall after safe-area)
-       so the X из N, add, search, all-tracks, settings buttons stay tappable
-       while the banner is visible. */
-    /* Top-bar real height = 12 + 42 (icon-btn) + 10 + safe-area-top ≈ 64+safe.
-       Sit clearly below it with 12px breathing room so banner and top-bar
-       never visually kiss on notch phones. */
-    top: calc(76px + env(safe-area-inset-top));
-    z-index: 95;
-    margin: 0 auto;
-    max-width: 540px;
-    padding: 10px 14px 10px 16px;
-    background: var(--surface);
-    backdrop-filter: blur(22px) saturate(1.5);
-    -webkit-backdrop-filter: blur(22px) saturate(1.5);
-    border: 1px solid rgba(212,164,92,0.35);
-    border-radius: 14px;
-    display: flex; align-items: center; gap: 10px;
-    color: var(--text);
-    font: 600 13px/1.3 var(--font-body);
-    box-shadow:
-      0 12px 32px -10px rgba(0,0,0,0.5),
-      0 0 0 1px rgba(255,255,255,0.04) inset;
-    opacity: 0; transform: translateY(-12px);
-    transition: opacity 0.35s ease, transform 0.35s ease;
-    pointer-events: auto;
-    /* Mobile: respect viewport margin. Desktop: centered + capped width. */
-    width: calc(100% - 24px);
-  }
-  @media (min-width: 560px) {
-    .welcome-back { width: auto; }
-  }
-  .welcome-back.show { opacity: 1; transform: translateY(0); }
-  .welcome-back__text { flex: 1; min-width: 0; }
-  .welcome-back__switch {
-    appearance: none;
-    background: rgba(212,164,92,0.18);
-    border: 1px solid rgba(212,164,92,0.45);
-    color: var(--gold-bright);
-    padding: 6px 12px;
-    border-radius: 999px;
-    font: 700 12px/1 var(--font-body);
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.18s;
-  }
-  .welcome-back__switch:hover { background: rgba(212,164,92,0.28); }
-  .welcome-back__close {
-    appearance: none; background: transparent; border: 0;
-    color: var(--text-muted);
-    /* 40×40 to clear Apple HIG 44px guidance comfortably with built-in tap
-       expand-zone — the icon stays small (14×14) inside. */
-    width: 40px; height: 40px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    border-radius: 999px;
-    flex-shrink: 0;
-    transition: color 0.18s, background 0.18s;
-  }
-  .welcome-back__close:hover { color: var(--text); background: rgba(255,255,255,0.06); }
-  .welcome-back__close svg { width: 14px; height: 14px; }
-
   /* ===== Top bar ===== */
   .top-bar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between;
+    /* gap between the cat-side and the actions-side so a long category
+       name (e.g. "DJ Микки") doesn't physically butt into the icon row */
+    gap: 6px;
     padding: calc(12px + env(safe-area-inset-top)) 12px 10px;
     pointer-events: none;
   }
   .top-bar > * { pointer-events: auto; }
+  /* Cat chip + filter button live in one cluster, can shrink the cat name. */
+  .top-bar-left {
+    display: inline-flex; align-items: center;
+    gap: 8px;
+    min-width: 0; flex: 1 1 auto;
+    pointer-events: auto;
+  }
+  /* Right cluster (icons) must never shrink — every icon must stay tappable. */
+  .top-bar-left + .top-actions { flex: 0 0 auto; }
   .who-chip {
     display: inline-flex; align-items: center; gap: 9px;
     padding: 10px 16px 10px 14px;
@@ -456,14 +399,21 @@
   }
   .progress-line {
     text-align: center;
-    color: var(--text-muted);
-    font-size: 10px; letter-spacing: 0.24em; font-weight: 800;
+    /* Lifted from --text-muted to --text-dim and bumped font 10 → 13px so
+       mom can read "X из N треков" without squinting on iPhone. */
+    color: var(--text-dim);
+    font-size: 13px; letter-spacing: 0.16em; font-weight: 800;
     text-transform: uppercase;
     margin-bottom: 18px;
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
   }
-  .progress-line .n { color: var(--gold-bright); }
+  .progress-line .n {
+    color: var(--gold-bright);
+    /* Brighter gold + larger numerals — the actual counter is what mom
+       cares about, not the surrounding "из / треков". */
+    font-size: 15px;
+  }
   #card-host {
     flex: 1; min-height: 0;
     display: flex; align-items: flex-start; justify-content: center;
@@ -646,7 +596,9 @@
   body.guest-mode .meta-delete { display: none; }
   .meta .by {
     margin-top: 6px;
-    font-size: 13px; color: var(--text-dim);
+    /* 13 → 15px so mom can read the artist name without effort. */
+    font-size: 15px; color: var(--text-dim);
+    font-weight: 600;
     font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.18em;
   }
@@ -690,8 +642,8 @@
   /* ===== Rating row (primary action) ===== */
   .rating { margin-bottom: 0; }
   .rating-label {
-    text-align: center; color: var(--text-muted);
-    font-size: 10px; font-weight: 800; letter-spacing: 0.24em;
+    text-align: center; color: var(--text-dim);
+    font-size: 12px; font-weight: 800; letter-spacing: 0.18em;
     text-transform: uppercase; margin-bottom: 8px;
   }
   .rating-grid {
@@ -735,10 +687,10 @@
   .rating-hint {
     margin-top: 6px;
     text-align: center;
-    font-size: 10px; color: var(--text-muted);
+    font-size: 12px; color: var(--text-dim);
     font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.12em;
-    height: 12px;
+    text-transform: uppercase; letter-spacing: 0.10em;
+    height: 14px;
   }
 
   /* Short-viewport compaction — iPhone SE portrait (568h), any phone in
@@ -786,15 +738,16 @@
     /* Apple HIG: 44px min tap target. Bumping padding so the summary row
        reliably catches taps on phone without users missing it and hitting
        the rating row above. */
-    padding: 12px 14px;
-    min-height: 44px;
+    padding: 12px 16px;
+    min-height: 46px;
     box-sizing: border-box;
     background: var(--surface-3);
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 12px;
     display: flex; align-items: center; justify-content: space-between;
-    font-size: 12px; font-weight: 600;
-    color: var(--text-dim);
+    /* Bumped 12 → 14px so the section title reads cleanly on phone. */
+    font-size: 14px; font-weight: 700;
+    color: var(--text);
     letter-spacing: 0.01em;
   }
   .cats-collapse summary::-webkit-details-marker { display: none; }
@@ -1869,43 +1822,71 @@
   /* Category pill in top bar (during discovery) */
   .cat-current {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 12px;
+    padding: 8px 14px;
     background: var(--surface-3);
     border: 1px solid var(--line);
     border-radius: 999px;
-    color: var(--text-dim);
-    font-size: 12px; font-weight: 600;
+    color: var(--text);
+    /* Larger so mom can read at a glance. Bumped from 12 → 14px to match
+       the rest of the bumped UI typography. */
+    font-size: 14px; font-weight: 700;
     cursor: pointer;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 42px;
   }
-  .cat-current strong { color: var(--gold-bright); margin-left: 4px; }
-  .cat-current svg { width: 12px; height: 12px; opacity: 0.6; }
+  .cat-current strong {
+    color: var(--gold-bright);
+    margin-left: 4px;
+    /* Long category names (e.g. "DJ Микки") get an ellipsis instead of
+       expanding past the screen edge and pushing the filter icon off. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 38vw;
+    display: inline-block;
+  }
+  .cat-current svg { width: 14px; height: 14px; opacity: 0.7; flex-shrink: 0; }
 
-  /* Stream filter chip — sits next to cat-current, lets mom restrict the
-     next-up flow to a genre/artist while staying in the same player view. */
+  /* Stream filter chip — icon-only, matches the style of other top-bar
+     icon-buttons so a long category name (e.g. "DJ Микки") never pushes it
+     off-screen. Active filter = solid gold so mom sees at a glance that a
+     filter is on. */
   .stream-filter-chip {
     appearance: none;
-    display: inline-flex; align-items: center; gap: 6px;
-    margin-left: 8px;
-    padding: 6px 12px;
-    background: var(--surface-3);
+    flex-shrink: 0;
+    width: 42px; height: 42px;
+    background: var(--surface);
+    backdrop-filter: blur(22px) saturate(1.5);
+    -webkit-backdrop-filter: blur(22px) saturate(1.5);
     border: 1px solid var(--line);
-    border-radius: 999px;
-    color: var(--text-dim);
-    font-size: 12px; font-weight: 600;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text);
     cursor: pointer;
-    letter-spacing: 0.02em;
-    transition: background 0.18s, border-color 0.18s, color 0.18s;
+    transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.1s, box-shadow 0.2s;
     -webkit-tap-highlight-color: transparent;
+    position: relative;
   }
-  .stream-filter-chip svg { width: 13px; height: 13px; opacity: 0.7; }
-  .stream-filter-chip:hover { background: var(--surface-2); color: var(--text); }
+  .stream-filter-chip svg { width: 19px; height: 19px; }
+  .stream-filter-chip:hover { background: var(--surface-2); color: var(--gold-bright); }
+  .stream-filter-chip:active { transform: scale(0.94); }
   .stream-filter-chip.has-filter {
-    background: rgba(212,164,92,0.18);
-    border-color: rgba(212,164,92,0.45);
-    color: var(--gold-bright);
+    background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+    border-color: var(--gold);
+    color: #0a0a0d;
+    box-shadow: 0 8px 22px -6px rgba(212,164,92,0.65), inset 0 1px 0 rgba(255,255,255,0.35);
   }
-  .stream-filter-chip.has-filter svg { opacity: 0.95; }
+  /* Tiny dot at the corner emphasises the active state at a glance. */
+  .stream-filter-chip.has-filter::after {
+    content: '';
+    position: absolute; top: 3px; right: 3px;
+    width: 9px; height: 9px;
+    background: #fff;
+    border-radius: 999px;
+    box-shadow: 0 0 0 2px var(--gold);
+  }
   body.guest-mode .stream-filter-chip { display: none; }
 
   /* Stream filter overlay internals */
@@ -2261,14 +2242,15 @@
 
 <!-- Top bar -->
 <div class="top-bar" id="top-bar" hidden>
-  <button class="cat-current" id="cat-current" type="button" hidden>
-    <strong id="cat-current-name"></strong>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-  </button>
-  <button class="stream-filter-chip" id="stream-filter-btn" type="button" aria-label="фильтр потока">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
-    <span id="stream-filter-label">Фильтр</span>
-  </button>
+  <div class="top-bar-left">
+    <button class="cat-current" id="cat-current" type="button" hidden>
+      <strong id="cat-current-name"></strong>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <button class="stream-filter-chip" id="stream-filter-btn" type="button" aria-label="фильтр потока">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+    </button>
+  </div>
   <div class="top-actions">
     <button type="button" class="icon-btn" id="add-btn" aria-label="добавить песню">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -2283,18 +2265,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
     </button>
   </div>
-</div>
-
-<!-- Welcome-back banner: shown once per session for owners restored from
-     localStorage/cookie, so a phone that was used by a different family
-     member doesn't silently log the new opener in under the old identity.
-     Auto-dismisses on first interaction or after 6s. -->
-<div class="welcome-back" id="welcome-back" hidden>
-  <span class="welcome-back__text"></span>
-  <button type="button" class="welcome-back__switch" id="welcome-back-switch">Не я · Сменить</button>
-  <button type="button" class="welcome-back__close" id="welcome-back-close" aria-label="закрыть">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-  </button>
 </div>
 
 <!-- Share FAB -->
@@ -2352,7 +2322,7 @@
 <div id="cat-picker" hidden>
   <div class="cat-grid">
     <button type="button" class="cat-tile general" data-cat="">
-      <div class="cat-nm">Общий</div>
+      <div class="cat-nm">Весь</div>
       <div class="cat-ctx">все песни без фильтра по разделу</div>
     </button>
     <button type="button" class="cat-tile" data-cat="Лаунж">
@@ -3611,18 +3581,16 @@
   }
   function refreshStreamFilterChip() {
     const btn = document.getElementById('stream-filter-btn');
-    const label = document.getElementById('stream-filter-label');
-    if (!btn || !label) return;
+    if (!btn) return;
+    const hasFilter = !!(streamFilter.genre || streamFilter.artist);
+    btn.classList.toggle('has-filter', hasFilter);
+    // Tooltip / aria-label reflects the active filter so screen readers and
+    // long-press tooltips communicate what's set, without taking screen space.
     const parts = [];
     if (streamFilter.genre) parts.push(streamFilter.genre);
     if (streamFilter.artist) parts.push(streamFilter.artist);
-    if (parts.length) {
-      btn.classList.add('has-filter');
-      label.textContent = parts.join(' · ');
-    } else {
-      btn.classList.remove('has-filter');
-      label.textContent = 'Фильтр';
-    }
+    btn.setAttribute('aria-label', parts.length ? 'фильтр: ' + parts.join(' · ') : 'фильтр потока');
+    btn.title = parts.length ? parts.join(' · ') : 'Фильтр потока';
   }
   function setCat(c) {
     currentCat = c || '';
@@ -3641,7 +3609,7 @@
     const chip = document.getElementById('cat-current');
     const nm = document.getElementById('cat-current-name');
     if (!chip || !nm) return;
-    nm.textContent = currentCat || 'Общий';
+    nm.textContent = currentCat || 'Весь';
   }
   function showCatPicker() {
     showScreen('catpick');
@@ -4125,12 +4093,12 @@
       ? (isGuest ? `Пока пусто` : `В разделе «${escapeHtml(inCat)}» пока пусто`)
       : escapeHtml(t('empty.h'));
     const subBody = isEmptyCat
-      ? (isGuest ? 'Скоро здесь появятся песни.' : 'Сюда попадают только песни, отнесённые к этому разделу. Перейди в «Общий» и помечай оттуда.')
+      ? (isGuest ? 'Скоро здесь появятся песни.' : 'Сюда попадают только песни, отнесённые к этому разделу. Перейди в «Весь» и помечай оттуда.')
       : escapeHtml(tGender('empty.body'));
     // Guests don't get any 'jump out of category' buttons.
     const ownerActions = !isGuest ? `
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px">
-        ${isEmptyCat ? `<button class="empty-cta" type="button" id="empty-go-general">Перейти в Общий</button>` : ''}
+        ${isEmptyCat ? `<button class="empty-cta" type="button" id="empty-go-general">Перейти в Весь</button>` : ''}
         <button class="empty-cta" type="button" id="empty-pick" style="background:transparent;color:var(--text);border:1px solid var(--line-2);box-shadow:none">Сменить раздел</button>
         <button class="empty-cta" type="button" id="empty-all" style="background:transparent;color:var(--text-dim);border:1px dashed var(--line-2);box-shadow:none">${escapeHtml(t('empty.all'))}</button>
       </div>` : '';
@@ -6144,68 +6112,10 @@
     showScreen('ob');
   } else {
     updateWhoChip();
-    // Identity-bleed safety net: if we restored an owner identity from cookie /
-    // localStorage on cold boot (not a fresh onboarding pick), show a discreet
-    // "Welcome back, X · Не я" banner once per browser session so a different
-    // family member opening the same phone notices the mis-attribution. Mom
-    // ignores it; if Артур's identity is stuck on her phone, she taps Сменить.
-    try {
-      const isOwnerNow = (userName === 'Юля' || userName === 'Артур');
-      const alreadyShown = sessionStorage.getItem('mm_welcome_shown') === '1';
-      if (isOwnerNow && !alreadyShown) {
-        sessionStorage.setItem('mm_welcome_shown', '1');
-        const banner = document.getElementById('welcome-back');
-        const textEl = banner?.querySelector('.welcome-back__text');
-        const switchBtn = document.getElementById('welcome-back-switch');
-        const closeBtn = document.getElementById('welcome-back-close');
-        if (banner && textEl && switchBtn && closeBtn) {
-          textEl.textContent = t('welcome.back', { n: userName });
-          banner.hidden = false;
-          // Allow paint before transitioning in.
-          requestAnimationFrame(() => banner.classList.add('show'));
-          // Push stage content down by ~56px so the banner doesn't visually
-          // overlap the progress line / first slice of the video on small
-          // / notched phones.
-          document.documentElement.style.setProperty('--banner-pad', '56px');
-          let dismissed = false;
-          const dismiss = () => {
-            if (dismissed) return;
-            dismissed = true;
-            banner.classList.remove('show');
-            document.documentElement.style.setProperty('--banner-pad', '0px');
-            setTimeout(() => { banner.hidden = true; }, 350);
-          };
-          // Auto-dismiss after 6 seconds.
-          setTimeout(dismiss, 6000);
-          closeBtn.addEventListener('click', dismiss);
-          switchBtn.addEventListener('click', () => {
-            // If the banner auto-dismissed before this click landed (rare race
-            // on slow taps), still honour the user's intent — don't bail just
-            // because the visual is already gone.
-            dismiss();
-            // Hard switch — see Settings → switch-user handler for the full
-            // rationale. Mirror EVERY clearing step here so a banner-driven
-            // switch is just as thorough as a settings-driven one. Otherwise
-            // the new person on the phone inherits the prior user's drafts /
-            // snapshots / cat preference.
-            const oldName = userName;
-            userName = '';
-            try { lsDel(K_NAME); } catch {}
-            try { setCookie('mm_user', '', -1); } catch {}
-            try { lsDel(K_CAT); } catch {}
-            try { setCookie('mm_cat', '', -1); } catch {}
-            try {
-              const q = qGet().filter(x => x.user !== oldName);
-              qSet(q);
-            } catch {}
-            try { localStorage.removeItem(K_SNAPSHOTS); for (const k of Object.keys(snapshots)) delete snapshots[k]; } catch {}
-            try { localStorage.removeItem(K_DRAFTS); for (const k of Object.keys(drafts)) delete drafts[k]; } catch {}
-            try { clearNameAuth(); } catch {}
-            try { location.reload(); } catch { showScreen('ob'); }
-          });
-        }
-      }
-    } catch {}
+    // (Welcome-back banner removed by request — the name-gate at boot already
+    // serves as the identity-bleed protection: a different family member who
+    // opens the same phone is stopped by the gate and must type their own
+    // name. No need for a secondary "Не я · Сменить" prompt.)
     // Guest mode and owners landing on /lovers or /dj skip the picker.
     const goStraightToDiscovery = guestCat || !!currentCat;
     if (guestCat && isOwner) setCat(guestCat);
