@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-yt-watchdog -->
+<!-- build: 2026-05-12T-yt-stealth-recovery -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -329,14 +329,22 @@
   .yt-wrap iframe {
     position: absolute; inset: 0;
     width: 100%; height: 100%; border: 0;
+    /* Hidden until we get a life signal from the YouTube player. The watchdog
+       in JS will swap to an alternate video if no life signal arrives within
+       7s — until then the user just sees our discreet shimmer overlay, not
+       YouTube's error UI. Smooth 0.35s fade-in once playback is verified. */
+    opacity: 0;
+    transition: opacity 0.35s ease;
   }
+  .yt-wrap.alive iframe { opacity: 1; }
   .yt-wrap.loading::before {
     content: ''; position: absolute; inset: 0;
     background:
-      linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+      linear-gradient(90deg, rgba(0,0,0,0.85), rgba(255,255,255,0.04), rgba(0,0,0,0.85));
     background-size: 200% 100%;
     animation: shimmer 1.4s ease-in-out infinite;
-    z-index: 1;
+    /* Above the iframe so a still-loading YT screen never bleeds through. */
+    z-index: 2;
   }
   @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
   .yt-wrap.error {
@@ -3062,6 +3070,8 @@
 
   function renderCard(song) {
     if (!song) { renderEmpty(); return; }
+    // Fresh song = fresh retry budget for the YT auto-recovery loop.
+    ytAttempt = 0;
     currentSong = song;
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
@@ -3462,8 +3472,11 @@
     // primary intent of the page so we want eager-load.
     wrap.innerHTML = '';
     wrap.appendChild(iframe);
-    wrap.classList.add('playing');
-    wrap.classList.remove('error');
+    // Stay in `.loading` (shimmer overlay covers the iframe) until we hear
+    // a life signal — then we switch to `.playing` + `.alive` and the iframe
+    // fades into view. The user never sees a stuck YT error screen.
+    wrap.classList.add('loading');
+    wrap.classList.remove('playing', 'alive', 'error');
     wrap.dataset.svc = 'yt';
     // Tear down any prior message listener — without this, every card mount
     // leaks one (success path never removes it). After 50 cards we'd have 50
@@ -3497,6 +3510,9 @@
       if (alive) {
         ytAlive = true;
         if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
+        // Reveal the verified-working iframe with a smooth fade-in.
+        wrap.classList.remove('loading');
+        wrap.classList.add('playing', 'alive');
       }
     };
     window.addEventListener('message', onMsg, { signal: ytMsgAbort.signal });
@@ -3517,26 +3533,61 @@
       tryAnotherVideo(songRef);
     }, 7000);
   }
-  // Ask the server to pick a different YouTube ID for this song, then remount.
+  // Per-song retry counter — reset whenever renderCard mounts a new song so a
+  // fresh track gets a fresh budget. Capped at MAX_YT_ATTEMPTS to avoid infinite
+  // spinning if YouTube genuinely has no playable version of this track.
+  let ytAttempt = 0;
+  const MAX_YT_ATTEMPTS = 6;
+  /* Aggressive auto-recovery: when a YouTube embed fails (either via onError
+     postMessage, the 7-second watchdog, or a stuck "Повторите попытку позже"
+     screen), we immediately:
+       1. Tear the failed iframe down so the user never sees the YT error UI.
+       2. Show a discreet local loading spinner.
+       3. Hit /api/youtube/reresolve for a different ID, excluding everything
+          we've already tried for this song.
+       4. Mount the new ID and let the same flow catch its failure too.
+     We loop up to MAX_YT_ATTEMPTS times before surrendering with a clean
+     "Дальше →" CTA. NO fallback to Spotify / SoundCloud / Apple — user wants
+     YouTube only. */
   async function tryAnotherVideo(song) {
     const wrap = document.getElementById('yt-wrap');
-    if (!wrap) return;
+    if (!wrap || !song || currentSong?.id !== song.id) return;
+    // Cut down whatever was on screen (error / black box / stuck spinner) and
+    // show our own loading state so the user never sees YouTube's error UI.
+    if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
+    if (ytMsgAbort) { ytMsgAbort.abort(); ytMsgAbort = null; }
+    wrap.innerHTML = '';
+    wrap.classList.remove('playing', 'error');
+    wrap.classList.add('loading');
+    wrap.dataset.svc = '';
+    if (ytAttempt >= MAX_YT_ATTEMPTS) {
+      wrap.classList.remove('loading');
+      wrap.classList.add('error');
+      wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>${escapeHtml(lang === 'ru' ? 'Этот трек не нашёлся на YouTube. Можно нажать «Дальше →»' : 'No playable YouTube version. Press Next →')}</div>`;
+      return;
+    }
+    ytAttempt++;
     const triedSet = ytTried.get(song.id) || new Set();
+    let j = null;
     try {
       const r = await fetchWithRetry(`${API}/api/youtube/reresolve`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ song_id: song.id, user: userName, exclude: [...triedSet] })
       }, 1, 15000);
-      const j = await r.json();
-      if (j?.youtube_id && !triedSet.has(j.youtube_id) && currentSong?.id === song.id) {
-        song.youtube_id = j.youtube_id;
-        mountYTIframe(wrap, j.youtube_id);
-      } else {
-        // Re-resolve gave us nothing new — fall back to Spotify/SoundCloud/Apple probe.
-        loadAlternatives(song);
-      }
+      j = await r.json();
     } catch (e) {
-      loadAlternatives(song);
+      j = null;
+    }
+    // Bail if the user moved to a different song during the network round-trip.
+    if (currentSong?.id !== song.id) return;
+    if (j && j.youtube_id && !triedSet.has(j.youtube_id)) {
+      song.youtube_id = j.youtube_id;
+      mountYTIframe(wrap, j.youtube_id);
+    } else {
+      // Server has nothing new for us — try once more (the search backend has
+      // some randomness so a second call might surface a different result).
+      // Recursion is bounded by ytAttempt above.
+      tryAnotherVideo(song);
     }
   }
   function mountSpotifyIframe(wrap, spotifyId) {
