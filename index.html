@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-compact-card -->
+<!-- build: 2026-05-12T-audit-fixes -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -92,6 +92,60 @@
       transition-duration: 0.01ms !important;
     }
   }
+
+  /* ===== Welcome-back banner =====
+     Slides in from the top on owner cold-boot when identity was restored
+     silently from cookie / localStorage. Gives a one-tap "Сменить" exit so
+     a mis-attributed identity (e.g. Артур's cookie still on mom's phone)
+     gets noticed instead of silently accumulating rows under the wrong user. */
+  .welcome-back {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 120;
+    margin: calc(8px + env(safe-area-inset-top)) 12px 0;
+    padding: 10px 14px 10px 16px;
+    background: var(--surface);
+    backdrop-filter: blur(22px) saturate(1.5);
+    -webkit-backdrop-filter: blur(22px) saturate(1.5);
+    border: 1px solid rgba(212,164,92,0.35);
+    border-radius: 14px;
+    display: flex; align-items: center; gap: 10px;
+    color: var(--text);
+    font: 600 13px/1.3 var(--font-body);
+    box-shadow:
+      0 12px 32px -10px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(255,255,255,0.04) inset;
+    opacity: 0; transform: translateY(-12px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    pointer-events: auto;
+  }
+  .welcome-back.show { opacity: 1; transform: translateY(0); }
+  .welcome-back__text { flex: 1; min-width: 0; }
+  .welcome-back__switch {
+    appearance: none;
+    background: rgba(212,164,92,0.18);
+    border: 1px solid rgba(212,164,92,0.45);
+    color: var(--gold-bright);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font: 700 12px/1 var(--font-body);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.18s;
+  }
+  .welcome-back__switch:hover { background: rgba(212,164,92,0.28); }
+  .welcome-back__close {
+    appearance: none; background: transparent; border: 0;
+    color: var(--text-muted);
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border-radius: 999px;
+    flex-shrink: 0;
+    transition: color 0.18s, background 0.18s;
+  }
+  .welcome-back__close:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  .welcome-back__close svg { width: 14px; height: 14px; }
 
   /* ===== Top bar ===== */
   .top-bar {
@@ -1196,24 +1250,6 @@
   }
   .ao-comment-tab.active .ao-comment-tab__count { opacity: 0.95; }
 
-  /* ===== All overlay sort chips (kept hidden — superseded by genre filter) ===== */
-  .ao-sort { display: none; }
-  .sort-chip {
-    appearance: none;
-    flex-shrink: 0;
-    background: var(--surface-3);
-    color: var(--text-dim);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 8px 16px;
-    font-size: 12px; font-weight: 700;
-    cursor: pointer;
-    transition: all 0.18s;
-    text-transform: uppercase; letter-spacing: 0.1em;
-  }
-  .sort-chip:hover { background: var(--surface-2); color: var(--text); }
-  .sort-chip.active { background: var(--gold); color: #0a0a0d; border-color: var(--gold); }
-
   /* ===== All overlay genre filter chips =====
      Horizontal scroller of genre pills under the comment-status tabs.
      Active chip = gold ring, count beside the label. Tapping a chip filters
@@ -1885,6 +1921,18 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
     </button>
   </div>
+</div>
+
+<!-- Welcome-back banner: shown once per session for owners restored from
+     localStorage/cookie, so a phone that was used by a different family
+     member doesn't silently log the new opener in under the old identity.
+     Auto-dismisses on first interaction or after 6s. -->
+<div class="welcome-back" id="welcome-back" hidden>
+  <span class="welcome-back__text"></span>
+  <button type="button" class="welcome-back__switch" id="welcome-back-switch">Не я · Сменить</button>
+  <button type="button" class="welcome-back__close" id="welcome-back-close" aria-label="закрыть">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+  </button>
 </div>
 
 <!-- Share FAB -->
@@ -3091,8 +3139,19 @@
 
   function renderCard(song) {
     if (!song) { renderEmpty(); return; }
-    // Fresh song = fresh retry budget for the YT auto-recovery loop.
+    // Fresh song = fresh retry budget for the YT auto-recovery loop. Also
+    // tear down ANY in-flight player state from the previous song before
+    // mounting the new one: a stale watchdog firing after a swipe would burn
+    // the new song's budget; a stale postMessage listener would mis-route
+    // life-signals to the wrong song's wrap. This is the only safe place to
+    // wipe player state — every entry point into a new card goes via here.
     ytAttempt = 0;
+    if (typeof ytWatchdogTimer !== 'undefined' && ytWatchdogTimer) {
+      clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null;
+    }
+    if (typeof ytMsgAbort !== 'undefined' && ytMsgAbort) {
+      ytMsgAbort.abort(); ytMsgAbort = null;
+    }
     currentSong = song;
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
@@ -3513,7 +3572,12 @@
     if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
     let ytAlive = false;
     const onMsg = (e) => {
-      if (e.source !== iframe.contentWindow) return;
+      // Accept by origin first — iOS Safari occasionally hands back a fresh
+      // Window proxy whose identity check (===) fails for the first ~50 ms
+      // after appendChild, causing legit early life-signals to be dropped.
+      // Origin check is reliable across browsers.
+      const goodOrigin = e.origin === 'https://www.youtube.com' || e.origin === 'https://www.youtube-nocookie.com';
+      if (!goodOrigin && e.source !== iframe.contentWindow) return;
       let d = e.data;
       if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return; } }
       if (!d || typeof d !== 'object') return;
@@ -3547,6 +3611,8 @@
     // back or hit four attempts. Each retry is cheap (1 postMessage call).
     const wakeListening = (delay, tries) => {
       setTimeout(() => {
+        // Bail if user moved on — no point waking a player that's not in view.
+        if (!songRef || currentSong?.id !== songRef.id) return;
         if (ytAlive) return;
         try { iframe.contentWindow?.postMessage('{"event":"listening"}', '*'); } catch {}
         if (tries > 1) wakeListening(1200, tries - 1);
@@ -3601,6 +3667,7 @@
     }
     ytAttempt++;
     const triedSet = ytTried.get(song.id) || new Set();
+    if (!ytTried.has(song.id)) ytTried.set(song.id, triedSet);
     let j = null;
     try {
       const r = await fetchWithRetry(`${API}/api/youtube/reresolve`, {
@@ -3617,10 +3684,14 @@
       song.youtube_id = j.youtube_id;
       mountYTIframe(wrap, j.youtube_id);
     } else {
-      // Server has nothing new for us — try once more (the search backend has
-      // some randomness so a second call might surface a different result).
-      // Recursion is bounded by ytAttempt above.
-      tryAnotherVideo(song);
+      // Server has nothing new for us (or returned a stale ID we already
+      // tried). Record the stale ID so the next exclude= list grows; then
+      // back off briefly before recursing so we don't hammer the API in a
+      // sub-second loop until the 6-attempt cap is exhausted.
+      if (j && j.youtube_id) triedSet.add(j.youtube_id);
+      setTimeout(() => {
+        if (currentSong?.id === song.id) tryAnotherVideo(song);
+      }, 800);
     }
   }
   function mountSpotifyIframe(wrap, spotifyId) {
@@ -4206,19 +4277,33 @@
   let aoOffset = 0;
   let aoLoading = false;
   let aoDone = false;
+  // aoRunId: monotonic generation token. Every filter/tab/genre change bumps
+  // it. Each loadAllPage captures the value at dispatch and discards its
+  // own response if the id has moved on by then — prevents stale fetches
+  // from rendering under the wrong filter and corrupting pagination offsets.
+  let aoRunId = 0;
+  // Snapshot of d.total for the current generation, used as the «Все» chip
+  // count (NOT sum of genre_counts — that excludes NULL-genre tracks).
+  let aoAllChipTotal = null;
   const aoResults = document.getElementById('all-results');
   const aoGenresEl = document.getElementById('ao-genres');
+  function aoResetForNewFilter() {
+    aoOffset = 0;
+    aoDone = false;
+    aoLoading = false;
+    aoRunId++;
+    aoAllChipTotal = null;
+  }
   function openAll() {
     if (isGuestUser()) return;
     openOv('all-overlay');
     aoCommented = 'yes';
     aoGenre = null;
-    aoOffset = 0;
-    aoDone = false;
+    aoResetForNewFilter();
     aoResults.innerHTML = `<div class="ov-status">…</div>`;
     aoGenresEl.innerHTML = '';
     document.querySelectorAll('.ao-comment-tab').forEach(b => b.classList.toggle('active', b.dataset.commented === aoCommented));
-    loadAllPage();
+    loadAllPage({ autoFlipIfEmpty: true });
   }
   document.querySelectorAll('.ao-comment-tab').forEach(b => {
     b.addEventListener('click', () => {
@@ -4226,8 +4311,7 @@
       if (next === aoCommented) return;
       aoCommented = next;
       aoGenre = null;
-      aoOffset = 0;
-      aoDone = false;
+      aoResetForNewFilter();
       document.querySelectorAll('.ao-comment-tab').forEach(x => x.classList.toggle('active', x === b));
       aoResults.innerHTML = `<div class="ov-status">Загружаю…</div>`;
       loadAllPage();
@@ -4236,14 +4320,16 @@
 
   /* Build / refresh the horizontal genre filter row. Called every page-load
      so counts stay in sync with current cat + comment-status. First chip is
-     a sticky "Все" reset that clears the genre filter. */
-  function renderGenreChips(genres, counts) {
+     a sticky "Все" reset that uses d.total (not sum of per-genre counts) so
+     NULL-genre tracks during partial backfill still show up in «Все». */
+  function renderGenreChips(genres, counts, allTotal) {
     if (!Array.isArray(genres) || !genres.length) {
       aoGenresEl.innerHTML = '';
       return;
     }
-    const totalAcross = Object.values(counts || {}).reduce((a, b) => a + b, 0);
-    const allChip = `<button type="button" class="genre-chip ${aoGenre === null ? 'active' : ''}" data-genre=""><span class="genre-chip__label">Все</span><span class="genre-chip__count">${fmt(totalAcross)}</span></button>`;
+    const sumOfGenres = Object.values(counts || {}).reduce((a, b) => a + b, 0);
+    const allCount = (typeof allTotal === 'number' && allTotal > 0) ? allTotal : sumOfGenres;
+    const allChip = `<button type="button" class="genre-chip ${aoGenre === null ? 'active' : ''}" data-genre=""><span class="genre-chip__label">Все</span><span class="genre-chip__count">${fmt(allCount)}</span></button>`;
     const rest = genres.map(g => {
       const n = counts && counts[g] ? counts[g] : 0;
       const cls = 'genre-chip' + (aoGenre === g ? ' active' : '');
@@ -4256,8 +4342,7 @@
         const next = btn.dataset.genre || null;
         if (next === aoGenre) return;
         aoGenre = next;
-        aoOffset = 0;
-        aoDone = false;
+        aoResetForNewFilter();
         aoGenresEl.querySelectorAll('.genre-chip').forEach(x => x.classList.toggle('active', x === btn));
         aoResults.innerHTML = `<div class="ov-status">Загружаю…</div>`;
         loadAllPage();
@@ -4268,10 +4353,16 @@
     if (aoLoading || aoDone) return;
     if (aoResults.scrollTop + aoResults.clientHeight > aoResults.scrollHeight - 200) loadAllPage();
   });
-  async function loadAllPage() {
+  async function loadAllPage(opts) {
     if (aoLoading || aoDone) return;
+    const myRun = aoRunId;
     aoLoading = true;
     const d = await apiAllTracks(aoSort, aoOffset, 50, aoCommented, aoGenre);
+    // Stale-response gate: a filter / tab / genre change since we started
+    // means this response belongs to the OLD filter. Dropping it prevents
+    // rows from the previous tab rendering under the new one and keeps
+    // aoOffset in sync with the visible data.
+    if (myRun !== aoRunId) { aoLoading = false; return; }
     aoLoading = false;
     if (!d) return;
     document.getElementById('ao-counter').textContent = fmt(d.total);
@@ -4284,10 +4375,26 @@
       const el = document.getElementById('ao-count-uncommented');
       if (el) el.textContent = fmt(d.total_uncommented);
     }
+    // openAll default-tab safety net: if «С отзывом» is empty inside the
+    // current category but «Без» has content, auto-flip to «Без» on the
+    // first load. Without this the user lands on an empty-state screen
+    // every time they open "Все треки" in a cat they haven't commented in.
+    if (opts && opts.autoFlipIfEmpty && aoOffset === 0 && aoGenre === null &&
+        aoCommented === 'yes' &&
+        d.total_commented === 0 && d.total_uncommented > 0) {
+      aoCommented = 'no';
+      aoResetForNewFilter();
+      document.querySelectorAll('.ao-comment-tab').forEach(x => x.classList.toggle('active', x.dataset.commented === 'no'));
+      loadAllPage(); // no autoFlipIfEmpty on the retry — would loop otherwise
+      return;
+    }
     // Render / refresh the genre chip row on every page-1 load — counts depend
-    // on current cat + commented filter, so we re-render rather than persist.
-    if (aoOffset === 0 && Array.isArray(d.genres)) {
-      renderGenreChips(d.genres, d.genre_counts || {});
+    // on current cat + commented filter. Pass d.total (full filter scope) so
+    // the «Все» chip is always consistent with the header counter, even
+    // during partial backfill when some tracks have NULL genre.
+    if (aoOffset === 0) {
+      if (typeof d.total === 'number') aoAllChipTotal = d.total;
+      if (Array.isArray(d.genres)) renderGenreChips(d.genres, d.genre_counts || {}, aoAllChipTotal);
     }
     if (aoOffset === 0) { aoResults.innerHTML = ''; }
     if (d.results.length === 0) {
@@ -4298,10 +4405,8 @@
           : `В жанре «${aoGenre}» все треки уже с отзывом`;
       } else if (aoCommented === 'yes') {
         empty = 'Пока никто не оставил отзыв';
-      } else if (aoCommented === 'no') {
-        empty = 'Все треки уже с отзывом — больше не осталось';
       } else {
-        empty = t('search.empty');
+        empty = 'Все треки уже с отзывом — больше не осталось';
       }
       if (aoOffset === 0) aoResults.innerHTML = `<div class="ov-status">${escapeHtml(empty)}</div>`;
       aoDone = true;
@@ -4596,8 +4701,19 @@
   document.getElementById('switch-user-btn').addEventListener('click', () => {
     const ok = confirm(lang === 'ru' ? `Сменить пользователя? (текущий: ${userName})` : `Switch user? (current: ${userName})`);
     if (!ok) return;
+    // Hard reset: localStorage + cookie + any pending queue tagged for the old
+    // identity. Without dropping the cookie, the very next page-load restores
+    // the old name via the cookie-backup path; without dropping queue items
+    // tagged for the old user, they drain under the next user's session and
+    // get attributed weirdly.
+    const oldName = userName;
     userName = '';
-    lsDel(K_NAME);
+    try { lsDel(K_NAME); } catch {}
+    try { setCookie('mm_user', '', -1); } catch {}
+    try {
+      const q = qGet().filter(x => x.user !== oldName);
+      qSet(q);
+    } catch {}
     closeOv('settings-overlay');
     showScreen('ob');
   });
@@ -4877,7 +4993,7 @@
         // Library content changed — refresh open overlays
         if (document.getElementById('mine-overlay')?.classList.contains('open')) renderMine();
         if (document.getElementById('all-overlay')?.classList.contains('open')) {
-          aoOffset = 0; aoDone = false;
+          aoResetForNewFilter();
           document.getElementById('all-results').innerHTML = '<div class="ov-status">…</div>';
           loadAllPage();
         }
@@ -5007,6 +5123,54 @@
     showScreen('ob');
   } else {
     updateWhoChip();
+    // Identity-bleed safety net: if we restored an owner identity from cookie /
+    // localStorage on cold boot (not a fresh onboarding pick), show a discreet
+    // "Welcome back, X · Не я" banner once per browser session so a different
+    // family member opening the same phone notices the mis-attribution. Mom
+    // ignores it; if Артур's identity is stuck on her phone, she taps Сменить.
+    try {
+      const isOwnerNow = (userName === 'Юля' || userName === 'Артур');
+      const alreadyShown = sessionStorage.getItem('mm_welcome_shown') === '1';
+      if (isOwnerNow && !alreadyShown) {
+        sessionStorage.setItem('mm_welcome_shown', '1');
+        const banner = document.getElementById('welcome-back');
+        const textEl = banner?.querySelector('.welcome-back__text');
+        const switchBtn = document.getElementById('welcome-back-switch');
+        const closeBtn = document.getElementById('welcome-back-close');
+        if (banner && textEl && switchBtn && closeBtn) {
+          textEl.textContent = t('welcome.back', { n: userName });
+          banner.hidden = false;
+          // Allow paint before transitioning in.
+          requestAnimationFrame(() => banner.classList.add('show'));
+          let dismissed = false;
+          const dismiss = () => {
+            if (dismissed) return;
+            dismissed = true;
+            banner.classList.remove('show');
+            setTimeout(() => { banner.hidden = true; }, 350);
+          };
+          // Auto-dismiss after 6 seconds.
+          setTimeout(dismiss, 6000);
+          closeBtn.addEventListener('click', dismiss);
+          switchBtn.addEventListener('click', () => {
+            dismiss();
+            // Hard switch: clear identity in BOTH localStorage and cookie, drop
+            // any pending queue items tagged for the old user (those would
+            // otherwise drain under the new identity's session and look like
+            // they came from the new user). Then send to onboarding.
+            const oldName = userName;
+            userName = '';
+            try { lsDel(K_NAME); } catch {}
+            try { setCookie('mm_user', '', -1); } catch {}
+            try {
+              const q = qGet().filter(x => x.user !== oldName);
+              qSet(q);
+            } catch {}
+            showScreen('ob');
+          });
+        }
+      }
+    } catch {}
     // Guest mode and owners landing on /lovers or /dj skip the picker.
     const goStraightToDiscovery = guestCat || !!currentCat;
     if (guestCat && isOwner) setCat(guestCat);
