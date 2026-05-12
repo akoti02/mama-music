@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-audit-fixes-final -->
+<!-- build: 2026-05-12T-audit-fixes-final-2 -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -107,7 +107,10 @@
     /* Sit BELOW the top-bar (which is z:100, ~58px tall after safe-area)
        so the X из N, add, search, all-tracks, settings buttons stay tappable
        while the banner is visible. */
-    top: calc(58px + env(safe-area-inset-top));
+    /* Top-bar real height = 12 + 42 (icon-btn) + 10 + safe-area-top ≈ 64+safe.
+       Sit clearly below it with 12px breathing room so banner and top-bar
+       never visually kiss on notch phones. */
+    top: calc(76px + env(safe-area-inset-top));
     z-index: 95;
     margin: 0 auto;
     max-width: 540px;
@@ -384,7 +387,8 @@
     aspect-ratio: 16 / 9;
     /* Cap the video height so it never crowds out the rating + comment +
        category controls on a phone. 38vh = ~270px on iPhone 13, plenty for a
-       music video thumbnail. */
+       music video thumbnail. On short viewports (iPhone SE portrait, any
+       phone in landscape) drop to 32vh so the controls below fit too. */
     max-height: 38vh;
     border-radius: var(--radius);
     overflow: hidden;
@@ -600,7 +604,8 @@
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 8px 0;
-    min-height: 40px;
+    /* Apple HIG 44px touch target. Mom over 50 needs the easy hit. */
+    min-height: 44px;
     font-size: 13px; font-weight: 800;
     cursor: pointer;
     transition: all 0.18s var(--ease-spring);
@@ -630,6 +635,15 @@
     font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.12em;
     height: 12px;
+  }
+
+  /* Short-viewport compaction — iPhone SE portrait (568h), any phone in
+     landscape, small foldables. Drops video cap, tightens gaps so the
+     whole compact card fits without scroll. */
+  @media (max-height: 620px) {
+    .yt-wrap { max-height: 32vh; }
+    .card { gap: 8px; padding-bottom: 8px; }
+    .rating-btn { min-height: 40px; }
   }
 
   /* ===== Category pills ===== */
@@ -1317,6 +1331,10 @@
     overflow-y: hidden;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    /* Right-edge fade hints at more chips off-screen — without it the
+       hidden-scrollbar row gives no clue that more genres exist. */
+    mask-image: linear-gradient(to right, black 0, black calc(100% - 28px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 0, black calc(100% - 28px), transparent 100%);
   }
   .ao-genres::-webkit-scrollbar { display: none; }
   .genre-chip {
@@ -3361,10 +3379,14 @@
     // for this user — otherwise a swipe on a fresh card with a no-op snapshot
     // would trigger an unnecessary commit AND, worse, the act() success-path
     // would clear the comment draft even though the user did nothing.
+    // Normalize category strings to canonical comma-joined form before
+    // comparing — otherwise a stale trailing-comma snapshot value like 'LOVERS,'
+    // would falsely diverge from the server's clean 'LOVERS'.
+    const normCatStr = (s) => (String(s || '').split(',').map(p => p.trim()).filter(Boolean).join(','));
     const snapDivergesFromServer =
       (snap.comment != null && snap.comment !== (song.my_comment || '')) ||
       (snap.rating != null && snap.rating !== (song.my_rating || 0)) ||
-      (snap.categories != null && snap.categories !== (song.my_category || ''));
+      (snap.categories != null && normCatStr(snap.categories) !== normCatStr(song.my_category));
     let cardDirty = snapDivergesFromServer;
     function setDirty(v) { cardDirty = v; if (cardEl) cardEl.dataset.dirty = v ? '1' : '0'; }
     if (snapDivergesFromServer && cardEl) cardEl.dataset.dirty = '1';
@@ -4309,7 +4331,7 @@
         if (!locked) {
           // Wait until the user clearly chose horizontal motion before
           // claiming the gesture — otherwise we'd block vertical scroll.
-          if (Math.abs(dx) > Math.abs(dy) + 4 && Math.abs(dx) > 8) {
+          if (Math.abs(dx) > Math.abs(dy) + 6 && Math.abs(dx) > 14) {
             locked = true;
             card.classList.add('swiping');
           } else if (Math.abs(dy) > Math.abs(dx) + 4) {
@@ -5323,6 +5345,9 @@
           setTimeout(dismiss, 6000);
           closeBtn.addEventListener('click', dismiss);
           switchBtn.addEventListener('click', () => {
+            // If the banner auto-dismissed before this click landed (rare race
+            // on slow taps), still honour the user's intent — don't bail just
+            // because the visual is already gone.
             dismiss();
             // Hard switch — see Settings → switch-user handler for the full
             // rationale. Mirror EVERY clearing step here so a banner-driven
