@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-vibe-brain -->
+<!-- build: 2026-05-13T-audit-pass-2 -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,12 +70,22 @@
   body {
     font-family: var(--font-sans);
     font-feature-settings: 'cv11', 'ss01';
-    /* Static base backdrop — the live vibe gradient layer above (#vibe-bg)
-       crossfades the page tint to match the current song's colours. */
-    background: var(--bg);
-    background-attachment: fixed;
+    /* Ambient vibe gradient painted directly on body — pools of the
+       currently-playing song's colours bleed through EVERY screen. The
+       CSS vars are updated by applyBodyVibe whenever a new song mounts.
+       (Note: CSS does not interpolate radial-gradient background-images
+       across var changes, so the colour snap is instant — the perceived
+       smoothness comes from the song-change UI sequence.) */
     --vibe-c1: 244 114 182;
     --vibe-c2: 252 211 77;
+    background:
+      radial-gradient(ellipse 65% 50% at 15% 10%,  rgba(var(--vibe-c1), 0.40) 0%, transparent 60%),
+      radial-gradient(ellipse 55% 45% at 88% 18%,  rgba(var(--vibe-c2), 0.34) 0%, transparent 60%),
+      radial-gradient(ellipse 75% 55% at 50% 100%, rgba(var(--vibe-c1), 0.30) 0%, transparent 65%),
+      radial-gradient(ellipse 45% 40% at 8% 80%,   rgba(var(--vibe-c2), 0.24) 0%, transparent 70%),
+      radial-gradient(ellipse 45% 40% at 92% 80%,  rgba(var(--vibe-c1), 0.22) 0%, transparent 70%),
+      var(--bg);
+    background-attachment: fixed;
     color: var(--text);
     line-height: 1.5; font-size: 16px;
     letter-spacing: -0.005em;
@@ -90,27 +100,6 @@
      content always reaches users on every device. */
   body.discovery-locked { height: 100%; overflow: hidden; overscroll-behavior: contain; }
   html.discovery-locked { height: 100%; overflow: hidden; }
-  /* Live song-vibe gradient — three breathing pools whose colours come from
-     the LLM-derived per-song palette (vibe_c1 / vibe_c2). Smoothly crossfades
-     when a new track mounts. Sits behind everything (z:-3) so it tints the
-     whole page without obscuring content. */
-  #vibe-bg {
-    position: fixed; inset: 0; z-index: -3;
-    pointer-events: none;
-    background:
-      radial-gradient(ellipse 70% 55% at 18% 12%, rgba(var(--vibe-c1), 0.28) 0%, transparent 65%),
-      radial-gradient(ellipse 55% 50% at 85% 22%, rgba(var(--vibe-c2), 0.22) 0%, transparent 60%),
-      radial-gradient(ellipse 80% 60% at 50% 95%, rgba(var(--vibe-c1), 0.20) 0%, transparent 65%),
-      radial-gradient(ellipse 50% 45% at 8% 80%, rgba(var(--vibe-c2), 0.14) 0%, transparent 70%),
-      radial-gradient(ellipse 45% 40% at 92% 80%, rgba(var(--vibe-c1), 0.12) 0%, transparent 70%);
-    transition: background 1.4s var(--ease-out);
-    animation: vibePulse 18s ease-in-out infinite;
-    will-change: background;
-  }
-  @keyframes vibePulse {
-    0%, 100% { filter: saturate(1.0) brightness(1.0); }
-    50%      { filter: saturate(1.15) brightness(1.05); }
-  }
   /* Album-art-driven page tint */
   #album-tint {
     position: fixed; inset: 0; z-index: -2;
@@ -605,12 +594,8 @@
     max-width: 520px; width: 100%;
     display: flex; flex-direction: column;
     will-change: transform, opacity;
-    /* Target: everything fits on a typical phone viewport without scroll. The
-       host (#card-host) still allows scroll as a fallback for tiny screens or
-       open soft keyboards, but on a normal iPhone / Samsung the user never
-       has to scroll up/down to reach a button. */
-    padding-bottom: 16px;
-    gap: 12px;
+    padding-bottom: 12px;
+    gap: 9px;
   }
 
   /* ===== YouTube embed (16:9 with halo) ===== */
@@ -621,7 +606,7 @@
        category controls on a phone. 38vh = ~270px on iPhone 13, plenty for a
        music video thumbnail. On short viewports (iPhone SE portrait, any
        phone in landscape) drop to 32vh so the controls below fit too. */
-    max-height: 38vh;
+    max-height: 32vh;
     border-radius: var(--radius);
     overflow: hidden;
     background: #000;
@@ -776,7 +761,7 @@
   .meta {
     text-align: center;
     margin: 0 -4px;
-    padding: 22px 22px 18px;
+    padding: 14px 20px 12px;
     position: relative;
     border-radius: 22px;
     background:
@@ -810,52 +795,55 @@
   .meta::after { bottom: -32px; right: -32px;
     background: radial-gradient(circle, rgba(var(--song-c2, 252 211 77), 0.5) 0%, transparent 65%);
   }
-  /* TITLE — large, in white-to-accent gradient text. Stands out against the
-     framed gradient backdrop instead of melting into the video's dark halo. */
+  /* TITLE — solid white for guaranteed visibility on every device.
+     The plaque's coloured backdrop already gives the song its identity;
+     the title just needs to be readable. */
   .meta .title {
     font-family: var(--font-display);
-    font-size: 38px; font-weight: 400;
-    letter-spacing: -0.020em; line-height: 1.08;
+    font-size: 34px; font-weight: 500;
+    letter-spacing: -0.018em; line-height: 1.08;
     word-wrap: break-word;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    background: linear-gradient(180deg,
-      #fff 0%,
-      rgb(var(--song-c1, 244 114 182)) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    -webkit-text-fill-color: transparent;
-    text-shadow: none;
+    color: #fff;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.35);
     position: relative;
     z-index: 1;
   }
   .meta .title em { font-style: italic; }
-  /* ARTIST + YEAR side-by-side, separated by a · in the song's gold accent.
-     Year fills with the second accent colour for "two-tone" recognition.
-     Year hidden gracefully when missing — no orphan dot. */
+  /* ARTIST — prominent, all white. Year sits below as its own pill so mom
+     can't miss it. */
   .meta .by {
-    margin-top: 14px;
-    font-size: 19px;
+    margin-top: 10px;
+    font-size: 18px;
     color: #fff;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
     position: relative;
     z-index: 1;
-    text-shadow: 0 1px 6px rgba(0,0,0,0.40);
+    text-shadow: 0 1px 6px rgba(0,0,0,0.50);
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
-  .meta .by .year {
+  /* Year chip rendered inline in .by next to the artist. Picks up the
+     per-song accent via --song-c2 so the year glows in the song's colour. */
+  .meta .by .year-chip {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(var(--song-c2, 252 211 77), 0.18);
     color: rgb(var(--song-c2, 252 211 77));
-    margin-left: 10px;
-    padding-left: 10px;
-    border-left: 1px solid rgba(255,255,255,0.30);
+    border: 1px solid rgba(var(--song-c2, 252 211 77), 0.55);
+    font-size: 14px;
     font-weight: 800;
-    font-size: 17px;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.08em;
+    vertical-align: baseline;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.30);
   }
-  .meta .by.no-year .year { display: none; }
   .meta .added-tag {
     display: inline-flex; align-items: center; gap: 5px;
     margin-top: 6px;
@@ -871,8 +859,8 @@
   /* ===== Comment ===== */
   .comment-row { margin-bottom: 0; }
   .comment-row textarea {
-    width: 100%; min-height: 54px;
-    padding: 16px 20px;
+    width: 100%; min-height: 64px;
+    padding: 18px 22px;
     /* Per-song-tinted comment field — picks up the same accent colours as
        the song-meta card above. The placeholder "Мысли?" reads in the
        song's gradient so it visually ties to the track instead of being
@@ -894,9 +882,11 @@
     box-shadow: 0 6px 18px -8px rgba(var(--song-c1, 244 114 182), 0.40);
   }
   .comment-row textarea::placeholder {
-    color: rgba(255,255,255,0.55);
+    color: rgba(255,255,255,0.78);
     font-style: italic;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: 0.01em;
   }
   .comment-row textarea:focus {
     outline: none;
@@ -983,7 +973,8 @@
     transition: max-height 0.22s ease;
   }
   body.kbd-open .meta .title { font-size: 18px; -webkit-line-clamp: 1; }
-  body.kbd-open .meta .by { display: none; }
+  body.kbd-open .meta .by { font-size: 13px; -webkit-line-clamp: 1; line-clamp: 1; opacity: 0.82; margin-top: 4px; }
+  body.kbd-open .meta .by .year-chip { font-size: 11px; padding: 1px 7px; }
   body.kbd-open .meta .added-tag { display: none; }
   body.kbd-open .card { gap: 8px; }
 
@@ -996,17 +987,15 @@
   body.guest-mode #all-btn { display: none; }
   body.guest-mode .remove-link { display: none; }
   /* Guests are scoped to a single category — hide everything that would let
-     them escape: settings (switch user), global search, share (leaks other
-     categories), and the share-fab. Defense-in-depth alongside the server
-     check that refuses non-guest categories. */
+     them escape: settings (switch user), global search. Defense-in-depth
+     alongside the server check that refuses non-guest categories. */
   body.guest-mode #settings-btn { display: none !important; }
   body.guest-mode #search-btn { display: none !important; }
-  body.guest-mode #share-fab { display: none !important; }
   .cats-collapse summary {
     list-style: none;
     cursor: pointer;
-    padding: 14px 18px;
-    min-height: 50px;
+    padding: 10px 16px;
+    min-height: 42px;
     box-sizing: border-box;
     /* Colourful gradient pill — gold-rose-lavender stripe — so it doesn't
        read as another dead grey block at the bottom of the card. */
@@ -1408,38 +1397,64 @@
   @media (min-width: 1100px) {
     .tc-grid { grid-template-columns: repeat(3, 1fr); }
   }
+  /* Each tc-card carries its own song palette via inline --song-c1/c2
+     (set in JS from songPalette(s)). The CSS below uses those vars for
+     the base gradient, the left-edge accent stripe, the art tint, and
+     the hover/expanded glow — so every card in the All-Tracks grid has
+     a unique colour identity that matches its player view. */
   .tc-card {
     position: relative;
-    background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008));
-    border: 1px solid rgba(255,255,255,0.08);
+    background:
+      radial-gradient(ellipse 90% 100% at 0% 50%, rgba(var(--song-c1, 244 114 182), 0.16) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 100% at 100% 50%, rgba(var(--song-c2, 252 211 77), 0.10) 0%, transparent 65%),
+      linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.008));
+    border: 1px solid rgba(var(--song-c1, 244 114 182), 0.22);
     border-radius: 20px;
     overflow: hidden;
     transform: translateZ(0);
     transition: transform 0.4s cubic-bezier(.2,.8,.2,1),
                 border-color 0.25s, box-shadow 0.3s;
     box-shadow:
-      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 1px 0 rgba(255,255,255,0.05) inset,
       0 2px 6px rgba(0,0,0,0.18),
-      0 12px 32px -16px rgba(0,0,0,0.65);
+      0 12px 28px -14px rgba(var(--song-c1, 244 114 182), 0.35),
+      0 12px 32px -16px rgba(0,0,0,0.6);
     -webkit-tap-highlight-color: transparent;
     backdrop-filter: blur(8px);
   }
+  /* Left edge accent stripe — slim vertical glow in the song's colour */
+  .tc-card::before {
+    content: '';
+    position: absolute; top: 12px; bottom: 12px; left: 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(180deg,
+      rgb(var(--song-c1, 244 114 182)),
+      rgb(var(--song-c2, 252 211 77)));
+    box-shadow: 0 0 12px rgba(var(--song-c1, 244 114 182), 0.55);
+    z-index: 2;
+    pointer-events: none;
+  }
   .tc-card:hover {
-    border-color: rgba(212,164,92,0.3);
+    border-color: rgba(var(--song-c1, 244 114 182), 0.55);
     transform: translateY(-2px);
     box-shadow:
-      0 1px 0 rgba(255,255,255,0.05) inset,
+      0 1px 0 rgba(255,255,255,0.06) inset,
       0 4px 12px rgba(0,0,0,0.22),
+      0 22px 52px -18px rgba(var(--song-c1, 244 114 182), 0.45),
       0 20px 48px -18px rgba(0,0,0,0.7);
   }
   .tc-card.expanded {
-    border-color: rgba(212,164,92,0.4);
-    background: linear-gradient(180deg, rgba(212,164,92,0.05), rgba(255,255,255,0.008));
+    border-color: rgba(var(--song-c1, 244 114 182), 0.65);
+    background:
+      radial-gradient(ellipse 110% 100% at 0% 0%, rgba(var(--song-c1, 244 114 182), 0.22) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 90% at 100% 100%, rgba(var(--song-c2, 252 211 77), 0.16) 0%, transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.012));
     box-shadow:
-      0 1px 0 rgba(212,164,92,0.1) inset,
+      0 1px 0 rgba(var(--song-c1, 244 114 182), 0.20) inset,
       0 4px 14px rgba(0,0,0,0.25),
-      0 24px 60px -20px rgba(212,164,92,0.18),
-      0 24px 60px -20px rgba(0,0,0,0.7);
+      0 28px 70px -22px rgba(var(--song-c1, 244 114 182), 0.55),
+      0 24px 60px -20px rgba(0,0,0,0.65);
   }
   .tc-card.swiping { transition: none; }
   .tc-card.deleting { transform: translateX(-110%) scale(0.94); opacity: 0; transition: transform 0.45s cubic-bezier(.4,.0,.2,1), opacity 0.3s; }
@@ -1473,12 +1488,17 @@
   .tc-card__art {
     width: 64px; height: 64px; flex-shrink: 0;
     border-radius: 14px;
-    background: linear-gradient(135deg, rgba(212,164,92,0.18), rgba(212,164,92,0.04));
+    background:
+      radial-gradient(circle at 30% 30%, rgba(var(--song-c1, 244 114 182), 0.55) 0%, transparent 65%),
+      linear-gradient(135deg, rgba(var(--song-c1, 244 114 182), 0.35), rgba(var(--song-c2, 252 211 77), 0.20));
     background-size: cover; background-position: center;
     display: flex; align-items: center; justify-content: center;
-    color: var(--gold-bright);
+    color: #fff;
     position: relative; overflow: hidden;
-    box-shadow: 0 4px 14px -4px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.06) inset;
+    box-shadow:
+      0 4px 14px -4px rgba(0,0,0,0.4),
+      0 0 0 1px rgba(var(--song-c1, 244 114 182), 0.30) inset,
+      0 6px 20px -8px rgba(var(--song-c1, 244 114 182), 0.45);
   }
   .tc-card__art.has-thumb::after {
     /* subtle dark gradient overlay so the music-note SVG stays readable
@@ -2203,32 +2223,141 @@
      instantly knows which screen they're on. The accent flows from a
      header tint into the title color and a subtle radial bloom behind
      content. */
+  /* === FILTER overlay — "Lavender Mist Atelier" ===
+     Personality: gentle selection ritual. Soft lavender constellation drift,
+     plum + ice-blue pools, a fine diagonal silk-thread overlay so it reads
+     "refined choice". */
   .overlay.overlay--filter {
     background:
-      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(167,139,250,0.20) 0%, transparent 65%),
-      radial-gradient(ellipse 60% 45% at 50% 100%, rgba(103,232,249,0.13) 0%, transparent 65%),
-      rgba(16, 10, 22, 0.96);
+      radial-gradient(ellipse 80% 55% at 50% 0%,  rgba(167,139,250,0.30) 0%, transparent 65%),
+      radial-gradient(ellipse 65% 50% at 12% 60%, rgba(196,181,253,0.18) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 45% at 88% 80%, rgba(103,232,249,0.16) 0%, transparent 65%),
+      linear-gradient(135deg, transparent 0%, transparent 49%, rgba(255,255,255,0.012) 49.5%, rgba(255,255,255,0.012) 50.5%, transparent 51%, transparent 100%),
+      rgba(14, 10, 24, 0.96);
+    background-size: auto, auto, auto, 14px 14px, auto;
+    position: relative;
   }
-  .ov-header--filter { border-bottom-color: rgba(167,139,250,0.25); }
-  .ov-header--filter .ov-title { color: rgb(167,139,250); }
+  .overlay.overlay--filter::before,
+  .overlay.overlay--filter::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(167,139,250,0.22) 0%, transparent 60%);
+    filter: blur(40px);
+    z-index: 0;
+  }
+  .overlay.overlay--filter::before { top: -100px; left: -80px; }
+  .overlay.overlay--filter::after  { bottom: -120px; right: -80px; background: radial-gradient(circle, rgba(103,232,249,0.18) 0%, transparent 60%); }
+  .ov-header--filter { border-bottom-color: rgba(167,139,250,0.40) !important; position: relative; }
+  .ov-header--filter::after {
+    content: ''; position: absolute; left: 50%; bottom: -1px;
+    width: 56px; height: 2px; transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, rgb(167,139,250), transparent);
+    border-radius: 2px;
+  }
+  .ov-header--filter .ov-title { color: rgb(196,181,253); letter-spacing: 0.02em; }
 
+  /* === SEARCH overlay — "Glass Ocean" ===
+     Personality: looking THROUGH depth. Cyan abyssal pools, soft caustic
+     ripples (concentric rings), aqua header. */
   .overlay.overlay--search {
     background:
-      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(103,232,249,0.16) 0%, transparent 65%),
-      radial-gradient(ellipse 50% 40% at 80% 100%, rgba(167,139,250,0.10) 0%, transparent 65%),
-      rgba(10, 18, 24, 0.96);
+      radial-gradient(ellipse 80% 50% at 50% 0%,  rgba(103,232,249,0.26) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 50% at 88% 50%, rgba(125,211,252,0.20) 0%, transparent 70%),
+      radial-gradient(ellipse 55% 45% at 10% 90%, rgba(167,139,250,0.14) 0%, transparent 65%),
+      rgba(8, 14, 22, 0.96);
+    position: relative;
   }
-  .overlay--search .ov-title { color: rgb(103,232,249); }
-  .overlay--search .ov-header { border-bottom-color: rgba(103,232,249,0.25); }
+  .overlay.overlay--search::before {
+    content: '';
+    position: absolute;
+    top: 38%; left: 50%;
+    width: 580px; height: 580px;
+    transform: translate(-50%, -50%);
+    background:
+      radial-gradient(circle, transparent 0%, transparent 38%, rgba(103,232,249,0.10) 39%, rgba(103,232,249,0.10) 40%, transparent 41%, transparent 60%, rgba(103,232,249,0.07) 61%, rgba(103,232,249,0.07) 62%, transparent 63%, transparent 82%, rgba(103,232,249,0.05) 83%, rgba(103,232,249,0.05) 84%, transparent 85%);
+    pointer-events: none;
+    z-index: 0;
+    animation: oceanRipple 9s ease-in-out infinite;
+  }
+  @keyframes oceanRipple {
+    0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+    50%      { opacity: 1.0; transform: translate(-50%, -50%) scale(1.10); }
+  }
+  .overlay--search .ov-title {
+    color: rgb(125,211,252);
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 18px rgba(103,232,249,0.45);
+  }
+  .overlay--search .ov-header {
+    border-bottom-color: rgba(103,232,249,0.40);
+    position: relative;
+  }
+  .overlay--search .ov-header::after {
+    content: ''; position: absolute; left: 50%; bottom: -1px;
+    width: 64px; height: 2px; transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, rgb(103,232,249), transparent);
+    border-radius: 2px;
+  }
 
+  /* === ALL TRACKS overlay — "Rose-Gold Library" ===
+     Personality: ceremonial, regal. Rose + champagne pools, four corner
+     filigree flourishes (radial blobs that suggest scrollwork), a thin
+     gold rule under the header. */
   .overlay.overlay--all {
     background:
-      radial-gradient(ellipse 70% 50% at 30% 0%, rgba(244,114,182,0.18) 0%, transparent 65%),
-      radial-gradient(ellipse 60% 45% at 80% 100%, rgba(253,186,116,0.13) 0%, transparent 65%),
-      rgba(22, 12, 18, 0.96);
+      radial-gradient(ellipse 80% 55% at 30% 0%,  rgba(244,114,182,0.28) 0%, transparent 65%),
+      radial-gradient(ellipse 75% 55% at 70% 0%,  rgba(252,211,77,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 65% 50% at 50% 100%,rgba(253,186,116,0.22) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 40% at 10% 60%, rgba(167,139,250,0.10) 0%, transparent 70%),
+      rgba(20, 10, 16, 0.96);
+    position: relative;
   }
-  .overlay--all .ov-title { color: rgb(244,114,182); }
-  .overlay--all .ov-header { border-bottom-color: rgba(244,114,182,0.25); }
+  .overlay.overlay--all::before,
+  .overlay.overlay--all::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    z-index: 0;
+    filter: blur(34px);
+  }
+  .overlay.overlay--all::before {
+    top: -90px; left: -70px;
+    background: radial-gradient(circle, rgba(252,211,77,0.32) 0%, transparent 60%);
+  }
+  .overlay.overlay--all::after {
+    bottom: -90px; right: -70px;
+    background: radial-gradient(circle, rgba(244,114,182,0.28) 0%, transparent 60%);
+  }
+  .overlay--all .ov-title {
+    background: linear-gradient(90deg, rgb(252,211,77) 0%, rgb(244,114,182) 50%, rgb(253,186,116) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 0.02em;
+    font-weight: 700;
+  }
+  .overlay--all .ov-header {
+    border-bottom-color: rgba(252,211,77,0.30);
+    position: relative;
+  }
+  .overlay--all .ov-header::after {
+    content: ''; position: absolute; left: 50%; bottom: -1px;
+    width: 84px; height: 2px; transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, rgb(252,211,77) 30%, rgb(244,114,182) 70%, transparent);
+    border-radius: 2px;
+  }
+  /* Make sure overlay content sits above the decorative ::before/::after layers */
+  .overlay.overlay--filter .ov-header,
+  .overlay.overlay--filter .ov-body,
+  .overlay.overlay--search .ov-header,
+  .overlay.overlay--search .ov-body,
+  .overlay.overlay--all .ov-header,
+  .overlay.overlay--all .ov-body { position: relative; z-index: 1; }
 
   .overlay.overlay--settings {
     background:
@@ -2307,36 +2436,77 @@
     padding: 4px 18px 20px;
     border-top: 1px solid rgba(167,139,250,0.18);
   }
+  /* "Spectrum" genre selector — every pill in its own signature colour pair.
+     Each one feels alive: a small dot in c1 glow + gradient edge + breathing
+     halo on selected. Reads as a rainbow of genres, not a list of chips. */
   .sf-genres {
-    display: flex; flex-wrap: wrap; gap: 8px;
+    display: flex; flex-wrap: wrap; gap: 10px;
   }
   .sf-genres button {
     appearance: none;
-    background: rgba(167,139,250,0.06);
-    border: 1px solid rgba(167,139,250,0.22);
+    background:
+      linear-gradient(135deg,
+        rgba(var(--g-c1, 167 139 250), 0.10) 0%,
+        rgba(var(--g-c2, 103 232 249), 0.06) 100%),
+      rgba(255,255,255,0.02);
+    border: 1px solid rgba(var(--g-c1, 167 139 250), 0.40);
     color: var(--text);
-    padding: 10px 14px;
+    padding: 11px 16px 11px 12px;
     border-radius: 999px;
-    font: 600 14px var(--font-body);
+    font: 700 14px var(--font-body);
+    letter-spacing: 0.01em;
     cursor: pointer;
-    transition: all 0.18s cubic-bezier(.2,.8,.2,1);
-    min-height: 44px;
-    display: inline-flex; align-items: center; gap: 8px;
+    transition: all 0.22s cubic-bezier(.2,.8,.2,1);
+    min-height: 46px;
+    display: inline-flex; align-items: center; gap: 10px;
+    position: relative;
+    box-shadow: 0 4px 14px -8px rgba(var(--g-c1, 167 139 250), 0.55);
   }
+  .sf-genres button .sf-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%,
+      rgb(var(--g-c1, 167 139 250)),
+      rgb(var(--g-c2, 103 232 249)));
+    box-shadow: 0 0 12px rgba(var(--g-c1, 167 139 250), 0.85),
+                0 0 4px rgba(var(--g-c2, 103 232 249), 0.6);
+    flex-shrink: 0;
+  }
+  .sf-genres button .sf-label { white-space: nowrap; }
   .sf-genres button:hover {
-    background: rgba(167,139,250,0.14);
-    border-color: rgba(167,139,250,0.40);
+    background:
+      linear-gradient(135deg,
+        rgba(var(--g-c1, 167 139 250), 0.18) 0%,
+        rgba(var(--g-c2, 103 232 249), 0.12) 100%),
+      rgba(255,255,255,0.02);
+    border-color: rgba(var(--g-c1, 167 139 250), 0.65);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px -8px rgba(var(--g-c1, 167 139 250), 0.65);
   }
   .sf-genres button.selected {
-    background: linear-gradient(180deg, rgba(167,139,250,0.32), rgba(167,139,250,0.14));
+    background:
+      linear-gradient(135deg,
+        rgba(var(--g-c1, 167 139 250), 0.38) 0%,
+        rgba(var(--g-c2, 103 232 249), 0.22) 100%);
     color: #fff;
-    border-color: rgba(167,139,250,0.85);
-    box-shadow: 0 6px 18px -6px rgba(167,139,250,0.55);
+    border-color: rgb(var(--g-c1, 167 139 250));
+    box-shadow:
+      0 0 0 3px rgba(var(--g-c1, 167 139 250), 0.20),
+      0 10px 26px -8px rgba(var(--g-c1, 167 139 250), 0.75);
+    animation: sfPulse 2.6s ease-in-out infinite;
+  }
+  @keyframes sfPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(var(--g-c1, 167 139 250), 0.18), 0 10px 26px -8px rgba(var(--g-c1, 167 139 250), 0.70); }
+    50%      { box-shadow: 0 0 0 6px rgba(var(--g-c1, 167 139 250), 0.28), 0 14px 34px -8px rgba(var(--g-c1, 167 139 250), 0.85); }
   }
   .sf-genres .sf-count {
-    font: 700 12px var(--font-body);
-    color: rgba(167,139,250,0.85);
-    opacity: 0.85;
+    font: 800 12px var(--font-body);
+    color: rgba(255,255,255,0.78);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(var(--g-c1, 167 139 250), 0.25);
+    border: 1px solid rgba(var(--g-c1, 167 139 250), 0.35);
+    margin-left: 2px;
   }
   .sf-empty {
     text-align: center;
@@ -2657,7 +2827,7 @@
   @media (min-width: 720px) {
     .stage { padding-top: calc(82px + env(safe-area-inset-top)); }
     .meta .title { font-size: 46px; }
-    .meta .by { font-size: 13px; }
+    .meta .by { font-size: 20px; }
     .ob-hero h1 { font-size: 62px; }
     .card { max-width: 560px; }
   }
@@ -2668,7 +2838,6 @@
 </head>
 <body>
 
-<div id="vibe-bg" aria-hidden="true"></div>
 <div id="album-tint" aria-hidden="true"></div>
 <!-- Decorative ornament layer — floating coloured particles + soft SVG
      flourishes drifting behind the content. Pure CSS animations, ~12KB of
@@ -2720,10 +2889,7 @@
   </div>
 </div>
 
-<!-- Share FAB -->
-<button type="button" class="fab" id="share-fab" hidden aria-label="поделиться">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
-</button>
+<!-- Share FAB removed — share moved entirely into Settings overlay -->
 
 <!-- Onboarding: pick user (only screen) -->
 <!-- Name-as-password gate. Shown to owners (Юля / Артур) on every fresh
@@ -2916,6 +3082,10 @@
       <button class="send-btn" id="send-report-btn" type="button" style="margin-top:8px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         <span data-i18n="settings.sendBtn"></span>
+      </button>
+      <button class="send-btn" id="share-from-settings-btn" type="button" style="margin-top:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <span>Поделиться ссылкой</span>
       </button>
     </div>
   </div>
@@ -3127,7 +3297,7 @@
       'cat.DJ Микки.short': 'DJ Микки', 'cat.DJ Микки.ctx': 'диджей-сет',
       'cat.Юля.short': 'Юля', 'cat.Юля.ctx': 'выход невесты',
       'cat.Вилла.short': 'Вилла', 'cat.Вилла.ctx': '10 июля · фон',
-      'card.placeAt': 'Куда определить · по желанию',
+      'card.placeAt': 'Куда определить',
       'card.commentPh': 'Мысли?',
       'card.skip': 'Дальше', 'card.skipWithNote': 'Сохранить и дальше', 'card.back': 'Назад',
       'card.remove': 'Удалить из списка',
@@ -3235,7 +3405,7 @@
       'cat.DJ Микки.short': 'DJ Micky', 'cat.DJ Микки.ctx': 'DJ set',
       'cat.Юля.short': 'Yulia', 'cat.Юля.ctx': 'bride entrance',
       'cat.Вилла.short': 'Villa', 'cat.Вилла.ctx': 'Jul 10 · background',
-      'card.placeAt': 'Place into · optional',
+      'card.placeAt': 'Place into',
       'card.commentPh': 'Note for this track',
       'card.skip': 'Next', 'card.skipWithNote': 'Save & next', 'card.back': 'Back',
       'card.remove': 'Remove from list',
@@ -3488,23 +3658,67 @@
     h = (h ^ (h >>> 16)) >>> 0;
     return h;
   }
+  // HSL → RGB triplet ("R G B" space-separated). h: 0-360, s/l: 0-100.
+  function hslToRgbTriplet(h, s, l) {
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const r = Math.round(f(0) * 255);
+    const g = Math.round(f(8) * 255);
+    const b = Math.round(f(4) * 255);
+    return `${r} ${g} ${b}`;
+  }
+  // Strict 0-255 validator — guards against an LLM that emits "999 0 0"
+  // (regex matched but result clamps to gibberish gradient).
+  function validRgbTriplet(s) {
+    if (!s || typeof s !== 'string') return false;
+    const parts = s.split(' ');
+    if (parts.length !== 3) return false;
+    for (const p of parts) {
+      const n = parseInt(p, 10);
+      if (!Number.isInteger(n) || n < 0 || n > 255 || String(n) !== p) return false;
+    }
+    return true;
+  }
   function songPalette(song) {
-    // Prefer the LLM-derived vibe colours when the backend has analyzed this
-    // track (lyrics → mood/theme → unique RGB pair authentic to the song).
-    // Falls back to the hashed-by-genre palette when vibe data is still
-    // pending (new adds while the background classifier is running, or
-    // tracks that failed analysis).
-    if (song?.vibe_c1 && song?.vibe_c2 && /^\d{1,3} \d{1,3} \d{1,3}$/.test(song.vibe_c1) && /^\d{1,3} \d{1,3} \d{1,3}$/.test(song.vibe_c2)) {
+    // 1) LLM vibe colours win when present (per-song mood-driven RGB).
+    if (validRgbTriplet(song?.vibe_c1) && validRgbTriplet(song?.vibe_c2)) {
       return [song.vibe_c1, song.vibe_c2];
     }
-    const fam = GENRE_FAMILY[song?.genre] || GENRE_FAMILY['Прочее'];
-    // Mix song id with year + first-letter codes so even cluster of sequential
-    // ids feels varied (D1 inserts often land in chunks of similar genre).
-    const seed = (song?.id || 0)
-      + ((song?.year && song.year > 0) ? song.year * 31 : 0)
-      + (String(song?.artist || '').charCodeAt(0) * 7919);
-    const idx = fam[songHash(seed) % fam.length];
-    return SONG_PALETTES[idx] || SONG_PALETTES[0];
+    // 2) Math-derived fallback: hash song-id → hue on the full 360° wheel
+    //    → analogous colour pair. Every song gets a visually distinct
+    //    palette even before the LLM backfill catches up. Bias by genre
+    //    via a hue offset so warm/cool genres still cluster loosely.
+    const id = song?.id || 0;
+    const h32 = songHash(id);
+    const baseHue = (h32 % 360);
+    // Per-genre hue offset (small nudge, not a hard cluster).
+    const GENRE_HUE = {
+      'Поп': 0,
+      'Эстрада': 20,
+      'R&B': 320,
+      'Рок': 10,
+      'Электроника': 200,
+      'Чилл': 170,
+      'Хип-хоп': 280,
+      'Джаз': 45,
+      'Классика': 40,
+      'Шансон': 30,
+      'Кантри': 80,
+      'Прочее': 0,
+    };
+    const offset = GENRE_HUE[song?.genre] != null ? GENRE_HUE[song.genre] : 0;
+    const h = (baseHue + offset) % 360;
+    // Saturation + lightness vary per-song too (different "feel").
+    const satA = 70 + ((h32 >>> 8) % 18);   // 70-87
+    const lightA = 56 + ((h32 >>> 16) % 12); // 56-67
+    const satB = 65 + ((h32 >>> 24) % 22);   // 65-86
+    const lightB = 50 + ((h32 >>> 12) % 18); // 50-67
+    // Analogous (close on the wheel) for cohesion, not random.
+    const c1 = hslToRgbTriplet(h, satA, lightA);
+    const c2 = hslToRgbTriplet((h + 35) % 360, satB, lightB);
+    return [c1, c2];
   }
   /* Drives the live body-background gradient to match the currently-playing
      track. Two CSS variables on <body> are read by the radial-gradient layers
@@ -4107,7 +4321,11 @@
   function showScreen(name) {
     for (const k in screens) screens[k].hidden = (k !== name);
     topBarEl.hidden = (name !== 'discovery' && name !== 'catpick');
-    document.getElementById('share-fab').hidden = (name !== 'discovery');
+    // Always refresh the X-of-Y chip when we land on the player. Multiple
+    // entry paths skip the loadNext() that normally sets these — name-gate,
+    // remembered-song resume, cat switch, etc. — so we drive it from here.
+    if (name === 'discovery' && userName) { try { refreshProgress(); } catch {} }
+    // Share moved into settings overlay; no FAB on the player stage.
     // Hide cat-current chip on the picker (we're already picking). For guests
     // (Lovers / DJ Микки) it stays hidden everywhere — they can't switch.
     const catChip = document.getElementById('cat-current');
@@ -4253,11 +4471,38 @@
       seenStack.push(remembered);
       seenIdx = 0;
       renderCard(remembered);
+      // Resume-path skips loadNext, so the progress chip would stay at "…".
+      // Fetch stats directly to fill it.
+      refreshProgress();
     } else {
       seenStack.length = 0;
       seenIdx = -1;
       progressN = 0;
       loadNext();
+    }
+  }
+  async function refreshProgress() {
+    if (!userName) return;
+    try {
+      const r = await fetchWithRetry(`${API}/api/library/stats?user=${encodeURIComponent(userName)}`);
+      if (!r || !r.ok) {
+        console.warn('refreshProgress failed', r && r.status);
+        return;
+      }
+      const d = await r.json();
+      console.log('refreshProgress', d);
+      if (typeof d?.total === 'number') {
+        progressTotal = d.total;
+        const pt = document.getElementById('progress-total');
+        if (pt) pt.textContent = String(d.total);
+      }
+      if (typeof d?.processed === 'number') {
+        progressN = d.processed;
+        const pn = document.getElementById('progress-n');
+        if (pn) pn.textContent = String(d.processed);
+      }
+    } catch (e) {
+      console.warn('refreshProgress threw', e?.message);
     }
   }
   // Locally-known soft-removed song IDs — written when mom removes a song
@@ -4322,8 +4567,8 @@
     // the same track. Cheap localStorage write, irrelevant to performance.
     try { rememberCurrentSong(song); } catch {}
     try { applyBodyVibe(song); } catch {}
-    const yearStr = song.year ? `<span class="year">${song.year}</span>` : '';
-    const noYearCls = song.year ? '' : ' no-year';
+    const hasYear = !!(song.year && song.year > 0);
+    const yearInline = hasYear ? ` <span class="year-chip">${song.year}</span>` : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
     /* Per-song colour palette — UNIQUE per track. Each song gets its own
        tactile colour identity from a curated 24-palette set tuned by genre
@@ -4352,7 +4597,7 @@
              of the visual hierarchy until needed. -->
         <div class="meta">
           <div class="title">${escapeHtml(song.title)}</div>
-          <div class="by${noYearCls}">${escapeHtml(song.artist)}${yearStr ? ' ' + yearStr : ''}</div>
+          <div class="by">${escapeHtml(song.artist)}${yearInline}</div>
           ${addedTag}
         </div>
         <div class="comment-row">
@@ -5104,17 +5349,22 @@
     }
   }
   async function loadNext() {
-    // Only update the counter if we already have a confirmed total (user
-    // has advanced at least one card or the server responded once). At
-    // first boot progressN is 0 — showing "0" briefly looks like progress
-    // got wiped, so we keep the "…" placeholder until /api/library/next
-    // confirms the real values below.
-    if (progressN > 0 || progressTotal > 0) {
-      document.getElementById('progress-n').textContent = fmt(progressN);
+    // Show whatever total/processed we already have so the chip never sits
+    // at "…" longer than the first network hop.
+    if (progressTotal > 0) {
+      const pt = document.getElementById('progress-total');
+      if (pt) pt.textContent = String(progressTotal);
+    }
+    if (progressN > 0) {
+      const pn = document.getElementById('progress-n');
+      if (pn) pn.textContent = String(progressN);
     }
     if (seenIdx < seenStack.length - 1) {
       seenIdx++;
       renderCard(seenStack[seenIdx]);
+      // Re-render path doesn't hit apiNext — refresh stats explicitly so the
+      // X-of-Y chip stays current as mom navigates.
+      refreshProgress();
       return;
     }
     let d;
@@ -5239,7 +5489,28 @@
       wrap.innerHTML = '<div class="sf-empty">Пока нет размеченных жанров.</div>';
       return;
     }
-    wrap.innerHTML = present.map(([g, n]) => `<button type="button" data-g="${escapeHtml(g)}" class="${sfDraft.genre === g ? 'selected' : ''}"><span>${escapeHtml(g)}</span><span class="sf-count">${fmt(n)}</span></button>`).join('');
+    // Each genre carries a signature colour pair — so the filter list reads
+    // as a colourful spectrum, not a wall of identical lavender chips.
+    const GENRE_FILTER_COLORS = {
+      'Поп':         ['244 114 182', '252 211 77'],
+      'Эстрада':     ['253 186 116', '244 114 182'],
+      'R&B':         ['244 114 182', '167 139 250'],
+      'Рок':         ['239 68 68',   '252 165 80'],
+      'Электроника': ['103 232 249', '167 139 250'],
+      'Чилл':        ['134 239 172', '103 232 249'],
+      'Хип-хоп':     ['168 85 247',  '236 72 153'],
+      'Джаз':        ['252 211 77',  '253 186 116'],
+      'Классика':    ['232 232 220', '252 211 77'],
+      'Шансон':      ['180 100 100', '252 211 77'],
+      'Кантри':      ['253 186 116', '134 239 172'],
+      'Прочее':      ['212 164 92',  '244 114 182'],
+    };
+    wrap.innerHTML = present.map(([g, n]) => {
+      const pal = GENRE_FILTER_COLORS[g] || GENRE_FILTER_COLORS['Прочее'];
+      const sty = `--g-c1:${pal[0]};--g-c2:${pal[1]};`;
+      const sel = sfDraft.genre === g ? 'selected' : '';
+      return `<button type="button" data-g="${escapeHtml(g)}" class="${sel}" style="${sty}"><span class="sf-dot"></span><span class="sf-label">${escapeHtml(g)}</span><span class="sf-count">${fmt(n)}</span></button>`;
+    }).join('');
     wrap.querySelectorAll('button').forEach(b => {
       b.addEventListener('click', () => {
         const g = b.dataset.g;
@@ -5292,7 +5563,7 @@
     seenStack.length = 0; seenIdx = -1;
     loadNext();
   });
-  document.getElementById('share-fab')?.addEventListener('click', doShare);
+  document.getElementById('share-from-settings-btn')?.addEventListener('click', doShare);
 
   /* ===== Overlay open/close ===== */
   function openOv(id) {
@@ -5453,8 +5724,12 @@
       const seedComment = (s.my_comment && s.my_comment.trim())
         ? `<div class="tc-comment"><div class="tc-comment__head"><span class="tc-comment__by">${escapeHtml(userName)}</span>${myCat ? '<span class="tc-comment__cat">→ ' + escapeHtml(t(`cat.${myCat}.short`) || myCat) + '</span>' : ''}${s.my_rating ? '<span class="tc-comment__rating">★ ' + s.my_rating + '/10</span>' : ''}</div><div class="tc-comment__text">«${escapeHtml(s.my_comment.trim())}»</div></div>`
         : '';
+      // Per-card vibe colors — same songPalette as the player, so the same
+      // song has the same colour identity everywhere on the site.
+      const tcPal = songPalette(s);
+      const tcStyle = `--song-c1:${tcPal[0]};--song-c2:${tcPal[1]};`;
       return `
-        <div class="tc-card" data-id="${s.id}" data-yt="${escapeHtml(s.youtube_id || '')}">
+        <div class="tc-card" data-id="${s.id}" data-yt="${escapeHtml(s.youtube_id || '')}" style="${tcStyle}">
           <div class="tc-card__delete-layer" aria-hidden="true">
             <span class="lbl">${escapeHtml(lang === 'ru' ? 'удалить' : 'delete')}</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/></svg>
@@ -6617,15 +6892,33 @@
   function recomputeKbdOffset() {
     const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
     const vyOffset = (window.visualViewport && window.visualViewport.offsetTop) || 0;
-    const off = Math.max(0, baseInnerH - vh - vyOffset);
-    document.documentElement.style.setProperty('--kbd-offset', off + 'px');
-    document.body.classList.toggle('kbd-open', off > 80);
+    const rawOff = Math.max(0, baseInnerH - vh - vyOffset);
+    // Only treat the viewport shrink as "keyboard" when:
+    //   1. It's > 200px (Android URL-bar autohide is ~60-100px — without
+    //      this guard, scroll-to-hide-bars steals layout room AND falsely
+    //      triggers kbd-open, hiding the player + artist line).
+    //   2. A text-input element is actually focused. Keyboards don't open
+    //      without focus, so this is a definitive signal.
+    const ae = document.activeElement;
+    const tag = ae && ae.tagName;
+    const editing = (tag === 'INPUT' && ae.type !== 'button' && ae.type !== 'submit') || tag === 'TEXTAREA' || (ae && ae.isContentEditable);
+    const isKeyboard = rawOff > 200 && editing;
+    // The --kbd-offset CSS var is consumed by .stage's bottom padding. We
+    // ONLY want to expand that padding when a real keyboard is open — not
+    // when the Android URL bar pops in and out.
+    document.documentElement.style.setProperty('--kbd-offset', isKeyboard ? (rawOff + 'px') : '0px');
+    document.body.classList.toggle('kbd-open', isKeyboard);
   }
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', recomputeKbdOffset);
     window.visualViewport.addEventListener('scroll', recomputeKbdOffset);
   }
   window.addEventListener('resize', recomputeKbdOffset);
+  // Focus changes also affect the kbd-open decision (we now require an
+  // active text input). Re-evaluate when focus moves in/out of editable
+  // fields so collapsing/expanding the player tracks the textarea correctly.
+  document.addEventListener('focusin', recomputeKbdOffset);
+  document.addEventListener('focusout', () => setTimeout(recomputeKbdOffset, 50));
   recomputeKbdOffset();
 
   /* ===== Boot ===== */
