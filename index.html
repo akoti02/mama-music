@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-overlays-with-character -->
+<!-- build: 2026-05-12T-song-plaque -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -547,22 +547,33 @@
     overflow: hidden;
     transition: padding-bottom 0.22s ease, padding-top 0.22s ease;
   }
+  /* Progress pill — a small floating chip at the top of the stage, with a
+     soft gold-rose gradient and bold tabular numerals. Unmissable, can't
+     be confused with "lost progress", and stays out of the way of the
+     song's typography below. */
   .progress-line {
-    text-align: center;
-    /* Lifted from --text-muted to --text-dim and bumped font 10 → 13px so
-       mom can read "X из N треков" without squinting on iPhone. */
-    color: var(--text-dim);
-    font-size: 13px; letter-spacing: 0.16em; font-weight: 800;
+    align-self: center;
+    margin: 0 auto 18px;
+    padding: 8px 18px;
+    background:
+      linear-gradient(135deg, rgba(252,211,77,0.18), rgba(244,114,182,0.15));
+    border: 1px solid rgba(252,211,77,0.40);
+    border-radius: 999px;
+    box-shadow: 0 6px 20px -8px rgba(252,211,77,0.45);
+    color: var(--text);
+    font-size: 14px; letter-spacing: 0.10em; font-weight: 700;
     text-transform: uppercase;
-    margin-bottom: 18px;
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
+    display: inline-flex; align-items: baseline; gap: 6px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
   .progress-line .n {
-    color: var(--gold-bright);
-    /* Brighter gold + larger numerals — the actual counter is what mom
-       cares about, not the surrounding "из / треков". */
-    font-size: 15px;
+    color: rgb(252, 211, 77);
+    font-size: 18px;
+    font-weight: 800;
+    text-shadow: 0 0 14px rgba(252,211,77,0.5);
   }
   #card-host {
     flex: 1; min-height: 0;
@@ -739,44 +750,95 @@
   /* ===== Meta (title + artist) — re-centered, the focal point of the card.
      Delete + retry have moved into the video frame's top corners so they
      don't compete with the song info. */
+  /* SONG META — redesigned as a card-within-the-card. Pulls the typography
+     out of the dark video halo by giving the song name + artist + year their
+     own gradient backdrop. The colour of the backdrop is driven by the song's
+     genre (via inline --song-c1/c2 vars set by JS) so EVERY song carries a
+     unique tone derived from its genre. The meta also gets two decorative
+     edge accents (left + right) for a "framed plaque" feel. */
   .meta {
     text-align: center;
-    margin-bottom: 0;
-    padding: 0 4px;
+    margin: 0 -4px;
+    padding: 22px 22px 18px;
+    position: relative;
+    border-radius: 22px;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.30), rgba(0,0,0,0.55)),
+      linear-gradient(135deg,
+        rgba(var(--song-c1, 244 114 182), 0.32) 0%,
+        rgba(var(--song-c2, 252 211 77), 0.18) 100%);
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 16px 40px -16px rgba(var(--song-c1, 244 114 182), 0.55),
+      0 6px 18px -6px rgba(var(--song-c2, 252 211 77), 0.30);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    overflow: hidden;
   }
-  /* TITLE — the hero. Big, warm-white with a soft gold-rose underline glow.
-     Word-wrap to 2 lines max, ellipsis on overflow. */
+  /* Decorative top-left + bottom-right corner flourishes — small swooshes
+     in the song's accent gradient. Pure CSS, no images. */
+  .meta::before, .meta::after {
+    content: '';
+    position: absolute;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(var(--song-c1, 244 114 182), 0.5) 0%,
+      transparent 65%);
+    pointer-events: none;
+    filter: blur(8px);
+  }
+  .meta::before { top: -28px; left: -28px; }
+  .meta::after { bottom: -32px; right: -32px;
+    background: radial-gradient(circle, rgba(var(--song-c2, 252 211 77), 0.5) 0%, transparent 65%);
+  }
+  /* TITLE — large, in white-to-accent gradient text. Stands out against the
+     framed gradient backdrop instead of melting into the video's dark halo. */
   .meta .title {
     font-family: var(--font-display);
-    font-size: 34px; font-weight: 400;
-    letter-spacing: -0.018em; line-height: 1.10;
-    color: #fff; word-wrap: break-word;
+    font-size: 38px; font-weight: 400;
+    letter-spacing: -0.020em; line-height: 1.08;
+    word-wrap: break-word;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    text-shadow: 0 1px 0 rgba(0,0,0,0.4), 0 0 28px rgba(244,114,182,0.15);
+    background: linear-gradient(180deg,
+      #fff 0%,
+      rgb(var(--song-c1, 244 114 182)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    position: relative;
+    z-index: 1;
   }
-  .meta .title em { font-style: italic; color: rgba(255,255,255,0.98); }
-  /* ARTIST — rose-tinted, larger and uppercased with a hairline gold dot
-     separator before the year. Reads as the secondary headline, not a tiny
-     caption. */
+  .meta .title em { font-style: italic; }
+  /* ARTIST + YEAR side-by-side, separated by a · in the song's gold accent.
+     Year fills with the second accent colour for "two-tone" recognition.
+     Year hidden gracefully when missing — no orphan dot. */
   .meta .by {
-    margin-top: 10px;
-    font-size: 17px;
-    color: rgb(244, 114, 182);
+    margin-top: 14px;
+    font-size: 19px;
+    color: #fff;
     font-weight: 700;
     letter-spacing: 0.04em;
-    text-shadow: 0 0 18px rgba(244,114,182,0.30);
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.40);
   }
-  /* YEAR — warm gold pill that visually anchors the year, separates it from
-     the artist with a centred bullet · in muted lavender. */
   .meta .by .year {
-    color: rgb(252, 211, 77);
+    color: rgb(var(--song-c2, 252 211 77));
     margin-left: 10px;
+    padding-left: 10px;
+    border-left: 1px solid rgba(255,255,255,0.30);
     font-weight: 800;
-    text-shadow: 0 0 18px rgba(252,211,77,0.35);
+    font-size: 17px;
+    letter-spacing: 0.02em;
   }
+  .meta .by.no-year .year { display: none; }
   .meta .added-tag {
     display: inline-flex; align-items: center; gap: 5px;
     margin-top: 6px;
@@ -792,25 +854,42 @@
   /* ===== Comment ===== */
   .comment-row { margin-bottom: 0; }
   .comment-row textarea {
-    width: 100%; min-height: 46px;
-    padding: 12px 16px;
-    background: var(--surface);
-    backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    color: var(--text);
+    width: 100%; min-height: 54px;
+    padding: 16px 20px;
+    /* Per-song-tinted comment field — picks up the same accent colours as
+       the song-meta card above. The placeholder "Мысли?" reads in the
+       song's gradient so it visually ties to the track instead of being
+       a flat grey input box. */
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.40)),
+      linear-gradient(135deg,
+        rgba(var(--song-c1, 244 114 182), 0.15) 0%,
+        rgba(var(--song-c2, 252 211 77), 0.08) 100%);
+    backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    border: 1px solid rgba(var(--song-c1, 244 114 182), 0.32);
+    border-radius: 18px;
+    color: #fff;
     font-family: var(--font-display);
-    font-size: 16px; line-height: 1.35;
+    font-size: 18px; line-height: 1.35;
     font-weight: 400; letter-spacing: -0.005em;
     resize: none; overflow: hidden;
     transition: border-color 0.22s, background 0.22s, box-shadow 0.22s;
+    box-shadow: 0 6px 18px -8px rgba(var(--song-c1, 244 114 182), 0.40);
   }
-  .comment-row textarea::placeholder { color: var(--text-muted); font-style: italic; }
+  .comment-row textarea::placeholder {
+    color: rgba(255,255,255,0.55);
+    font-style: italic;
+    font-weight: 500;
+  }
   .comment-row textarea:focus {
     outline: none;
-    border-color: rgba(var(--art-r), var(--art-g), var(--art-b), 0.65);
-    background: rgba(var(--art-r), var(--art-g), var(--art-b), 0.04);
-    box-shadow: 0 0 0 4px rgba(var(--art-r), var(--art-g), var(--art-b), 0.08);
+    border-color: rgba(var(--song-c1, 244 114 182), 0.75);
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.20), rgba(0,0,0,0.32)),
+      linear-gradient(135deg,
+        rgba(var(--song-c1, 244 114 182), 0.22) 0%,
+        rgba(var(--song-c2, 252 211 77), 0.12) 100%);
+    box-shadow: 0 0 0 4px rgba(var(--song-c1, 244 114 182), 0.18);
   }
 
   /* ===== Rating row (primary action) ===== */
@@ -3031,7 +3110,7 @@
       'cat.Юля.short': 'Юля', 'cat.Юля.ctx': 'выход невесты',
       'cat.Вилла.short': 'Вилла', 'cat.Вилла.ctx': '10 июля · фон',
       'card.placeAt': 'Куда определить · по желанию',
-      'card.commentPh': 'Заметка к треку',
+      'card.commentPh': 'Мысли?',
       'card.skip': 'Дальше', 'card.skipWithNote': 'Сохранить и дальше', 'card.back': 'Назад',
       'card.remove': 'Удалить из списка',
       'player.notWorking': 'Не работает? Найти другое',
@@ -4126,8 +4205,30 @@
     // Snapshot the current song so a tab close / browser quit can resume on
     // the same track. Cheap localStorage write, irrelevant to performance.
     try { rememberCurrentSong(song); } catch {}
-    const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
+    const yearStr = song.year ? `<span class="year">${song.year}</span>` : '';
+    const noYearCls = song.year ? '' : ' no-year';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
+    /* Per-song colour palette — drives the .meta gradient backdrop, title
+       text-gradient, and corner blooms. Mapped from genre so every Поп
+       track shares one rose-gold flavour, every Рок track shares
+       orange-red, etc. — gives mom a tactile sense of "yes this looks
+       like a Pop song" before she even reads the artist. */
+    const GENRE_COLORS = {
+      'Поп':         ['244 114 182', '252 211 77'],   // rose → gold
+      'Рок':         ['239 68 68',   '252 165 80'],   // red → ember
+      'Электроника': ['103 232 249', '167 139 250'],  // cyan → lavender
+      'Хип-хоп':     ['167 139 250', '244 114 182'],  // lavender → rose
+      'R&B':         ['244 114 182', '167 139 250'],  // rose → lavender
+      'Чилл':        ['134 239 172', '103 232 249'],  // mint → cyan
+      'Джаз':        ['252 211 77',  '253 186 116'],  // gold → peach
+      'Классика':    ['232 232 220', '252 211 77'],   // cream → gold
+      'Эстрада':     ['253 186 116', '244 114 182'],  // peach → rose
+      'Шансон':      ['180 100 100', '252 211 77'],   // maroon → gold
+      'Кантри':      ['253 186 116', '134 239 172'],  // peach → mint
+      'Прочее':      ['212 164 92',  '244 114 182'],  // gold → rose
+    };
+    const palette = GENRE_COLORS[song.genre] || GENRE_COLORS['Прочее'];
+    const songStyle = `--song-c1:${palette[0]};--song-c2:${palette[1]};`;
     // All 6 categories are pills on the card. LOVERS / DJ Микки tags here are
     // propagated to the lovers_songs / dj_songs tables on the server so the
     // shared workspaces stay in sync automatically.
@@ -4137,7 +4238,7 @@
     const savedComment = drafts[song.id] || '';
 
     cardHost.innerHTML = `
-      <div class="card" id="card">
+      <div class="card" id="card" style="${songStyle}">
         <div class="yt-wrap loading" id="yt-wrap">
           <div id="yt-host"></div>
         </div>
@@ -4148,7 +4249,7 @@
              of the visual hierarchy until needed. -->
         <div class="meta">
           <div class="title">${escapeHtml(song.title)}</div>
-          <div class="by">${escapeHtml(song.artist)} ${yearStr}</div>
+          <div class="by${noYearCls}">${escapeHtml(song.artist)}${yearStr ? ' ' + yearStr : ''}</div>
           ${addedTag}
         </div>
         <div class="comment-row">
