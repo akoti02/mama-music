@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-auto-reload-and-save-safety -->
+<!-- build: 2026-05-12T-name-gate-and-lock -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -249,6 +249,98 @@
   .fab:hover { transform: scale(1.06); box-shadow: 0 24px 50px -10px var(--gold), 0 6px 14px -2px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.4); }
   .fab:active { transform: scale(0.93); }
   .fab svg { width: 22px; height: 22px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.18)); }
+
+  /* ===== Name gate (password-via-name screen) =====
+     Full-screen, calm, elegant. One input + one button. The input is
+     intentionally placeholder-less per the spec — guests shouldn't even
+     see a hint of what to type. */
+  .name-gate {
+    position: fixed; inset: 0;
+    z-index: 260;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 30%, rgba(212,164,92,0.10) 0%, transparent 65%),
+      var(--bg);
+  }
+  .name-gate__inner {
+    width: 100%; max-width: 360px;
+    display: flex; flex-direction: column; align-items: stretch;
+    gap: 18px;
+  }
+  .name-gate__brand {
+    font-family: var(--font-display);
+    font-size: 28px; font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    text-align: center;
+    margin-bottom: 14px;
+    font-style: italic;
+    opacity: 0.85;
+  }
+  .name-gate__form {
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .name-gate__input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 18px 22px;
+    background: var(--surface);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 22px; line-height: 1.2;
+    letter-spacing: -0.005em;
+    text-align: center;
+    /* No native iOS autocomplete dropdown — placeholder is empty per spec
+       so the dropdown would suggest random history values which leaks past
+       sessions and looks unprofessional. */
+    -webkit-appearance: none;
+    appearance: none;
+    /* Smooth focus transition, no harsh outline jumps. */
+    transition: border-color 0.22s, box-shadow 0.22s, background 0.22s;
+  }
+  .name-gate__input:focus {
+    outline: none;
+    border-color: rgba(212,164,92,0.6);
+    background: rgba(212,164,92,0.05);
+    box-shadow: 0 0 0 4px rgba(212,164,92,0.10);
+  }
+  .name-gate__btn {
+    appearance: none;
+    padding: 16px 22px;
+    background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+    color: #0a0a0d;
+    border: 0;
+    border-radius: 14px;
+    font-family: var(--font-body);
+    font-size: 16px; font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    min-height: 52px;
+    box-shadow: 0 16px 38px -14px rgba(212,164,92,0.55);
+    transition: transform 0.15s, box-shadow 0.18s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .name-gate__btn:active { transform: scale(0.98); }
+  .name-gate__btn:disabled {
+    opacity: 0.6; cursor: default;
+    box-shadow: none;
+  }
+  .name-gate__error {
+    text-align: center;
+    color: #e8a4a4;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    margin-top: 4px;
+    min-height: 18px;
+    transition: opacity 0.2s;
+  }
 
   /* ===== Onboarding ===== */
   .onboard {
@@ -2211,6 +2303,34 @@
 </button>
 
 <!-- Onboarding: pick user (only screen) -->
+<!-- Name-as-password gate. Shown to owners (Юля / Артур) on every fresh
+     session before they can see the main app. Guests on /lovers and /dj
+     never see it — their path-based identity bypasses the gate. The only
+     way through is to type "Юля" or "Артур" (in any case, Russian or
+     Latin). Guests don't know these names, so accidentally visiting
+     akoev.com leaves them locked out. -->
+<div id="name-gate" class="name-gate" hidden>
+  <div class="name-gate__inner">
+    <div class="name-gate__brand">Музыка к венчанию</div>
+    <form class="name-gate__form" id="name-gate-form" autocomplete="off">
+      <input
+        type="text"
+        id="name-gate-input"
+        class="name-gate__input"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="words"
+        spellcheck="false"
+        inputmode="text"
+        enterkeyhint="go"
+        aria-label="вход"
+      >
+      <button type="submit" id="name-gate-submit" class="name-gate__btn">Войти</button>
+    </form>
+    <div id="name-gate-error" class="name-gate__error" hidden></div>
+  </div>
+</div>
+
 <div id="ob-screen" class="onboard" hidden>
   <div class="ob-inner">
     <div class="ob-hero">
@@ -2460,7 +2580,7 @@
 </button>
 
 <script>
-(function() {
+(async function() {
   'use strict';
   /* ===== Constants ===== */
   const API = 'https://api.akoev.com';
@@ -5436,8 +5556,13 @@
     } catch {}
     try { localStorage.removeItem(K_SNAPSHOTS); for (const k of Object.keys(snapshots)) delete snapshots[k]; } catch {}
     try { localStorage.removeItem(K_DRAFTS); for (const k of Object.keys(drafts)) delete drafts[k]; } catch {}
+    // Drop the name-gate session cookie too — the next person on this device
+    // must type their name again, no auto-resume of the previous identity.
+    try { clearNameAuth(); } catch {}
     closeOv('settings-overlay');
-    showScreen('ob');
+    // Reload instead of showing the picker — the name-gate at boot is now
+    // the canonical entry, and lazy-rewiring the discovery screen is risky.
+    try { location.reload(); } catch { showScreen('ob'); }
   });
   document.getElementById('send-report-btn').addEventListener('click', async () => {
     const ok = confirm(t('confirm.send'));
@@ -5890,6 +6015,79 @@
 
   applyStaticI18n();
 
+  /* ===== Name-as-password gate =====
+     Owners (Юля / Артур) must type their name on each fresh session before
+     the main app loads. Guests (Lovers / DJ Микки) on /lovers and /dj
+     bypass this entirely. Session is held by a 24-hour rolling cookie —
+     survives backgrounding the browser app, expires when the tab is
+     genuinely killed or after a day of inactivity. */
+  const NAME_AUTH_COOKIE = 'mm_name_authed';
+  // Accept both Russian and Latin spellings, any case. Translit variants
+  // included so visitors typing on an English keyboard still get in.
+  const NAME_VARIANTS_YULIA = ['юля', 'yulia', 'yulya', 'julia', 'julya', 'iulia', 'ulia', 'yuliya'];
+  const NAME_VARIANTS_ARTUR = ['артур', 'arthur', 'artur', 'artyr', 'artura'];
+  function normalizeNameInput(raw) {
+    const t = String(raw || '').trim().toLowerCase().replace(/\s+/g, '');
+    if (!t) return null;
+    if (NAME_VARIANTS_YULIA.includes(t)) return 'Юля';
+    if (NAME_VARIANTS_ARTUR.includes(t)) return 'Артур';
+    return null;
+  }
+  function isNameAuthed() {
+    // Cookie presence = authed this session. Cookie is renewed on every
+    // successful gate pass, so 24h of activity keeps the session alive
+    // without re-prompting; closing the tab eventually drops the cookie
+    // (max-age expiry) and the next visit re-prompts.
+    return !!getCookie(NAME_AUTH_COOKIE);
+  }
+  function markNameAuthed() {
+    // 24-hour rolling expiry — long enough that backgrounding Safari and
+    // returning hours later still skips the gate, but short enough that
+    // a phone someone borrowed yesterday re-prompts today.
+    setCookie(NAME_AUTH_COOKIE, '1', 1);
+  }
+  function clearNameAuth() {
+    setCookie(NAME_AUTH_COOKIE, '', -1);
+  }
+  function showNameGate() {
+    return new Promise((resolve) => {
+      const gate = document.getElementById('name-gate');
+      const form = document.getElementById('name-gate-form');
+      const input = document.getElementById('name-gate-input');
+      const errorEl = document.getElementById('name-gate-error');
+      if (!gate || !form || !input) { resolve(null); return; }
+      gate.hidden = false;
+      // Defer focus so iOS Safari has time to commit the DOM mutation —
+      // otherwise the input.focus() can fire before the element is layout-
+      // ready and the keyboard doesn't open.
+      setTimeout(() => { try { input.focus(); } catch {} }, 80);
+      const attempt = (e) => {
+        if (e) e.preventDefault();
+        const resolved = normalizeNameInput(input.value);
+        if (!resolved) {
+          errorEl.textContent = 'Не совпало. Попробуй ещё раз.';
+          errorEl.hidden = false;
+          // Don't wipe the input — let the user correct in place. iOS users
+          // would have to retype the whole name otherwise, which is rough.
+          input.focus();
+          input.select();
+          return;
+        }
+        markNameAuthed();
+        userName = resolved;
+        try { lsSet(K_NAME, userName); } catch {}
+        try { setCookie('mm_user', userName, 90); } catch {}
+        // Smooth fade-out of the gate, then resolve the promise so boot
+        // continues. 200ms is enough to feel intentional, short enough not
+        // to feel laggy.
+        gate.style.transition = 'opacity 0.25s ease';
+        gate.style.opacity = '0';
+        setTimeout(() => { gate.hidden = true; gate.style.opacity = ''; resolve(resolved); }, 260);
+      };
+      form.addEventListener('submit', attempt);
+    });
+  }
+
   // Path-based guest entry: /lovers or /dj. If the visitor isn't an owner
   // (Юля/Артур from prior main-app visit), they post as the group name and
   // are locked to that category. Owners visiting /lovers or /dj keep their
@@ -5898,8 +6096,29 @@
   const guestCat = (path === 'lovers') ? 'LOVERS'
                  : (path === 'dj') ? 'DJ Микки'
                  : null;
+  // Hard guest-lock: the _worker.js stamps `mm_guest_lock=LOVERS` (or `DJ`)
+  // on every visit to /lovers or /dj. If that cookie is present on this
+  // device AND someone tries to visit the owner-facing root, we bounce
+  // them straight back to the guest portal. Defense beyond the worker-side
+  // 302, which Cloudflare CDN may swallow due to edge caching.
+  if (!guestCat) {
+    const lockedAs = getCookie('mm_guest_lock');
+    if (lockedAs === 'LOVERS') { window.location.replace('/lovers'); return; }
+    if (lockedAs === 'DJ') { window.location.replace('/dj'); return; }
+  }
   const isOwner = (userName === 'Юля' || userName === 'Артур');
   const isGuest = (userName === 'Lovers' || userName === 'DJ Микки');
+
+  // Show name gate if we're on an owner-facing path AND no fresh session
+  // cookie is present. This is the LAST line of defense — guests who
+  // bypass the worker-side cookie-lock (e.g. brand-new device, never
+  // visited /lovers) still can't get past the gate because they don't
+  // know mom's or Артур's name. Gate is async; we await it before any
+  // other boot work fires.
+  if (!guestCat && !isNameAuthed()) {
+    await showNameGate();
+    // After gate passes, userName is set; isOwner needs to be re-evaluated.
+  }
   // Stale-guest cleanup: a guest user who lands on root (no guestCat path)
   // shouldn't see the owners' cat-picker. Send them back to their own portal,
   // which re-anchors the guest scope and avoids confusing assign failures.
@@ -5981,7 +6200,8 @@
             } catch {}
             try { localStorage.removeItem(K_SNAPSHOTS); for (const k of Object.keys(snapshots)) delete snapshots[k]; } catch {}
             try { localStorage.removeItem(K_DRAFTS); for (const k of Object.keys(drafts)) delete drafts[k]; } catch {}
-            showScreen('ob');
+            try { clearNameAuth(); } catch {}
+            try { location.reload(); } catch { showScreen('ob'); }
           });
         }
       }
