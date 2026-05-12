@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-12T-warm-and-elegant -->
+<!-- build: 2026-05-12T-overlays-with-character -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -744,25 +744,39 @@
     margin-bottom: 0;
     padding: 0 4px;
   }
+  /* TITLE — the hero. Big, warm-white with a soft gold-rose underline glow.
+     Word-wrap to 2 lines max, ellipsis on overflow. */
   .meta .title {
     font-family: var(--font-display);
-    font-size: 28px; font-weight: 400;
-    letter-spacing: -0.015em; line-height: 1.15;
-    color: var(--text); word-wrap: break-word;
-    /* Cap at 2 lines for predictability + ellipsis on overflow. */
+    font-size: 34px; font-weight: 400;
+    letter-spacing: -0.018em; line-height: 1.10;
+    color: #fff; word-wrap: break-word;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.4), 0 0 28px rgba(244,114,182,0.15);
   }
-  .meta .title em { font-style: italic; color: rgba(255,255,255,0.95); }
+  .meta .title em { font-style: italic; color: rgba(255,255,255,0.98); }
+  /* ARTIST — rose-tinted, larger and uppercased with a hairline gold dot
+     separator before the year. Reads as the secondary headline, not a tiny
+     caption. */
   .meta .by {
-    margin-top: 6px;
-    font-size: 14px; color: var(--text-dim);
-    font-weight: 600;
-    letter-spacing: 0.01em;
+    margin-top: 10px;
+    font-size: 17px;
+    color: rgb(244, 114, 182);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 18px rgba(244,114,182,0.30);
   }
-  .meta .by .year { color: var(--text-muted); margin-left: 8px; }
+  /* YEAR — warm gold pill that visually anchors the year, separates it from
+     the artist with a centred bullet · in muted lavender. */
+  .meta .by .year {
+    color: rgb(252, 211, 77);
+    margin-left: 10px;
+    font-weight: 800;
+    text-shadow: 0 0 18px rgba(252,211,77,0.35);
+  }
   .meta .added-tag {
     display: inline-flex; align-items: center; gap: 5px;
     margin-top: 6px;
@@ -2041,80 +2055,216 @@
     appearance: none;
     flex-shrink: 0;
     width: 42px; height: 42px;
-    background: var(--surface);
-    backdrop-filter: blur(22px) saturate(1.5);
-    -webkit-backdrop-filter: blur(22px) saturate(1.5);
-    border: 1px solid var(--line);
+    /* Conic lavender → cyan gradient — unique, can't be confused with the
+       gold accents elsewhere. Filter is "analytical" so the cool palette
+       fits its function (slice / refine) versus the warm action chips. */
+    background:
+      radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.32) 0%, transparent 55%),
+      conic-gradient(from 200deg,
+        rgb(167,139,250) 0deg,
+        rgb(103,232,249) 180deg,
+        rgb(167,139,250) 360deg);
+    border: 1px solid rgba(167,139,250,0.50);
     border-radius: 50%;
     display: inline-flex; align-items: center; justify-content: center;
-    color: var(--text);
+    color: #0a0a0d;
     cursor: pointer;
-    transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.1s, box-shadow 0.2s;
+    transition: transform 0.1s, box-shadow 0.2s, filter 0.22s;
     -webkit-tap-highlight-color: transparent;
     position: relative;
+    box-shadow:
+      0 6px 16px -6px rgba(167,139,250,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.35);
   }
-  .stream-filter-chip svg { width: 19px; height: 19px; }
-  .stream-filter-chip:hover { background: var(--surface-2); color: var(--gold-bright); }
+  .stream-filter-chip svg { width: 19px; height: 19px; stroke: #1a0b25; }
+  .stream-filter-chip:hover { transform: scale(1.06) rotate(-4deg); filter: brightness(1.08); }
   .stream-filter-chip:active { transform: scale(0.94); }
   .stream-filter-chip.has-filter {
-    background: linear-gradient(135deg, var(--gold-bright), var(--gold));
-    border-color: var(--gold);
-    color: #0a0a0d;
-    box-shadow: 0 8px 22px -6px rgba(212,164,92,0.65), inset 0 1px 0 rgba(255,255,255,0.35);
+    box-shadow:
+      0 10px 24px -6px rgba(167,139,250,0.75),
+      0 4px 12px -2px rgba(103,232,249,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.4);
+    animation: filterPulse 2.6s ease-in-out infinite;
   }
-  /* Tiny dot at the corner emphasises the active state at a glance. */
+  @keyframes filterPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.04); }
+  }
+  /* Tiny white dot at the corner emphasises the active state at a glance. */
   .stream-filter-chip.has-filter::after {
     content: '';
-    position: absolute; top: 3px; right: 3px;
-    width: 9px; height: 9px;
+    position: absolute; top: 2px; right: 2px;
+    width: 10px; height: 10px;
     background: #fff;
     border-radius: 999px;
-    box-shadow: 0 0 0 2px var(--gold);
+    box-shadow: 0 0 0 2px rgb(244,114,182), 0 0 10px rgba(244,114,182,0.7);
   }
   body.guest-mode .stream-filter-chip { display: none; }
 
   /* Stream filter overlay internals */
-  .sf-section { margin-bottom: 22px; }
-  .sf-section__label {
-    font: 700 11px var(--font-body);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    margin-bottom: 10px;
+  /* ===== Per-overlay unique identities =====
+     Each overlay carries its own colour personality so mom (and Артур)
+     instantly knows which screen they're on. The accent flows from a
+     header tint into the title color and a subtle radial bloom behind
+     content. */
+  .overlay.overlay--filter {
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(167,139,250,0.20) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 45% at 50% 100%, rgba(103,232,249,0.13) 0%, transparent 65%),
+      rgba(16, 10, 22, 0.96);
+  }
+  .ov-header--filter { border-bottom-color: rgba(167,139,250,0.25); }
+  .ov-header--filter .ov-title { color: rgb(167,139,250); }
+
+  .overlay.overlay--search {
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(103,232,249,0.16) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 40% at 80% 100%, rgba(167,139,250,0.10) 0%, transparent 65%),
+      rgba(10, 18, 24, 0.96);
+  }
+  .overlay--search .ov-title { color: rgb(103,232,249); }
+  .overlay--search .ov-header { border-bottom-color: rgba(103,232,249,0.25); }
+
+  .overlay.overlay--all {
+    background:
+      radial-gradient(ellipse 70% 50% at 30% 0%, rgba(244,114,182,0.18) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 45% at 80% 100%, rgba(253,186,116,0.13) 0%, transparent 65%),
+      rgba(22, 12, 18, 0.96);
+  }
+  .overlay--all .ov-title { color: rgb(244,114,182); }
+  .overlay--all .ov-header { border-bottom-color: rgba(244,114,182,0.25); }
+
+  .overlay.overlay--settings {
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(252,211,77,0.16) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 45% at 50% 100%, rgba(244,114,182,0.11) 0%, transparent 65%),
+      rgba(20, 14, 8, 0.96);
+  }
+  .overlay--settings .ov-title { color: rgb(252,211,77); }
+  .overlay--settings .ov-header { border-bottom-color: rgba(252,211,77,0.30); }
+
+  .overlay.overlay--add {
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(134,239,172,0.16) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 45% at 30% 100%, rgba(253,186,116,0.11) 0%, transparent 65%),
+      rgba(10, 22, 16, 0.96);
+  }
+  .overlay--add .ov-title { color: rgb(134,239,172); }
+  .overlay--add .ov-header { border-bottom-color: rgba(134,239,172,0.25); }
+
+  .overlay.overlay--trash {
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(217,102,102,0.14) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 45% at 50% 100%, rgba(167,139,250,0.09) 0%, transparent 65%),
+      rgba(18, 10, 10, 0.96);
+  }
+  .overlay--trash .ov-title { color: rgb(217,102,102); }
+  .overlay--trash .ov-header { border-bottom-color: rgba(217,102,102,0.25); }
+
+  /* Collapsible accordion section — genre / artist. Tap head → expand body. */
+  .sf-accordion {
+    margin-bottom: 14px;
+    background:
+      linear-gradient(180deg, rgba(167,139,250,0.05), transparent 60%),
+      var(--surface);
+    border: 1px solid rgba(167,139,250,0.22);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.22s, box-shadow 0.22s;
+  }
+  .sf-accordion[open] {
+    border-color: rgba(167,139,250,0.50);
+    box-shadow: 0 14px 32px -12px rgba(167,139,250,0.35);
+  }
+  .sf-accordion__head {
+    list-style: none;
+    cursor: pointer;
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 12px;
+    min-height: 56px;
+    user-select: none;
+  }
+  .sf-accordion__head::-webkit-details-marker { display: none; }
+  .sf-accordion__title {
+    font: 700 16px/1 var(--font-body);
+    color: var(--text);
+    letter-spacing: 0.01em;
+    flex-shrink: 0;
+  }
+  .sf-accordion__pick {
+    flex: 1;
+    text-align: right;
+    font: 600 14px var(--font-body);
+    color: rgb(167,139,250);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sf-accordion__caret {
+    width: 16px; height: 16px;
+    color: var(--text-dim);
+    transition: transform 0.22s;
+    flex-shrink: 0;
+  }
+  .sf-accordion[open] .sf-accordion__caret { transform: rotate(180deg); }
+  .sf-accordion__body {
+    padding: 4px 18px 20px;
+    border-top: 1px solid rgba(167,139,250,0.18);
   }
   .sf-genres {
-    display: flex; flex-wrap: wrap; gap: 7px;
+    display: flex; flex-wrap: wrap; gap: 8px;
   }
   .sf-genres button {
     appearance: none;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    color: var(--text-dim);
-    padding: 9px 14px;
+    background: rgba(167,139,250,0.06);
+    border: 1px solid rgba(167,139,250,0.22);
+    color: var(--text);
+    padding: 10px 14px;
     border-radius: 999px;
-    font: 600 13px var(--font-body);
+    font: 600 14px var(--font-body);
     cursor: pointer;
     transition: all 0.18s cubic-bezier(.2,.8,.2,1);
     min-height: 44px;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .sf-genres button:hover {
+    background: rgba(167,139,250,0.14);
+    border-color: rgba(167,139,250,0.40);
   }
   .sf-genres button.selected {
-    background: linear-gradient(180deg, rgba(212,164,92,0.22), rgba(212,164,92,0.08));
-    color: var(--gold-bright);
-    border-color: rgba(212,164,92,0.55);
+    background: linear-gradient(180deg, rgba(167,139,250,0.32), rgba(167,139,250,0.14));
+    color: #fff;
+    border-color: rgba(167,139,250,0.85);
+    box-shadow: 0 6px 18px -6px rgba(167,139,250,0.55);
+  }
+  .sf-genres .sf-count {
+    font: 700 12px var(--font-body);
+    color: rgba(167,139,250,0.85);
+    opacity: 0.85;
+  }
+  .sf-empty {
+    text-align: center;
+    padding: 20px 12px;
+    color: var(--text-muted);
+    font: 600 13px var(--font-body);
+    letter-spacing: 0.02em;
   }
   .sf-artist-input {
-    width: 100%; min-height: 48px;
-    padding: 12px 16px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 12px;
+    width: 100%; min-height: 50px;
+    padding: 14px 18px;
+    background: rgba(103,232,249,0.05);
+    border: 1px solid rgba(103,232,249,0.30);
+    border-radius: 14px;
     color: var(--text);
-    font: 400 16px var(--font-body);
+    font: 400 17px var(--font-body);
     box-sizing: border-box;
+    transition: border-color 0.22s, background 0.22s, box-shadow 0.22s;
   }
   .sf-artist-input:focus {
     outline: none;
-    border-color: rgba(212,164,92,0.55);
+    border-color: rgba(103,232,249,0.75);
+    background: rgba(103,232,249,0.10);
+    box-shadow: 0 0 0 4px rgba(103,232,249,0.10);
   }
   .sf-artist-suggestions {
     margin-top: 8px;
@@ -2528,7 +2678,7 @@
 <div id="cat-picker" hidden>
   <div class="cat-grid">
     <button type="button" class="cat-tile general" data-cat="">
-      <div class="cat-nm">Весь</div>
+      <div class="cat-nm">Все</div>
       <div class="cat-ctx">все песни без фильтра по разделу</div>
     </button>
     <button type="button" class="cat-tile" data-cat="Лаунж">
@@ -2567,7 +2717,7 @@
 </div>
 
 <!-- Search overlay -->
-<div class="overlay" id="search-overlay">
+<div class="overlay overlay--search" id="search-overlay">
   <div class="ov-header">
     <button class="ov-close" id="search-close" type="button" aria-label="закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     <div class="sm-search">
@@ -2581,7 +2731,7 @@
 </div>
 
 <!-- All-tracks overlay -->
-<div class="overlay" id="all-overlay">
+<div class="overlay overlay--all" id="all-overlay">
   <div class="ov-header">
     <button class="ov-close" id="all-close" type="button" aria-label="закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     <div class="ov-title-wrap">
@@ -2623,7 +2773,7 @@
 </div>
 
 <!-- Settings overlay -->
-<div class="overlay" id="settings-overlay">
+<div class="overlay overlay--settings" id="settings-overlay">
   <div class="ov-header">
     <button class="ov-close" id="settings-close" type="button" aria-label="закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     <div class="ov-title-wrap">
@@ -2677,8 +2827,8 @@
 <!-- Stream filter overlay: lets mom narrow the player's next-up flow to a
      specific music genre and/or artist. Sits on top of whatever wedding
      category she's in — they AND together. -->
-<div class="overlay" id="stream-filter-overlay">
-  <div class="ov-header">
+<div class="overlay overlay--filter" id="stream-filter-overlay">
+  <div class="ov-header ov-header--filter">
     <button class="ov-close" id="stream-filter-close" type="button" aria-label="закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     <div class="ov-title-wrap">
       <div class="ov-title">Фильтр потока</div>
@@ -2686,15 +2836,30 @@
     </div>
   </div>
   <div class="ov-body">
-    <div class="sf-section">
-      <div class="sf-section__label">Жанр</div>
-      <div class="sf-genres" id="sf-genres"></div>
-    </div>
-    <div class="sf-section">
-      <div class="sf-section__label">Артист</div>
-      <input type="text" id="sf-artist-input" class="sf-artist-input" placeholder="Начни печатать имя…" autocomplete="off">
-      <div class="sf-artist-suggestions" id="sf-artist-suggestions"></div>
-    </div>
+    <!-- Genre + Artist are accordions. Both collapsed by default — tap to
+         expand one section at a time. Mom isn't dumped into a wall of
+         choices on every open. -->
+    <details class="sf-accordion" id="sf-genre-accordion">
+      <summary class="sf-accordion__head">
+        <span class="sf-accordion__title">Жанр</span>
+        <span class="sf-accordion__pick" id="sf-genre-pick">любой</span>
+        <svg class="sf-accordion__caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="sf-accordion__body">
+        <div class="sf-genres" id="sf-genres">Загружаю…</div>
+      </div>
+    </details>
+    <details class="sf-accordion" id="sf-artist-accordion">
+      <summary class="sf-accordion__head">
+        <span class="sf-accordion__title">Артист</span>
+        <span class="sf-accordion__pick" id="sf-artist-pick">любой</span>
+        <svg class="sf-accordion__caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="sf-accordion__body">
+        <input type="text" id="sf-artist-input" class="sf-artist-input" placeholder="Начни печатать имя…" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="sf-artist-suggestions" id="sf-artist-suggestions"></div>
+      </div>
+    </details>
     <div class="sf-actions">
       <button type="button" class="sf-btn sf-btn--clear" id="sf-clear-btn">Сбросить</button>
       <button type="button" class="sf-btn sf-btn--apply" id="sf-apply-btn">Применить</button>
@@ -2704,7 +2869,7 @@
 
 <!-- Trash bin overlay: shows soft-deleted songs (still in DB) so the user
      can review what was removed and restore anything she wants back. -->
-<div class="overlay" id="trash-overlay">
+<div class="overlay overlay--trash" id="trash-overlay">
   <div class="ov-header">
     <button class="ov-close" id="trash-close" type="button" aria-label="закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     <div class="ov-title-wrap">
@@ -2718,7 +2883,7 @@
 </div>
 
 <!-- Add-song overlay -->
-<div class="overlay" id="add-overlay">
+<div class="overlay overlay--add" id="add-overlay">
   <div class="ov-header">
     <button class="ov-close" id="add-close" type="button" aria-label="закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     <div class="ov-title-wrap">
@@ -3815,7 +3980,7 @@
     const chip = document.getElementById('cat-current');
     const nm = document.getElementById('cat-current-name');
     if (!chip || !nm) return;
-    nm.textContent = currentCat || 'Весь';
+    nm.textContent = currentCat || 'Все';
   }
   function showCatPicker() {
     showScreen('catpick');
@@ -3859,15 +4024,46 @@
     });
   });
 
+  /* Persist the currently-playing song id to localStorage so closing the
+     tab / quitting Safari preserves the user's exact position. Restored
+     on enterDiscovery and stitched into the seenStack so a back-swipe
+     still goes to "the song before" naturally. */
+  const K_CURRENT_SONG = 'venchanie_current_song_v1';
+  function rememberCurrentSong(song) {
+    if (!song || !song.id) return;
+    try { localStorage.setItem(K_CURRENT_SONG, JSON.stringify({ id: song.id, song, ts: Date.now() })); } catch {}
+  }
+  function recallCurrentSong() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(K_CURRENT_SONG) || 'null');
+      // Stale guard: forget after 48 hours so we never resurrect a song
+      // mom hasn't seen in two days.
+      if (!raw || !raw.song || !raw.song.id) return null;
+      if (raw.ts && (Date.now() - raw.ts) > 48 * 60 * 60 * 1000) return null;
+      return raw.song;
+    } catch { return null; }
+  }
   function enterDiscovery() {
     updateWhoChip();
     refreshCatChip();
     refreshStreamFilterChip();
     showScreen('discovery');
-    seenStack.length = 0;
-    seenIdx = -1;
-    progressN = 0;
-    loadNext();
+    // Try to resume on the same song the user was last on. If we have one
+    // AND it isn't locally removed, drop it into the seenStack as a single
+    // pre-seeded card so the next forward-swipe naturally pulls the queue's
+    // next item. Otherwise fall through to the normal first-load.
+    const remembered = recallCurrentSong();
+    if (remembered && !localRemoved.has(remembered.id)) {
+      seenStack.length = 0;
+      seenStack.push(remembered);
+      seenIdx = 0;
+      renderCard(remembered);
+    } else {
+      seenStack.length = 0;
+      seenIdx = -1;
+      progressN = 0;
+      loadNext();
+    }
   }
   // Locally-known soft-removed song IDs — written when mom removes a song
   // via the player or via the tc-card swipe. The next-card path checks this
@@ -3927,6 +4123,9 @@
       ytTried.delete(currentSong.id);
     }
     currentSong = song;
+    // Snapshot the current song so a tab close / browser quit can resume on
+    // the same track. Cheap localStorage write, irrelevant to performance.
+    try { rememberCurrentSong(song); } catch {}
     const yearStr = song.year ? `<span class="year">· ${song.year}</span>` : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
     // All 6 categories are pills on the card. LOVERS / DJ Микки tags here are
@@ -4298,12 +4497,12 @@
       ? (isGuest ? `Пока пусто` : `В разделе «${escapeHtml(inCat)}» пока пусто`)
       : escapeHtml(t('empty.h'));
     const subBody = isEmptyCat
-      ? (isGuest ? 'Скоро здесь появятся песни.' : 'Сюда попадают только песни, отнесённые к этому разделу. Перейди в «Весь» и помечай оттуда.')
+      ? (isGuest ? 'Скоро здесь появятся песни.' : 'Сюда попадают только песни, отнесённые к этому разделу. Перейди в «Все» и помечай оттуда.')
       : escapeHtml(tGender('empty.body'));
     // Guests don't get any 'jump out of category' buttons.
     const ownerActions = !isGuest ? `
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px">
-        ${isEmptyCat ? `<button class="empty-cta" type="button" id="empty-go-general">Перейти в Весь</button>` : ''}
+        ${isEmptyCat ? `<button class="empty-cta" type="button" id="empty-go-general">Перейти во «Все»</button>` : ''}
         <button class="empty-cta" type="button" id="empty-pick" style="background:transparent;color:var(--text);border:1px solid var(--line-2);box-shadow:none">Сменить раздел</button>
         <button class="empty-cta" type="button" id="empty-all" style="background:transparent;color:var(--text-dim);border:1px dashed var(--line-2);box-shadow:none">${escapeHtml(t('empty.all'))}</button>
       </div>` : '';
@@ -4798,21 +4997,50 @@
     if (isGuestUser()) return;
     sfDraft = { genre: streamFilter.genre, artist: streamFilter.artist };
     openOv('stream-filter-overlay');
+    // Both accordions start collapsed — mom isn't dumped into a wall of
+    // options on every open. She taps Жанр or Артист to expand one.
+    const gAcc = document.getElementById('sf-genre-accordion');
+    const aAcc = document.getElementById('sf-artist-accordion');
+    if (gAcc) gAcc.removeAttribute('open');
+    if (aAcc) aAcc.removeAttribute('open');
+    refreshSfPicks();
     renderSfGenres();
     const inp = document.getElementById('sf-artist-input');
     if (inp) inp.value = sfDraft.artist || '';
     renderSfArtists('');
   }
-  function renderSfGenres() {
+  function refreshSfPicks() {
+    const gp = document.getElementById('sf-genre-pick');
+    const ap = document.getElementById('sf-artist-pick');
+    if (gp) gp.textContent = sfDraft.genre || 'любой';
+    if (ap) ap.textContent = sfDraft.artist || 'любой';
+  }
+  async function renderSfGenres() {
     const wrap = document.getElementById('sf-genres');
     if (!wrap) return;
-    // Build a fixed canonical list (matches backend GENRES_SET).
-    const GENRES = ['Поп', 'Рок', 'Электроника', 'Хип-хоп', 'R&B', 'Чилл', 'Джаз', 'Классика', 'Эстрада', 'Шансон', 'Кантри', 'Прочее'];
-    wrap.innerHTML = GENRES.map(g => `<button type="button" data-g="${escapeHtml(g)}" class="${sfDraft.genre === g ? 'selected' : ''}">${escapeHtml(g)}</button>`).join('');
+    // Pull live genre counts from the server (cat-scoped to currentCat so
+    // mom in LOVERS only sees genres that actually exist in LOVERS). Any
+    // genre with count = 0 is OMITTED entirely — no dead buttons, no
+    // "Прочее" when there's nothing in it.
+    wrap.innerHTML = 'Загружаю…';
+    let counts = {};
+    try {
+      const d = await apiAllTracks('alpha', 0, 1, null, null);
+      counts = (d && d.genre_counts) || {};
+    } catch {}
+    const present = Object.entries(counts)
+      .filter(([g, n]) => g && n > 0 && g !== '__pending_')
+      .sort((a, b) => b[1] - a[1]); // most-populated genres first
+    if (!present.length) {
+      wrap.innerHTML = '<div class="sf-empty">Пока нет размеченных жанров.</div>';
+      return;
+    }
+    wrap.innerHTML = present.map(([g, n]) => `<button type="button" data-g="${escapeHtml(g)}" class="${sfDraft.genre === g ? 'selected' : ''}"><span>${escapeHtml(g)}</span><span class="sf-count">${fmt(n)}</span></button>`).join('');
     wrap.querySelectorAll('button').forEach(b => {
       b.addEventListener('click', () => {
         const g = b.dataset.g;
         sfDraft.genre = (sfDraft.genre === g) ? null : g; // tap-twice clears
+        refreshSfPicks();
         renderSfGenres();
       });
     });
@@ -4822,6 +5050,10 @@
     if (!wrap) return;
     const r = await apiArtists(q);
     const list = (r.artists || []).slice(0, 30);
+    if (!list.length) {
+      wrap.innerHTML = '<div class="sf-empty">Ничего не нашлось.</div>';
+      return;
+    }
     wrap.innerHTML = list.map(a => `<button type="button" data-a="${escapeHtml(a.artist)}" class="${sfDraft.artist === a.artist ? 'selected' : ''}"><span>${escapeHtml(a.artist)}</span><span class="sf-count">${fmt(a.n)}</span></button>`).join('');
     wrap.querySelectorAll('button').forEach(b => {
       b.addEventListener('click', () => {
@@ -4829,6 +5061,7 @@
         sfDraft.artist = (sfDraft.artist === a) ? null : a;
         const inp = document.getElementById('sf-artist-input');
         if (inp) inp.value = sfDraft.artist || '';
+        refreshSfPicks();
         renderSfArtists(inp ? inp.value.trim() : '');
       });
     });
