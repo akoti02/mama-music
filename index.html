@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-20T-vpn-wait-ladder -->
+<!-- build: 2026-05-20T-vpn-wait-hardened -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -5789,10 +5789,12 @@
       ytWakeTimers.push(tid);
     };
     wakeListening(500, 4);
-    // Watchdog: if 7s after mount we still haven't heard a single life signal
-    // from the iframe, assume the embed silently failed (region-block, embed
-    // disabled, "Повторите попытку позже" — none of these emit onError). Try
-    // a different video ID instead of leaving the user staring at the error.
+    // Watchdog: if 5s after mount we still haven't heard a single life signal
+    // from the iframe, assume the embed silently failed (region-block or RKN
+    // throttle — none of these emit onError). Enter the VPN-wait stage: show
+    // an overlay, probe i.ytimg.com + youtube.com/favicon every 2.5s, and
+    // remount as soon as YouTube becomes reachable. Falls through to
+    // mountYandex after 30s.
     ytWatchdogTimer = setTimeout(() => {
       ytWatchdogTimer = null;
       if (ytAlive) return;
@@ -5843,9 +5845,9 @@
       // Last-ditch Yandex.Music try before showing the error state.
       const ok = await mountYandex(song);
       if (ok) return;
-      wrap.classList.remove('loading');
-      wrap.classList.add('error');
-      wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>${escapeHtml(lang === 'ru' ? 'Этот трек не нашёлся на YouTube. Можно нажать «Дальше →»' : 'No playable YouTube version. Press Next →')}</div>`;
+      // Neither YouTube nor Yandex could serve this track. Show the unified
+      // fallback-error state (also used by enterVpnWaitMode after 30s).
+      showFallbackError(wrap, song);
       return;
     }
     ytAttempt++;
@@ -5886,11 +5888,17 @@
      we surrender to Yandex.Music (Tier 3). */
   let vpnWaitTimer = null;
   let vpnWaitInterval = null;
-  let vpnWaitAbort = false;
+  // Generation counter — bumps on every clearVpnWait so any in-flight probe
+  // that was mid-await can compare its captured myGen against vpnWaitGen
+  // and bail out cleanly instead of remounting the previous song's video.
+  // A single global abort flag was racy: when enterVpnWaitMode reset it to
+  // false for the new call, a stale probe from the prior call would resume
+  // and pass its check.
+  let vpnWaitGen = 0;
   let vpnWaitVisHandler = null;
   let vpnWaitOnlineHandler = null;
   function clearVpnWait() {
-    vpnWaitAbort = true;
+    vpnWaitGen++;
     if (vpnWaitTimer) { clearTimeout(vpnWaitTimer); vpnWaitTimer = null; }
     if (vpnWaitInterval) { clearInterval(vpnWaitInterval); vpnWaitInterval = null; }
     if (vpnWaitVisHandler) { document.removeEventListener('visibilitychange', vpnWaitVisHandler); vpnWaitVisHandler = null; }
@@ -5901,35 +5909,61 @@
       if (ov) ov.remove();
     }
   }
-  // Image probe — Image.onload fires only after the byte stream completes, so
-  // it's a reliable "the network actually delivered i.ytimg.com" signal. The
-  // cache-busting query string prevents a previously-cached thumbnail from
-  // giving a false positive after a real outage.
-  function pingYouTube(timeoutMs = 3000) {
-    return new Promise(resolve => {
+  // Multi-host probe. i.ytimg.com is on the same RKN block as youtube.com,
+  // so probing only ytimg gives mom a false negative even when she's enabled
+  // a VPN — the probe still fails because the thumbnail host is blocked too.
+  // We hit BOTH ytimg.com and www.youtube.com favicon in parallel; ANY load
+  // means YouTube is reachable. Cache-bust at minute granularity so rapid
+  // probes share an HTTP cache entry instead of stuffing the cache.
+  function probeImage(url, timeoutMs) {
+    return new Promise((resolve, reject) => {
       const img = new Image();
-      let done = false;
       const finish = (ok) => {
-        if (done) return;
-        done = true;
         clearTimeout(t);
         img.onload = img.onerror = null;
-        resolve(ok);
+        if (ok) resolve(true); else reject(new Error('probe-failed'));
       };
       const t = setTimeout(() => finish(false), timeoutMs);
       img.onload = () => finish(true);
       img.onerror = () => finish(false);
-      // Use a stable, widely-cached thumbnail (a famous public video). Path
-      // exists on YouTube's CDN; any non-load means the CDN is unreachable.
-      img.src = 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg?t=' + Date.now();
+      img.src = url;
     });
+  }
+  async function pingYouTube(timeoutMs = 3000) {
+    const bust = Math.floor(Date.now() / 60000);
+    try {
+      await Promise.any([
+        probeImage(`https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg?t=${bust}`, timeoutMs),
+        probeImage(`https://www.youtube.com/favicon.ico?t=${bust}`, timeoutMs),
+      ]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  /* Graceful "no playable source" state, used when BOTH the VPN-wait window
+     and the Yandex fallback came up empty. Without this the player wrap
+     stays blank — mom sees a black box and a still-spinning shimmer with
+     no explanation. */
+  function showFallbackError(wrap, song) {
+    if (!wrap) return;
+    wrap.classList.remove('loading', 'playing', 'alive');
+    wrap.classList.add('error');
+    const ru = (lang === 'ru');
+    const msg = ru
+      ? 'Не получилось открыть трек ни на YouTube, ни на Яндекс.Музыке. Нажми «Дальше →»'
+      : "Couldn't play this track from YouTube or Yandex. Press Next →";
+    wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>${escapeHtml(msg)}</div>`;
   }
   async function enterVpnWaitMode(song, videoId) {
     if (!song || currentSong?.id !== song.id) return;
     const wrap = document.getElementById('yt-wrap');
     if (!wrap) return;
     clearVpnWait();
-    vpnWaitAbort = false;
+    // Capture the generation we're running under — every async checkpoint
+    // compares against this, so a swipe / new mount / manual clearVpnWait
+    // mid-await reliably halts this loop instead of remounting an old song.
+    const myGen = vpnWaitGen;
     // Wipe whatever iframe was on screen so mom doesn't see YT's gray box
     // while she's reading the overlay.
     const oldIframes = wrap.querySelectorAll('iframe');
@@ -5956,12 +5990,18 @@
     const cd = overlay.querySelector('.vpn-countdown');
     const tryNowBtn = overlay.querySelector('.vpn-try-now');
     const goYandexBtn = overlay.querySelector('.vpn-go-yandex');
+    const goYandexNow = async () => {
+      clearVpnWait();
+      if (currentSong?.id !== song.id) return;
+      const ok = await mountYandex(song);
+      if (!ok && currentSong?.id === song.id) showFallbackError(wrap, song);
+    };
     tryNowBtn.addEventListener('click', async () => {
-      if (vpnWaitAbort) return;
+      if (myGen !== vpnWaitGen) return;
       tryNowBtn.disabled = true;
       tryNowBtn.textContent = ru ? 'Проверяем…' : 'Checking…';
       const ok = await pingYouTube();
-      if (vpnWaitAbort) return;
+      if (myGen !== vpnWaitGen) return;
       if (ok) {
         clearVpnWait();
         if (currentSong?.id === song.id) mountYTIframe(wrap, videoId);
@@ -5970,15 +6010,12 @@
         tryNowBtn.textContent = ru ? 'Попробовать ещё раз' : 'Try again';
       }
     });
-    goYandexBtn.addEventListener('click', () => {
-      clearVpnWait();
-      mountYandex(song);
-    });
+    goYandexBtn.addEventListener('click', goYandexNow);
     const startedAt = Date.now();
     const MAX_WAIT = 30000;
     const PROBE_INTERVAL = 2500;
     const updateCountdown = () => {
-      if (vpnWaitAbort || !cd) return;
+      if (myGen !== vpnWaitGen || !cd) return;
       const left = Math.max(0, Math.ceil((MAX_WAIT - (Date.now() - startedAt)) / 1000));
       cd.textContent = ru
         ? `Если ничего не выйдет за ${left} сек — переключим на Яндекс.Музыку`
@@ -5986,11 +6023,11 @@
     };
     updateCountdown();
     const doProbe = async () => {
-      if (vpnWaitAbort) return;
+      if (myGen !== vpnWaitGen) return;
       if (currentSong?.id !== song.id) { clearVpnWait(); return; }
       updateCountdown();
       const ok = await pingYouTube();
-      if (vpnWaitAbort) return;
+      if (myGen !== vpnWaitGen) return;
       if (currentSong?.id !== song.id) { clearVpnWait(); return; }
       if (ok) {
         clearVpnWait();
@@ -5998,8 +6035,7 @@
         return;
       }
       if (Date.now() - startedAt > MAX_WAIT) {
-        clearVpnWait();
-        mountYandex(song);
+        await goYandexNow();
         return;
       }
     };
@@ -6020,8 +6056,11 @@
   let yandexTried = new Set();
   async function mountYandex(song) {
     if (!song || currentSong?.id !== song.id) return false;
+    // Don't retry within the same session if we already mounted Yandex for
+    // this song — but DO retry if a previous attempt found nothing (the
+    // backfill may have run since then, or mom may have enabled VPN and
+    // come back).
     if (yandexTried.has(song.id)) return false;
-    yandexTried.add(song.id);
     const wrap = document.getElementById('yt-wrap');
     if (!wrap) return false;
     let j = null;
@@ -6034,6 +6073,10 @@
     } catch (e) { j = null; }
     if (currentSong?.id !== song.id) return false;
     if (!j || !j.yandex_track_id || !j.yandex_album_id) return false;
+    // Stale-mount guard for the YT side — bumping ytMountGen makes any
+    // pending wakeListening / watchdog / postMessage handlers from the
+    // prior YT mount self-cancel via their `myGen === ytMountGen` checks.
+    ytMountGen++;
     if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
     if (ytMsgAbort) { ytMsgAbort.abort(); ytMsgAbort = null; }
     const iframe = document.createElement('iframe');
@@ -6045,6 +6088,12 @@
     oldIframes.forEach(old => { try { old.remove(); } catch {} });
     wrap.innerHTML = '';
     wrap.appendChild(iframe);
+    // Mark this song as "tried Yandex this session" ONLY after the iframe
+    // is actually attached. If we added it before the fetch, a backend miss
+    // (e.g. Worker landed in non-RU PoP this hop) would lock the song out
+    // of Yandex for the whole session — even if mom retries on the next
+    // probe round after the Worker is in an RU PoP.
+    yandexTried.add(song.id);
     wrap.classList.remove('loading', 'error');
     wrap.classList.add('playing', 'alive');
     wrap.dataset.svc = 'yandex';
