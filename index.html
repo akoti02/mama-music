@@ -5,15 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#08080a">
+<meta name="theme-color" content="#100712">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- build: 2026-05-13T-audit-pass-2 -->
+<!-- build: 2026-05-20T-yandex-fallback -->
 <title>Музыка к венчанию</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<!-- Non-blocking font load using the print-media swap pattern (Filament
+     Group "loadCSS" technique). `media="print"` makes the browser treat
+     the stylesheet as if for print only → it fetches but does NOT block
+     screen render. Once onload fires, we flip media to "all" so the
+     fonts apply. This is bulletproof on iOS Safari, unlike the
+     rel="preload" + onload="this.rel='stylesheet'" pattern which is
+     fragile under bfcache / Lockdown Mode / Private Relay. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"></noscript>
 <script src="https://cdn.jsdelivr.net/npm/colorthief@2.4.0/dist/color-thief.umd.js" defer></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
@@ -66,24 +74,34 @@
     --font-body: var(--font-sans);
   }
   html, body { margin: 0; padding: 0; }
-  html { background: var(--bg); }
+  html {
+    background: var(--bg);
+  }
+  /* DO NOT add `overflow-x: hidden` or `overflow: hidden` on html — on
+     iOS Safari that breaks `position: fixed` overlays (they re-anchor to
+     the document instead of the viewport, so the search/all/settings
+     overlays end up clipped to half the screen). Each app surface
+     (cat-picker, .stage, overlays) is `position: fixed; inset: 0` and
+     contains its own scroll, so the body never has flow content tall
+     enough to scroll past — no global lock is needed.
+
+     Block Android Chrome / Samsung Internet pull-to-refresh on the player
+     stage only. Scoped to body.discovery-locked so it doesn't combine with
+     `html { overflow: hidden }` on iOS Safari 18. */
+  body.discovery-locked { overscroll-behavior-y: none; }
   body {
     font-family: var(--font-sans);
     font-feature-settings: 'cv11', 'ss01';
-    /* Ambient vibe gradient painted directly on body — pools of the
-       currently-playing song's colours bleed through EVERY screen. The
-       CSS vars are updated by applyBodyVibe whenever a new song mounts.
-       (Note: CSS does not interpolate radial-gradient background-images
-       across var changes, so the colour snap is instant — the perceived
-       smoothness comes from the song-change UI sequence.) */
+    /* Ambient vibe gradient: TWO pools, not five. On mid-range Android
+       every radial-gradient layer is recomputed on each repaint and the
+       full set was visibly hitching when CSS vars updated on swipe. Two
+       pools at higher opacity give the same vibe at a fraction of the
+       paint cost. */
     --vibe-c1: 244 114 182;
     --vibe-c2: 252 211 77;
     background:
-      radial-gradient(ellipse 65% 50% at 15% 10%,  rgba(var(--vibe-c1), 0.40) 0%, transparent 60%),
-      radial-gradient(ellipse 55% 45% at 88% 18%,  rgba(var(--vibe-c2), 0.34) 0%, transparent 60%),
-      radial-gradient(ellipse 75% 55% at 50% 100%, rgba(var(--vibe-c1), 0.30) 0%, transparent 65%),
-      radial-gradient(ellipse 45% 40% at 8% 80%,   rgba(var(--vibe-c2), 0.24) 0%, transparent 70%),
-      radial-gradient(ellipse 45% 40% at 92% 80%,  rgba(var(--vibe-c1), 0.22) 0%, transparent 70%),
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(var(--vibe-c1), 0.45) 0%, transparent 65%),
+      radial-gradient(ellipse 75% 55% at 80% 95%, rgba(var(--vibe-c2), 0.35) 0%, transparent 65%),
       var(--bg);
     background-attachment: fixed;
     color: var(--text);
@@ -93,7 +111,20 @@
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
     position: relative;
+    /* `overflow-x: clip` on body (NOT html) clips horizontal overflow
+       without breaking iOS Safari's `position: fixed` containing block.
+       Defends against any rogue child element that ends up wider than
+       the viewport (e.g. a long unbreakable artist name in a card title).
+       Falls back gracefully to ignored on browsers without `clip`
+       support — no regression. */
+    overflow-x: clip;
+    /* 100vh on iOS Safari has historically been the LARGE viewport (with
+       the URL bar hidden), which makes the page taller than the visible
+       area on first load — pushing the footer below the fold. dvh (dynamic
+       viewport-percentage) tracks the visible area as the URL bar toggles.
+       Keep the 100vh as fallback for ancient browsers. */
     min-height: 100vh;
+    min-height: 100dvh;
   }
   /* Discovery mode locks the page; the card has its own internal scroller.
      Other modes (onboarding, cat-picker) scroll the body normally so long
@@ -208,19 +239,47 @@
     .orn-flourish, .spark { animation: none; }
     .spark { opacity: 0.3; }
   }
+  /* Pause the 8 spark + 2 flourish animations while on the player stage.
+     They sit at z:-1 behind every visible card element and were never
+     actually visible to mom (covered by content), but iOS Safari kept
+     them in the composite stack forever, paying real GPU cost on each
+     repaint. Visible on name-gate and cat-picker where the screen has
+     room for the ambient decoration. */
+  body.discovery-locked .spark,
+  body.discovery-locked .orn-flourish {
+    animation: none !important;
+    opacity: 0;
+  }
   /* Hide the ornament layer while the name-gate is up — entry should be
-     calm and focused, the ornaments come alive once mom is inside. */
-  .name-gate:not([hidden]) ~ * #ornaments,
-  body:has(.name-gate:not([hidden])) #ornaments { display: none; }
+     calm and focused, the ornaments come alive once mom is inside.
+     The :has() selector requires Safari 15.4+. Wrap in @supports so an
+     older browser doesn't trip on it. The dead `~ *` selector was
+     removed because it never matched. */
+  @supports selector(:has(*)) {
+    body:has(.name-gate:not([hidden])) #ornaments,
+    body:has(#cat-picker:not([hidden])) #ornaments { display: none; }
+  }
 
   /* ===== Top bar ===== */
   .top-bar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    /* `max-width: 100vw` + `box-sizing: border-box` guarantees the bar
+       never extends past the viewport — even if a child somehow forces
+       wider intrinsic width, the row stays clipped to screen. */
+    max-width: 100vw; box-sizing: border-box;
     display: flex; align-items: center; justify-content: space-between;
     /* gap between the cat-side and the actions-side so a long category
        name (e.g. "DJ Микки") doesn't physically butt into the icon row */
     gap: 6px;
-    padding: calc(12px + env(safe-area-inset-top)) 12px 10px;
+    /* Tight horizontal padding so all 4 right-side icons (add/search/all/
+       settings) fit on narrow Android viewports (~360-412px) without the
+       last two getting clipped off the right edge. Vertical safe-area
+       inset on top to clear notches/punch-holes. */
+    padding:
+      calc(12px + env(safe-area-inset-top))
+      calc(8px + env(safe-area-inset-right))
+      10px
+      calc(8px + env(safe-area-inset-left));
     pointer-events: none;
   }
   .top-bar > * { pointer-events: auto; }
@@ -243,7 +302,7 @@
     border-radius: 999px;
     font-size: 15px; font-weight: 600;
     color: var(--text);
-    cursor: pointer; min-height: 42px;
+    cursor: pointer; min-height: 44px;
     transition: background 0.18s, border-color 0.18s, transform 0.1s;
   }
   .who-chip:hover { background: var(--surface-2); border-color: var(--line-2); }
@@ -253,7 +312,7 @@
   .who-chip.is-arthur .dot { background: var(--blue); box-shadow: 0 0 8px var(--blue); }
   .who-chip.is-sveta .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
   .icon-btn {
-    width: 42px; height: 42px;
+    width: 44px; height: 44px;
     background: var(--surface);
     backdrop-filter: blur(22px) saturate(1.5);
     -webkit-backdrop-filter: blur(22px) saturate(1.5);
@@ -276,6 +335,20 @@
   }
   .icon-btn:active { transform: scale(0.92); }
   .icon-btn svg { width: 20px; height: 20px; }
+  /* Device-tier shrink for the top-bar icons. Tier rules picked from real
+     device CSS-px widths so the row fits the smallest screen we ship to:
+       • ≤ 320px → Galaxy Z Fold (folded), iPhone SE 1st gen → 36px icons
+       • ≤ 380px → standard iPhone SE / small Android → 40px icons
+       • > 380px → default 44px (Apple HIG minimum tap target) */
+  @media (max-width: 380px) {
+    .icon-btn, .stream-filter-chip { width: 40px; height: 40px; }
+    .icon-btn svg { width: 18px; height: 18px; }
+  }
+  @media (max-width: 320px) {
+    .icon-btn, .stream-filter-chip { width: 36px; height: 36px; }
+    .icon-btn svg { width: 16px; height: 16px; }
+    .top-actions { gap: 3px; }
+  }
   /* Add-btn and search-btn get their own pastel tints to break up the row
      visually — site no longer feels like four identical grey circles. */
   #add-btn { border-color: rgba(var(--c-villa), 0.40); color: rgb(var(--c-villa)); box-shadow: 0 4px 14px -6px rgba(var(--c-villa), 0.30); }
@@ -286,7 +359,13 @@
   #all-btn:hover { background: rgba(var(--c-lounge), 0.18); border-color: rgba(var(--c-lounge), 0.75); box-shadow: 0 8px 22px -6px rgba(var(--c-lounge), 0.50); color: #fff; }
   #settings-btn { border-color: rgba(var(--c-lovers), 0.40); color: rgb(var(--c-lovers)); box-shadow: 0 4px 14px -6px rgba(var(--c-lovers), 0.30); }
   #settings-btn:hover { background: rgba(var(--c-lovers), 0.18); border-color: rgba(var(--c-lovers), 0.75); box-shadow: 0 8px 22px -6px rgba(var(--c-lovers), 0.50); color: #fff; }
-  .top-actions { display: flex; gap: 6px; }
+  /* `flex-shrink: 0` on every action button so when the available row
+     width is tight (narrow Android, accessibility-zoom enabled), the
+     individual icons keep their tap-target size instead of squishing.
+     The `gap: 4px` (was 6px) buys back 6px of horizontal room which
+     keeps `#all-btn` and `#settings-btn` on-screen. */
+  .top-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .top-actions > .icon-btn { flex-shrink: 0; }
   .icon-btn .badge {
     position: absolute; top: -2px; right: -2px;
     min-width: 16px; height: 16px;
@@ -357,7 +436,14 @@
     position: fixed; inset: 0;
     z-index: 260;
     display: flex; align-items: center; justify-content: center;
-    padding: 24px;
+    /* Safe-area padding on every edge — the gate is full-screen, and on
+       landscape iPhone the input centred without horizontal env() would
+       sit under the Dynamic Island. */
+    padding:
+      calc(24px + env(safe-area-inset-top))
+      calc(24px + env(safe-area-inset-right))
+      calc(24px + env(safe-area-inset-bottom))
+      calc(24px + env(safe-area-inset-left));
     background:
       radial-gradient(ellipse 80% 60% at 50% 30%, rgba(212,164,92,0.10) 0%, transparent 65%),
       var(--bg);
@@ -444,7 +530,13 @@
   /* ===== Onboarding ===== */
   .onboard {
     min-height: 100vh; min-height: 100dvh;
-    padding: 40px 22px calc(40px + env(safe-area-inset-bottom));
+    /* env() on left+right so the form stays out from under Dynamic Island
+       in landscape; bottom respects home-indicator. */
+    padding:
+      40px
+      calc(22px + env(safe-area-inset-right))
+      calc(40px + env(safe-area-inset-bottom))
+      calc(22px + env(safe-area-inset-left));
     display: flex; flex-direction: column; justify-content: center; align-items: center;
     position: relative;
   }
@@ -548,7 +640,14 @@
          --banner-pad  : extra top-padding while the welcome banner is shown
                          so it doesn't visually cover the progress line / video.
        Together they keep ALL card UI reachable in every state. */
-    padding: calc(70px + env(safe-area-inset-top) + var(--banner-pad, 0px)) 14px calc(18px + env(safe-area-inset-bottom) + var(--kbd-offset, 0px));
+    padding:
+      calc(70px + env(safe-area-inset-top) + var(--banner-pad, 0px))
+      /* Horizontal stage padding kept tight — only physical safe-area inset
+         + 8px of breathing room. The card inside has its own 520px cap,
+         so the stage doesn't need extra side margin. */
+      calc(8px + env(safe-area-inset-right))
+      calc(18px + env(safe-area-inset-bottom) + var(--kbd-offset, 0px))
+      calc(8px + env(safe-area-inset-left));
     display: flex; flex-direction: column;
     overflow: hidden;
     transition: padding-bottom 0.22s ease, padding-top 0.22s ease;
@@ -572,8 +671,9 @@
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
     display: inline-flex; align-items: baseline; gap: 6px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    /* No backdrop-filter on the always-visible progress chip — combined
+       with the meta/textarea/cat-pill blurs this was four+ compositing
+       layers on every card mount. */
   }
   .progress-line .n {
     color: rgb(252, 211, 77);
@@ -683,9 +783,9 @@
     appearance: none;
     width: 30px; height: 30px;
     border-radius: 999px;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    /* Was rgba 0.55 + backdrop blur; switched to opaque dark so we don't
+       create another compositing layer on the always-visible card. */
+    background: rgba(15, 15, 18, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.18);
     color: rgba(255, 255, 255, 0.85);
     display: flex; align-items: center; justify-content: center;
@@ -720,6 +820,23 @@
     .yt-wrap.alive .yt-delete { opacity: 0.40; }
   }
   body.guest-mode .yt-delete { display: none; }
+
+  /* Yandex source badge — bottom-left corner of the player when we fell back
+     to Yandex.Music. Subtle but unmissable so mom understands why the player
+     suddenly looks different from the regular YouTube one. */
+  .yt-wrap .yandex-badge {
+    position: absolute; bottom: 10px; left: 10px;
+    z-index: 4;
+    font: 600 11px/1 'Inter', system-ui, sans-serif;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 219, 77, 0.92);
+    color: #1a1a1f;
+    padding: 5px 9px;
+    border-radius: 999px;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  }
 
   .player-fallback {
     margin-top: 8px;
@@ -774,8 +891,9 @@
       0 1px 0 rgba(255,255,255,0.06) inset,
       0 16px 40px -16px rgba(var(--song-c1, 244 114 182), 0.55),
       0 6px 18px -6px rgba(var(--song-c2, 252 211 77), 0.30);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    /* backdrop-filter removed — was the heaviest single layer on mom's
+       Android (re-composited on every var swap). The meta has its own
+       opaque gradient bg so the blur added nothing visible anyway. */
     overflow: hidden;
   }
   /* Decorative top-left + bottom-right corner flourishes — small swooshes
@@ -827,22 +945,45 @@
     overflow-wrap: anywhere;
     word-break: break-word;
   }
-  /* Year chip rendered inline in .by next to the artist. Picks up the
-     per-song accent via --song-c2 so the year glows in the song's colour. */
+  /* Year chip rendered inline in .by next to the artist. White text so it
+     stays legible regardless of how light/dark the per-song vibe palette is
+     (a cream/gold c2 would otherwise drop below WCAG AA on its own tinted
+     background). The c2 colour shows only in the border + bg tint. */
+  /* Mood/theme caption — tiny italic line just under the artist. Quiet
+     enough not to compete with the title, but legible enough that mom can
+     glance at "страстное · любовь и разлука" and instantly understand the
+     LLM's reading of the song. Hidden when analyzer hasn't filled it. */
+  .meta .mood-line {
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    font-style: italic;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.78);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.40);
+    position: relative;
+    z-index: 1;
+    /* Cap to one line — the LLM occasionally emits 5-6 words in `theme`. */
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  body.kbd-open .meta .mood-line { display: none; }
   .meta .by .year-chip {
     display: inline-block;
     margin-left: 8px;
     padding: 2px 10px;
     border-radius: 999px;
-    background: rgba(var(--song-c2, 252 211 77), 0.18);
-    color: rgb(var(--song-c2, 252 211 77));
-    border: 1px solid rgba(var(--song-c2, 252 211 77), 0.55);
+    background: rgba(var(--song-c2, 252 211 77), 0.32);
+    color: #fff;
+    border: 1px solid rgba(var(--song-c2, 252 211 77), 0.70);
     font-size: 14px;
     font-weight: 800;
     letter-spacing: 0.08em;
     vertical-align: baseline;
     white-space: nowrap;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.30);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.55);
   }
   .meta .added-tag {
     display: inline-flex; align-items: center; gap: 5px;
@@ -855,6 +996,24 @@
     color: var(--gold-bright);
   }
   .meta .added-tag svg { width: 11px; height: 11px; }
+  /* Co-owner status banner — shows when the OTHER owner (mom for Артур,
+     Артур for mom) already classified or commented on this song. The
+     queue no longer hides classified songs, so this chip is how the
+     user knows their co-owner has already touched it. Non-interactive,
+     pure information. Soft pink/gold to feel like a wedding-collab note. */
+  .meta .co-owner-tag {
+    display: block;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(244,114,182,0.15), rgba(252,211,77,0.12));
+    border: 1px solid rgba(244,114,182,0.40);
+    border-radius: 10px;
+    font-size: 13px; font-weight: 500;
+    color: rgba(255,255,255,0.92);
+    line-height: 1.45;
+    letter-spacing: 0.01em;
+  }
+  body.kbd-open .meta .co-owner-tag { display: none; }
 
   /* ===== Comment ===== */
   .comment-row { margin-bottom: 0; }
@@ -870,7 +1029,9 @@
       linear-gradient(135deg,
         rgba(var(--song-c1, 244 114 182), 0.15) 0%,
         rgba(var(--song-c2, 252 211 77), 0.08) 100%);
-    backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    /* No backdrop-filter — GPU-expensive on the textarea which lives on
+       the player stage and is in view on every card. The per-song
+       gradient bg below already covers the underlying surface. */
     border: 1px solid rgba(var(--song-c1, 244 114 182), 0.32);
     border-radius: 18px;
     color: #fff;
@@ -899,67 +1060,15 @@
     box-shadow: 0 0 0 4px rgba(var(--song-c1, 244 114 182), 0.18);
   }
 
-  /* ===== Rating row (primary action) ===== */
-  .rating { margin-bottom: 0; }
-  .rating-label {
-    text-align: center; color: var(--text-dim);
-    font-size: 12px; font-weight: 800; letter-spacing: 0.18em;
-    text-transform: uppercase; margin-bottom: 8px;
-  }
-  .rating-grid {
-    display: grid; grid-template-columns: repeat(10, 1fr);
-    gap: 4px;
-  }
-  .rating-btn {
-    appearance: none;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 100%),
-      var(--surface);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    color: var(--text-dim);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 8px 0;
-    /* Apple HIG 44px touch target. Mom over 50 needs the easy hit. */
-    min-height: 44px;
-    font-size: 13px; font-weight: 800;
-    cursor: pointer;
-    transition: all 0.18s var(--ease-spring);
-    font-variant-numeric: tabular-nums;
-  }
-  .rating-btn:hover {
-    color: var(--text);
-    border-color: rgba(var(--art-r), var(--art-g), var(--art-b), 0.4);
-    transform: translateY(-1px);
-  }
-  .rating-btn:active { transform: scale(0.92); transition-duration: 0.08s; }
-  .rating-btn.filled {
-    background:
-      radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.45) 0%, transparent 55%),
-      linear-gradient(135deg, rgba(var(--art-r), var(--art-g), var(--art-b), 1) 0%, rgba(var(--art-r), var(--art-g), var(--art-b), 0.82) 100%);
-    color: #0a0a0d;
-    border-color: transparent;
-    box-shadow:
-      0 8px 22px -6px rgba(var(--art-r), var(--art-g), var(--art-b), 0.55),
-      inset 0 1px 0 rgba(255,255,255,0.35);
-  }
-  .rating-btn.filled:hover { transform: translateY(-2px); }
-  .rating-hint {
-    margin-top: 6px;
-    text-align: center;
-    font-size: 12px; color: var(--text-dim);
-    font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.10em;
-    height: 14px;
-  }
+  /* Rating UI removed — CSS dropped to save parse time. To restore, see
+     the rating block removed in build 2026-05-13T-perf-final and the
+     renderCard rating section in git history. */
 
   /* Short-viewport compaction — iPhone SE portrait (568h), any phone in
-     landscape, small foldables. Drops video cap, tightens gaps so the
-     whole compact card fits without scroll. */
+     landscape, small foldables. Drops video cap, tightens gaps. */
   @media (max-height: 620px) {
-    .yt-wrap { max-height: 32vh; }
+    /* yt-wrap base is already 32vh; redundant override removed. */
     .card { gap: 8px; padding-bottom: 8px; }
-    .rating-btn { min-height: 40px; }
   }
   /* Keyboard-up state: video is irrelevant while mom is typing, and we
      desperately need the vertical room to keep the rating row + comment
@@ -984,18 +1093,22 @@
      locked to one. Hide the category-pill section + the top-bar switcher. */
   body.guest-mode .cats-collapse { display: none; }
   body.guest-mode #cat-current { display: none !important; }
-  body.guest-mode #all-btn { display: none; }
   body.guest-mode .remove-link { display: none; }
   /* Guests are scoped to a single category — hide everything that would let
      them escape: settings (switch user), global search. Defense-in-depth
      alongside the server check that refuses non-guest categories. */
   body.guest-mode #settings-btn { display: none !important; }
   body.guest-mode #search-btn { display: none !important; }
+  /* Guests can react to songs the owners proposed for their cat, but the
+     server-side handleLibraryAdd refuses guest writes — hide the add UI
+     so a guest never sees a button that 403s. */
+  body.guest-mode #add-btn { display: none !important; }
+  body.guest-mode #all-btn { display: none !important; }
   .cats-collapse summary {
     list-style: none;
     cursor: pointer;
     padding: 10px 16px;
-    min-height: 42px;
+    min-height: 44px;
     box-sizing: border-box;
     /* Colourful gradient pill — gold-rose-lavender stripe — so it doesn't
        read as another dead grey block at the bottom of the card. */
@@ -1054,7 +1167,9 @@
     background:
       linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 100%),
       var(--surface);
-    backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    /* No backdrop-filter — there are 6 of these visible when cats-collapse
+       is open, each creating its own compositing layer. Removing saved
+       the largest single chunk of paint cost on the player stage. */
     color: var(--text);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -1062,7 +1177,9 @@
     font-size: 16px; font-weight: 600;
     text-align: left;
     cursor: pointer;
-    transition: all 0.24s var(--ease-spring);
+    /* Constrained transition list — `all` re-evaluates EVERY property on
+       every state change, expensive when 6 of these are visible at once. */
+    transition: background 0.22s var(--ease-spring), border-color 0.22s, transform 0.18s, box-shadow 0.24s;
     display: flex; flex-direction: column; gap: 4px;
     min-height: 66px;
     position: relative; overflow: hidden;
@@ -1241,6 +1358,15 @@
     backdrop-filter: blur(28px) saturate(1.5);
     -webkit-backdrop-filter: blur(28px) saturate(1.5);
     display: flex; flex-direction: column;
+    /* `overflow: hidden` on the overlay clips any child wider than the
+       viewport (e.g. `.mine-tabs` has 5 tab buttons in a row that don't
+       fit on phones — they're meant to scroll horizontally INSIDE the
+       tab bar, not contribute to html.scrollWidth). Without this clip,
+       even when the overlay is `opacity: 0; pointer-events: none`, its
+       descendants' bounding rects extend the document scrollWidth past
+       the viewport — which is what was forcing the page to auto-zoom-
+       out on Samsung. */
+    overflow: hidden;
     opacity: 0; pointer-events: none;
     transition: opacity 0.34s var(--ease-out);
     padding-top: env(safe-area-inset-top);
@@ -1248,13 +1374,20 @@
   .overlay.open { opacity: 1; pointer-events: auto; }
   .ov-header {
     flex-shrink: 0;
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 14px 12px;
+    display: flex; align-items: center; gap: 12px;
+    /* Match `.ov-body` — tight 8px gutter plus the physical safe-area
+       inset so close-btn + title don't sit under the Dynamic Island in
+       landscape, but don't leave a visible whitespace band in portrait. */
+    padding:
+      14px
+      calc(8px + env(safe-area-inset-right))
+      12px
+      calc(8px + env(safe-area-inset-left));
     border-bottom: 1px solid var(--line);
   }
   .ov-close {
     appearance: none;
-    width: 42px; height: 42px;
+    width: 44px; height: 44px;
     background: var(--surface-3);
     border: 1px solid var(--line);
     border-radius: 50%;
@@ -1280,7 +1413,14 @@
   .ov-body {
     flex: 1; min-height: 0;
     overflow-y: auto; -webkit-overflow-scrolling: touch;
-    padding: 14px 14px calc(28px + env(safe-area-inset-bottom));
+    /* Tight horizontal padding — only the physical safe-area inset plus
+       8px of breathing room. Anything more was leaving an obvious
+       whitespace band on the right edge of every list row. */
+    padding:
+      12px
+      calc(8px + env(safe-area-inset-right))
+      calc(28px + env(safe-area-inset-bottom))
+      calc(8px + env(safe-area-inset-left));
   }
   .ov-status {
     text-align: center; color: var(--text-muted);
@@ -1311,7 +1451,7 @@
   /* ===== Result row (shared by search / all / mine) ===== */
   .sr-row {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px;
+    padding: 12px 10px;
     background: var(--surface-3);
     border: 1px solid transparent;
     border-radius: var(--radius);
@@ -1359,7 +1499,7 @@
   /* Visual divide: songs WITH a comment have a left-edge accent + slightly
      stronger title. Songs WITHOUT are dimmer so the user sees at a glance
      what's left to do. */
-  .sr-row.has-comment { border-left: 2px solid var(--gold-bright); padding-left: 12px; }
+  .sr-row.has-comment { border-left: 2px solid var(--gold-bright); padding-left: 10px; }
   .sr-row.no-comment .sr-title { color: var(--text-dim); font-weight: 500; }
   .sr-row.no-comment .sr-artist { color: var(--text-muted); }
   .sr-commented-dot {
@@ -2057,8 +2197,7 @@
   .unsaved-badge .unsaved-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 1.4s ease-in-out infinite; }
   .unsaved-badge:active { transform: translate(-50%, 1px); }
 
-  /* ===== Rating + Mine removed (per spec) ===== */
-  .rating { display: none !important; }
+  /* Mine button hidden (per spec). Rating UI fully removed earlier. */
   #mine-btn { display: none !important; }
 
   /* ===== Category picker screen =====
@@ -2067,15 +2206,34 @@
      Top padding accounts for the fixed top-bar (chip + icon-buttons). */
   #cat-picker[hidden] { display: none !important; }
   #cat-picker {
+    /* App-like fixed surface — same pattern as `.stage`. Pinned to the
+       viewport so the user can never scroll past the tiles into empty
+       space (was happening when cat-picker lived in normal flow). If the
+       7 tiles ever exceed the viewport on a tiny screen, the picker
+       scrolls internally with `overscroll-behavior: contain`, never
+       rubber-banding past the bounds. */
+    position: fixed; inset: 0; z-index: 50;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding-top: calc(86px + env(safe-area-inset-top));
-    padding-left: 16px;
-    padding-right: 16px;
-    padding-bottom: calc(60px + env(safe-area-inset-bottom));
-    display: block;
+    padding-left: calc(8px + env(safe-area-inset-left));
+    padding-right: calc(8px + env(safe-area-inset-right));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    /* Vertically center the tiles within the viewport. `safe center` falls
+       back to start-alignment when content overflows so the top tiles
+       aren't pushed off-screen above the top-bar on the shortest devices. */
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
     background: var(--bg);
-    min-height: 100vh;
+    box-sizing: border-box;
   }
-  #cat-picker > * { max-width: 760px; width: 100%; margin-left: auto; margin-right: auto; }
+  /* Constrain content on tablet/desktop so tiles don't span the full
+     viewport, but on phones (<= 640px) let the grid fill the available
+     width edge-to-edge — every pixel of horizontal real estate counts. */
+  #cat-picker > * { max-width: 640px; width: 100%; margin-left: auto; margin-right: auto; }
   #cat-picker h2 {
     font-family: var(--font-display);
     font-weight: 400; font-size: 32px; line-height: 1.05;
@@ -2090,10 +2248,17 @@
   .cat-grid {
     display: grid; grid-template-columns: 1fr; gap: 12px;
   }
-  @media (min-width: 520px) { .cat-grid { grid-template-columns: 1fr 1fr; } }
+  /* 2-column cat-grid moved to the 640px tablet tier in the device
+     section at the bottom of this stylesheet — at 520px on iPhone
+     Pro Max (430px CSS) two tiles side-by-side were too cramped to
+     read at a glance. */
   .cat-tile {
     display: flex; flex-direction: column; align-items: flex-start;
-    padding: 22px 22px 20px;
+    /* Reduced internal padding from 22px → 16px so the tile content
+       (name + descriptor) sits closer to the tile's right edge. The old
+       padding left a visible whitespace band on the right of every
+       tile on iPhone. */
+    padding: 16px 16px 14px;
     background: var(--surface-3);
     border: 1px solid var(--line);
     border-radius: 18px;
@@ -2148,7 +2313,7 @@
     letter-spacing: 0.01em;
     min-width: 0;
     max-width: 100%;
-    min-height: 42px;
+    min-height: 44px;
   }
   .cat-current strong {
     color: var(--gold-bright);
@@ -2170,7 +2335,7 @@
   .stream-filter-chip {
     appearance: none;
     flex-shrink: 0;
-    width: 42px; height: 42px;
+    width: 44px; height: 44px;
     /* Conic lavender → cyan gradient — unique, can't be confused with the
        gold accents elsewhere. Filter is "analytical" so the cool palette
        fits its function (slice / refine) versus the warm action chips. */
@@ -2235,7 +2400,12 @@
       linear-gradient(135deg, transparent 0%, transparent 49%, rgba(255,255,255,0.012) 49.5%, rgba(255,255,255,0.012) 50.5%, transparent 51%, transparent 100%),
       rgba(14, 10, 24, 0.96);
     background-size: auto, auto, auto, 14px 14px, auto;
-    position: relative;
+    /* NB: do NOT redeclare `position: relative` here — the base
+       `.overlay { position: fixed; inset: 0 }` already establishes a
+       positioning context for the decorative ::before/::after layers.
+       Overriding it to relative re-anchors the overlay to its place in
+       the document flow (so it renders as half-height in mid-page on
+       phones). */
   }
   .overlay.overlay--filter::before,
   .overlay.overlay--filter::after {
@@ -2267,7 +2437,7 @@
       radial-gradient(ellipse 60% 50% at 88% 50%, rgba(125,211,252,0.20) 0%, transparent 70%),
       radial-gradient(ellipse 55% 45% at 10% 90%, rgba(167,139,250,0.14) 0%, transparent 65%),
       rgba(8, 14, 22, 0.96);
-    position: relative;
+    /* Keep base `position: fixed` — see comment on .overlay--filter. */
   }
   .overlay.overlay--search::before {
     content: '';
@@ -2312,7 +2482,7 @@
       radial-gradient(ellipse 65% 50% at 50% 100%,rgba(253,186,116,0.22) 0%, transparent 65%),
       radial-gradient(ellipse 50% 40% at 10% 60%, rgba(167,139,250,0.10) 0%, transparent 70%),
       rgba(20, 10, 16, 0.96);
-    position: relative;
+    /* Keep base `position: fixed` — see comment on .overlay--filter. */
   }
   .overlay.overlay--all::before,
   .overlay.overlay--all::after {
@@ -2822,17 +2992,82 @@
     box-shadow: 0 22px 50px -12px rgba(0, 0, 0, 0.7);
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.with-undo {
+    display: inline-flex; align-items: center; gap: 14px;
+  }
+  .toast-undo {
+    appearance: none;
+    background: rgba(244,114,182,0.20);
+    color: rgb(252,211,77);
+    border: 1px solid rgba(244,114,182,0.55);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font: 700 12px/1 var(--font-body);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.16s, transform 0.1s;
+  }
+  .toast-undo:hover { background: rgba(244,114,182,0.32); }
+  .toast-undo:active { transform: scale(0.95); }
 
-  /* ===== Tablet/desktop ===== */
+  /* ===== Device tiers — phone (default) → tablet → desktop =====
+     Each tier is sized to a real device class so the same screen feels
+     native everywhere instead of a phone layout stretched across a
+     desktop monitor.
+
+     Phone (default, < 640px): edge-to-edge, tight gutters, single-column
+       cat-grid, .card fills the viewport. Already covered by the base
+       styles + the `(max-width: 380|320)` shrinkers above.
+
+     Tablet (≥ 640px): two-column cat-grid kicks in here (was 520px,
+       moved out so iPhone Pro Max 430px stays single-column — two tiles
+       side-by-side at 430px is too cramped). Cat-picker content capped
+       so tiles aren't desktop-wide on a tablet.
+
+     Tablet+ (≥ 720px): bigger headings on the player + onboarding,
+       more generous card width, slightly more top-bar breathing room.
+
+     Desktop (≥ 1024px): the player/picker/list overlays become CENTERED
+       cards with explicit max-widths instead of edge-to-edge — desktop
+       monitors are 1440-2560px and a phone-stretched UI looks awful. */
+  @media (min-width: 640px) {
+    .cat-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+    #cat-picker > * { max-width: 680px; }
+    /* More generous picker padding on tablet — there's room. */
+    #cat-picker {
+      padding-left: calc(24px + env(safe-area-inset-left));
+      padding-right: calc(24px + env(safe-area-inset-right));
+    }
+  }
   @media (min-width: 720px) {
     .stage { padding-top: calc(82px + env(safe-area-inset-top)); }
     .meta .title { font-size: 46px; }
     .meta .by { font-size: 20px; }
     .ob-hero h1 { font-size: 62px; }
     .card { max-width: 560px; }
+    /* Top-bar gets back its breathing room on tablet+. */
+    .top-bar {
+      padding-left: calc(16px + env(safe-area-inset-left));
+      padding-right: calc(16px + env(safe-area-inset-right));
+    }
+    .top-actions { gap: 8px; }
   }
   @media (min-width: 1024px) {
     .card { max-width: 620px; }
+    /* Cat-picker becomes a properly centered card on desktop instead of
+       a phone-tile layout stretched across a 1080-1440px monitor. */
+    #cat-picker > * { max-width: 760px; }
+    .cat-tile { padding: 22px 22px 20px; }
+    .cat-tile .cat-nm { font-size: 30px; }
+    /* Overlays (search / all-tracks / settings) get a centered list
+       instead of full-width rows that look stretched on a wide screen. */
+    .ov-body, .ov-header { padding-left: calc((100% - 880px) / 2 + 14px); padding-right: calc((100% - 880px) / 2 + 14px); }
+  }
+  @media (min-width: 1440px) {
+    /* On a 1440px+ monitor, hold the picker/card at a comfortable
+       reading width — don't keep enlarging just because there's space. */
+    #cat-picker > * { max-width: 820px; }
+    .card { max-width: 680px; }
   }
 </style>
 </head>
@@ -3216,7 +3451,12 @@
         if (Array.isArray(Q) && Q.length && typeof navigator !== 'undefined' && navigator.sendBeacon) {
           for (const item of Q) {
             try {
-              const { _id, _t, _attempts, ...payload } = item;
+              // Strip local metadata but KEEP `_id` — server uses it as the
+              // idempotency token (library_actions_log.client_id) to dedupe
+              // beacon-then-drain double-fires. Without _id, this version-
+              // migration beacon AND the subsequent qDrain would both write
+              // their own WAL rows.
+              const { _t, _attempts, ...payload } = item;
               const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
               navigator.sendBeacon('https://api.akoev.com/api/library/action', blob);
             } catch {}
@@ -3383,6 +3623,9 @@
       'toast.skipped': 'Пропущено',
       'toast.noteSaved': 'Заметка сохранена',
       'toast.removed': 'Удалено. Вернуть — во вкладке «Моё».',
+      'toast.removedUndo': 'Песня удалена',
+      'toast.undo': 'ВЕРНУТЬ',
+      'toast.restored': 'Возвращено',
       'toast.restored': 'Вернули',
       'toast.added': 'Добавлено',
       'toast.commentSaved': 'Сохранил{a} с заметкой',
@@ -3491,6 +3734,9 @@
       'toast.skipped': 'Skipped',
       'toast.noteSaved': 'Note saved',
       'toast.removed': 'Removed. Restore from the My tab.',
+      'toast.removedUndo': 'Song removed',
+      'toast.undo': 'UNDO',
+      'toast.restored': 'Restored',
       'toast.restored': 'Restored',
       'toast.added': 'Added',
       'toast.commentSaved': 'Saved with note',
@@ -3559,13 +3805,44 @@
   // Shape: { [song_id]: { rating, categories: 'a,b', comment, ts } }
   const K_SNAPSHOTS = 'venchanie_card_snapshots_v1';
   const snapshots = lsGetJSON(K_SNAPSHOTS, {});
+  // Proactive sweep — without this, every card mom touched in the last week
+  // stays in localStorage forever (lazy cleanup at line 4652 only fires when
+  // she revisits that song). Runs once at boot + every 5 min while open.
+  const SNAPSHOT_MAX_AGE_MS = 30 * 60 * 1000;
+  function snapshotsSweep() {
+    const now = Date.now();
+    let removed = 0;
+    for (const k of Object.keys(snapshots)) {
+      const s = snapshots[k];
+      const ts = (s && typeof s.ts === 'number') ? s.ts : 0;
+      if (now - ts > SNAPSHOT_MAX_AGE_MS) { delete snapshots[k]; removed++; }
+    }
+    if (removed > 0) lsSetJSON(K_SNAPSHOTS, snapshots);
+  }
+  snapshotsSweep();
+  setInterval(snapshotsSweep, 5 * 60 * 1000);
+  // localStorage writes for snapshots are debounced. Each keystroke in the
+  // comment textarea fires `snapshotSet({comment})`; with hundreds of
+  // tracked snapshots that's serializing 50-100KB of JSON per keystroke
+  // and freezing input on cheap Android. Debouncing to 250ms collapses
+  // typing-burst writes into one without giving up reload-safety (a hard
+  // crash inside the 250ms window loses at most one keystroke).
+  let _snapshotsLsTimer = null;
+  function _flushSnapshotsLs() {
+    if (_snapshotsLsTimer) { clearTimeout(_snapshotsLsTimer); _snapshotsLsTimer = null; }
+    lsSetJSON(K_SNAPSHOTS, snapshots);
+  }
+  function _scheduleSnapshotsLs() {
+    if (_snapshotsLsTimer) return;
+    _snapshotsLsTimer = setTimeout(() => { _snapshotsLsTimer = null; lsSetJSON(K_SNAPSHOTS, snapshots); }, 250);
+  }
   function snapshotSet(songId, partial) {
     const cur = snapshots[songId] || {};
     snapshots[songId] = Object.assign(cur, partial, { ts: Date.now() });
-    lsSetJSON(K_SNAPSHOTS, snapshots);
+    _scheduleSnapshotsLs();
   }
   function snapshotClear(songId) {
-    if (snapshots[songId]) { delete snapshots[songId]; lsSetJSON(K_SNAPSHOTS, snapshots); }
+    if (snapshots[songId]) { delete snapshots[songId]; _scheduleSnapshotsLs(); }
   }
 
   /* ===== Toast ===== */
@@ -3574,8 +3851,37 @@
   function showToast(msg) {
     if (toastTimer) clearTimeout(toastTimer);
     toastEl.textContent = msg;
+    toastEl.classList.remove('with-undo');
     toastEl.classList.add('show');
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
+  }
+  /* Undo-toast for destructive actions (delete from player, swipe-to-delete
+     in all-tracks grid). Shows the message + a «ВЕРНУТЬ» button for 6
+     seconds. Clicking the button calls the supplied onUndo handler and
+     immediately hides the toast. After timeout the toast hides without
+     doing anything — the actual library row stays soft-deleted in trash,
+     so this is a UX safety net, not a behaviour change. */
+  function showUndoToast(msg, onUndo) {
+    if (toastTimer) clearTimeout(toastTimer);
+    // Replace plain-text content with structured msg + undo button.
+    toastEl.textContent = '';
+    const span = document.createElement('span'); span.textContent = msg;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'toast-undo';
+    btn.textContent = (typeof t === 'function' ? t('toast.undo') : null) || 'ВЕРНУТЬ';
+    btn.addEventListener('click', () => {
+      try { onUndo && onUndo(); } finally {
+        toastEl.classList.remove('show', 'with-undo');
+        if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+      }
+    }, { once: true });
+    toastEl.appendChild(span);
+    toastEl.appendChild(btn);
+    toastEl.classList.add('show', 'with-undo');
+    toastTimer = setTimeout(() => {
+      toastEl.classList.remove('show', 'with-undo');
+    }, 6000);
   }
   let saveIndHideTimer = null;
   function showSaveIndicator(state) {
@@ -3747,7 +4053,17 @@
 
   /* ===== Album-color extraction ===== */
   let colorThief = null;
+  // Bounded LRU — every distinct YouTube thumbnail seen accumulates a
+  // RGB entry; over a 1000-song session this grows unchecked.
   const colorCache = new Map();
+  const COLOR_CACHE_CAP = 200;
+  function colorCacheSet(k, v) {
+    if (colorCache.has(k)) colorCache.delete(k);
+    colorCache.set(k, v);
+    while (colorCache.size > COLOR_CACHE_CAP) {
+      colorCache.delete(colorCache.keys().next().value);
+    }
+  }
   const tintEl = document.getElementById('album-tint');
   const defaultArt = [212, 164, 92];
 
@@ -3793,7 +4109,7 @@
     img.onload = () => {
       try {
         const rgb = ct.getColor(img, 10);
-        if (rgb) { colorCache.set(imgUrl, rgb); applyAlbumColor(rgb); }
+        if (rgb) { colorCacheSet(imgUrl, rgb); applyAlbumColor(rgb); }
         else resetAlbumColor();
       } catch (e) { console.warn('colorThief', e?.message); resetAlbumColor(); }
     };
@@ -3805,17 +4121,27 @@
      20s timeout (was 6s) — iPhone on weak cellular can take that long to
      complete an HTTPS POST after waking from background. 3 retries with
      exponential backoff. */
-  async function fetchWithRetry(url, opts, retries = 3, timeoutMs = 20000) {
+  async function fetchWithRetry(url, opts, retries = 3, timeoutMs = 20000, externalSignal = null) {
     let lastErr = null;
     for (let attempt = 0; attempt <= retries; attempt++) {
+      // Caller already aborted (e.g. stale loadOthersComments) — bail.
+      if (externalSignal?.aborted) {
+        const e = new Error('aborted'); e.name = 'AbortError'; throw e;
+      }
       try {
         const ctrl = new AbortController();
         const tm = setTimeout(() => ctrl.abort(), timeoutMs);
+        // Bridge externalSignal → our local controller so the in-flight
+        // fetch is cancelled when the caller signals abort.
+        const onExternalAbort = () => ctrl.abort();
+        if (externalSignal) externalSignal.addEventListener('abort', onExternalAbort, { once: true });
         const r = await fetch(url, Object.assign({}, opts || {}, { signal: ctrl.signal, cache: 'no-store' }));
         clearTimeout(tm);
+        if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
         return r;
       } catch (e) {
         lastErr = e;
+        if (e?.name === 'AbortError') throw e;
         if (attempt < retries) await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt)));
       }
     }
@@ -3867,6 +4193,41 @@
       stack: r?.stack
     });
   });
+
+  /* ===== Layout overflow diagnostic =====
+     Reports the actual rendered dimensions so we can see WHAT is wider
+     than the viewport on the user's specific device. Fires once 800ms
+     after load (lets fonts settle), reports viewport + scroll dims +
+     the top-5 widest descendants of <body>. Strictly one-shot — never
+     spams diag. */
+  setTimeout(() => {
+    try {
+      const docEl = document.documentElement;
+      const overflow = docEl.scrollWidth - docEl.clientWidth;
+      const widest = [];
+      document.querySelectorAll('body *').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.right > docEl.clientWidth + 2) {
+          widest.push({
+            tag: el.tagName,
+            id: el.id || null,
+            cls: (el.className?.toString?.() || '').slice(0, 80),
+            x: Math.round(r.left), w: Math.round(r.width),
+            right: Math.round(r.right),
+          });
+        }
+      });
+      widest.sort((a, b) => b.right - a.right);
+      diag('viewport_diag', {
+        vw: window.innerWidth, vh: window.innerHeight,
+        docW: docEl.clientWidth, scrollW: docEl.scrollWidth,
+        overflow,
+        dpr: window.devicePixelRatio,
+        ua: navigator.userAgent.slice(0, 120),
+        offenders: widest.slice(0, 8),
+      });
+    } catch (e) { /* ignore */ }
+  }, 800);
 
   /* ===== API helpers ===== */
   async function apiSaveName() {
@@ -3988,7 +4349,18 @@
       let q = qGet();
       while (q.length > 0) {
         const item = q[0];
-        const { _id, _t, _attempts, ...payload } = item;
+        const { _t, _attempts, ...rest } = item;
+        const _id = rest._id;
+        // Include the client _id in the wire payload so the server can
+        // dedupe a beacon-then-drain double-fire (server stores client_id
+        // in library_actions_log with a partial-unique index and returns
+        // `{ok:true, idempotent:true}` on duplicate). Also forward the
+        // client-side enqueue time as `_client_ts` so the server can
+        // refuse a stale offline-queued write that arrives AFTER another
+        // device has already updated the same (song_id, user_name) —
+        // protects mom's iPhone offline backlog from overwriting her
+        // iPad edits from a later session.
+        const payload = Object.assign({}, rest, { _client_ts: _t || Date.now() });
         let r = null;
         let networkErr = null;
         try {
@@ -4011,6 +4383,13 @@
         if (r.ok) {
           recordOutcome(_id, 'ok');
           qRemove(_id);
+          // Snapshot + draft for this song are no longer needed — the
+          // server has authoritative state. Without these clears, a long
+          // offline session would accumulate one snapshot per acted song
+          // in localStorage; on a 3000-track marathon that's ~150KB of
+          // dead JSON written/read on every keystroke.
+          try { snapshotClear(payload.song_id); } catch {}
+          try { saveDraft(payload.song_id, ''); } catch {}
           q = qGet();
           continue;
         }
@@ -4033,11 +4412,24 @@
           qRemove(_id);
           q = qGet();
         } else {
-          // 5xx — keep, retry later
+          // 5xx — keep + retry, BUT cap attempts. Without a cap, a broken
+          // server response on a single item would retry every swipe +
+          // every 60s sync + every focus + every online event forever,
+          // burning network and CPU. 20 attempts ≈ a few hours of trying;
+          // after that the item is obviously not coming back and dropping
+          // it stops the request multiplier.
+          const nextAttempts = (_attempts || 0) + 1;
+          if (nextAttempts >= 20) {
+            diag('drain_attempts_exhausted', { song_id: payload.song_id, action: payload.action, status, attempts: nextAttempts });
+            recordOutcome(_id, 'failed');
+            qRemove(_id);
+            q = qGet();
+            continue;
+          }
           const cur = qGet();
           const idx = cur.findIndex(x => x._id === _id);
-          if (idx >= 0) { cur[idx]._attempts = (cur[idx]._attempts || 0) + 1; qSet(cur); }
-          diag('drain_5xx_keep', { song_id: payload.song_id, action: payload.action, status, body: bodyText.slice(0, 300), attempts: (_attempts || 0) + 1 });
+          if (idx >= 0) { cur[idx]._attempts = nextAttempts; qSet(cur); }
+          diag('drain_5xx_keep', { song_id: payload.song_id, action: payload.action, status, body: bodyText.slice(0, 300), attempts: nextAttempts });
           break;
         }
       }
@@ -4050,10 +4442,19 @@
     // Fire-and-forget every queued item via navigator.sendBeacon.
     // Use a Blob with text/plain so the browser does NOT require a CORS preflight
     // (the Worker still parses the body as JSON via req.json()).
+    // KEEP `_id` in the wire payload — it's the server-side idempotency
+    // token; without it, a beacon-then-drain duplicate would append a
+    // phantom WAL row + ghost history snapshot. `_t` and `_attempts` are
+    // local metadata only (drop them).
     const q = qGet();
     if (!q.length || !navigator.sendBeacon) return;
     for (const item of q) {
-      const { _id, _t, ...payload } = item;
+      const { _t, _attempts, ...rest } = item;
+      // Forward client-side enqueue timestamp so the server's stale-write
+      // guard fires for beacon-path flushes too — without this, an offline
+      // iPhone whose tab gets killed on lock-screen would send its hours-
+      // old queue via beacon and overwrite mom's later iPad edits.
+      const payload = Object.assign({}, rest, { _client_ts: _t || Date.now() });
       try {
         const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain' });
         navigator.sendBeacon(`${API}/api/library/action`, blob);
@@ -4130,6 +4531,30 @@
         delete localSnaps[sidStr];
         continue;
       }
+      // Server-explicitly-empty short-circuit: if the snapshot is older
+      // than the server row AND the server has NULLed the corresponding
+      // field, it means another device deliberately cleared it. The
+      // SKEW_MS check above only fires when server.created_at strictly
+      // exceeds snap.ts+60s — within that window a server-cleared field
+      // would still cause us to resend the old cat/rating, undoing the
+      // peer's clear. Drop a stale-cats snapshot when the server's
+      // category column is NULL/empty for a same-or-newer row.
+      const serverIsNewer = server && server.created_at && server.created_at >= snapTs;
+      const peerClearedCats = serverIsNewer && !serverCats && cats;
+      const peerClearedRating = serverIsNewer && !serverRating && localRating > 0;
+      if (peerClearedCats || peerClearedRating) {
+        // Don't drop the whole snapshot if mom still has a *new* local
+        // comment to push — just strip the cat/rating bits so we don't
+        // resurrect them.
+        if (localComment && serverComment !== localComment) {
+          // Re-route into the comment-only branch below.
+          snap.categories = ''; snap.rating = 0;
+          localSnaps[sidStr] = snap;
+        } else {
+          delete localSnaps[sidStr];
+          continue;
+        }
+      }
       const ratingMismatch = (localRating > 0 && serverRating !== localRating);
       const catsMismatch = (cats && serverCats !== cats);
       const commentMismatch = (localComment && serverComment !== localComment);
@@ -4164,7 +4589,36 @@
       const allMatch = (localRating === serverRating) && ((cats || '') === (serverCats || '')) && (localComment === serverComment);
       if (!hasAnyDelta && allMatch) delete localSnaps[sidStr];
     }
-    lsSetJSON(K_SNAPSHOTS, localSnaps);
+    // Re-read the LIVE snapshots before writing back — during the 5-20s
+    // /api/state fetch above the user may have typed in the comment
+    // textarea, and the 250ms-debounced `_flushSnapshotsLs` may have
+    // persisted newer values. Clobbering LS with our stale `localSnaps`
+    // copy would lose those keystrokes if the tab closes before the
+    // next snapshotSet triggers another flush. Merge: trust the live
+    // `snapshots` global as ground truth for any entry we didn't touch,
+    // only overlay the deletions we made during reconcile.
+    const liveSnaps = lsGetJSON(K_SNAPSHOTS, {});
+    const reconciled = {};
+    for (const sidStr of Object.keys(liveSnaps)) {
+      // If we DELETED this snapshot during reconcile (server has newer /
+      // peer-cleared / matched), respect that — drop it from output.
+      if (Object.prototype.hasOwnProperty.call(localSnaps, sidStr)) {
+        reconciled[sidStr] = liveSnaps[sidStr]; // live wins over stale-from-reconcile-start
+      }
+      // else: the user added a brand-new snapshot mid-reconcile; keep it.
+      else if (!Object.prototype.hasOwnProperty.call(localSnaps, sidStr) && liveSnaps[sidStr]) {
+        reconciled[sidStr] = liveSnaps[sidStr];
+      }
+    }
+    // Also bring in any localSnap mutations we made (e.g. categories=''
+    // after peerClearedCats handling).
+    for (const sidStr of Object.keys(localSnaps)) {
+      if (liveSnaps[sidStr]) reconciled[sidStr] = liveSnaps[sidStr];
+    }
+    // Sync in-memory + LS atomically.
+    for (const k of Object.keys(snapshots)) delete snapshots[k];
+    Object.assign(snapshots, reconciled);
+    lsSetJSON(K_SNAPSHOTS, reconciled);
     // Also push any local drafts that the server doesn't have yet
     const localDrafts = lsGetJSON(K_DRAFTS, {});
     for (const sidStr of Object.keys(localDrafts)) {
@@ -4190,12 +4644,34 @@
     const el = document.getElementById('unsaved-badge');
     if (!el) return;
     const n = qGet().length;
-    if (n === 0) { el.classList.remove('show'); return; }
+    const offline = (typeof navigator !== 'undefined') && navigator.onLine === false;
+    // Show the badge whenever EITHER there's pending data OR we're offline
+    // (so the user gets explicit "no connection" feedback even before the
+    // first failed save). Hide only when both conditions are clear.
+    if (n === 0 && !offline) { el.classList.remove('show'); return; }
     const lbl = el.querySelector('.unsaved-label');
-    if (lbl) lbl.textContent = (lang === 'en')
-      ? `${n} unsaved — tap to retry`
-      : `Не отправлено: ${n} · нажми, чтобы повторить`;
+    if (lbl) {
+      if (offline && n === 0) {
+        lbl.textContent = (lang === 'en')
+          ? 'Offline — changes will save when back'
+          : 'Без интернета — сохраню, когда появится';
+      } else if (offline) {
+        lbl.textContent = (lang === 'en')
+          ? `Offline — ${n} pending`
+          : `Без интернета · в очереди: ${n}`;
+      } else {
+        lbl.textContent = (lang === 'en')
+          ? `${n} unsaved — tap to retry`
+          : `Не отправлено: ${n} · нажми, чтобы повторить`;
+      }
+    }
     el.classList.add('show');
+  }
+  // Refresh the badge when the network state flips so mom sees feedback
+  // the moment WiFi drops or comes back.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', refreshUnsavedBadge);
+    window.addEventListener('offline', refreshUnsavedBadge);
   }
   async function apiMine() {
     try {
@@ -4277,13 +4753,16 @@
       return await r.json();
     } catch (e) { console.warn('submit', e?.message); return { ok: false }; }
   }
-  async function apiSongComments(songId) {
+  async function apiSongComments(songId, signal) {
     try {
-      const r = await fetchWithRetry(`${API}/api/song/comments?song_id=${songId}&user=${encodeURIComponent(userName)}`);
-      if (!r.ok) return [];
+      const r = await fetchWithRetry(`${API}/api/song/comments?song_id=${songId}&user=${encodeURIComponent(userName)}`, undefined, undefined, undefined, signal);
+      if (!r || !r.ok) return [];
       const d = await r.json();
       return d.entries || [];
-    } catch (e) { console.warn('comments', e?.message); return []; }
+    } catch (e) {
+      if (e?.name !== 'AbortError') console.warn('comments', e?.message);
+      return [];
+    }
   }
   async function apiDraftPush(songId, comment) {
     try {
@@ -4481,16 +4960,24 @@
       loadNext();
     }
   }
+  // Throttle: if refreshProgress was called less than 4 sec ago, skip — the
+  // value is already fresh. Without this guard, every renderCard plus every
+  // showScreen('discovery') fired its own /api/library/stats request.
+  let _lastProgressFetch = 0;
+  let _progressInflight = false;
   async function refreshProgress() {
     if (!userName) return;
+    if (_progressInflight) return;
+    if (Date.now() - _lastProgressFetch < 4000) return;
+    _progressInflight = true;
     try {
       const r = await fetchWithRetry(`${API}/api/library/stats?user=${encodeURIComponent(userName)}`);
       if (!r || !r.ok) {
         console.warn('refreshProgress failed', r && r.status);
         return;
       }
+      _lastProgressFetch = Date.now();
       const d = await r.json();
-      console.log('refreshProgress', d);
       if (typeof d?.total === 'number') {
         progressTotal = d.total;
         const pt = document.getElementById('progress-total');
@@ -4503,6 +4990,8 @@
       }
     } catch (e) {
       console.warn('refreshProgress threw', e?.message);
+    } finally {
+      _progressInflight = false;
     }
   }
   // Locally-known soft-removed song IDs — written when mom removes a song
@@ -4510,7 +4999,17 @@
   // set BEFORE rendering and bypasses any song the local replica still
   // thinks is removed, so even an inflight race between remove → next can
   // never put a freshly-deleted song back on the deck.
+  // Capped — same reason as ytTried. Replace add() with a wrapper that
+  // evicts the oldest entry once we cross the cap.
   const localRemoved = new Set();
+  const LOCAL_REMOVED_CAP = 200;
+  function localRemovedAdd(songId) {
+    if (localRemoved.has(songId)) return;
+    localRemoved.add(songId);
+    while (localRemoved.size > LOCAL_REMOVED_CAP) {
+      localRemoved.delete(localRemoved.values().next().value);
+    }
+  }
 
   // Keyboard navigation on desktop: arrow-right = commit+advance, arrow-left = back.
   // Ignore when focus is in a text field so typing inside the comment doesn't
@@ -4528,11 +5027,27 @@
   const cardHost = document.getElementById('card-host');
   let cardEl = null;
 
+  let _draftsLsTimer = null;
+  function _scheduleDraftsLs() {
+    if (_draftsLsTimer) return;
+    _draftsLsTimer = setTimeout(() => { _draftsLsTimer = null; lsSetJSON(K_DRAFTS, drafts); }, 250);
+  }
+  function _flushDraftsLs() {
+    if (_draftsLsTimer) { clearTimeout(_draftsLsTimer); _draftsLsTimer = null; }
+    lsSetJSON(K_DRAFTS, drafts);
+  }
   function saveDraft(songId, comment) {
     if (!songId) return;
     if (comment && comment.trim()) drafts[songId] = comment;
     else delete drafts[songId];
-    lsSetJSON(K_DRAFTS, drafts);
+    // Soft cap — without this, half-finished drafts from forgotten songs
+    // pile up in localStorage forever. Drop the oldest entries (insertion
+    // order is preserved by JS objects). 200 is way beyond realistic.
+    const keys = Object.keys(drafts);
+    if (keys.length > 200) {
+      for (let i = 0; i < keys.length - 200; i++) delete drafts[keys[i]];
+    }
+    _scheduleDraftsLs();
   }
   function popDraft(songId) {
     const c = drafts[songId];
@@ -4543,6 +5058,17 @@
 
   function renderCard(song) {
     if (!song) { renderEmpty(); return; }
+    // Tear down the PREVIOUS card's listeners + flush closure before
+    // building the new one. Without this every swipe leaves an orphaned
+    // copy of (ta input, cat-pill clicks, focus handlers, remove-link
+    // click, persistNow closure with its ta/song refs) alive in memory.
+    // After hundreds of swipes mom's session would balloon and any global
+    // `document.querySelectorAll` (e.g. applyStaticI18n) gets quadratically
+    // slower walking the detached-but-retained subtrees.
+    if (window.__cardAbort) { try { window.__cardAbort.abort(); } catch {} }
+    window.__cardAbort = new AbortController();
+    const cardSignal = window.__cardAbort.signal;
+    window.__flushCardSave = null;
     // Fresh song = fresh retry budget for the YT auto-recovery loop. Also
     // tear down ANY in-flight player state from the previous song before
     // mounting the new one: a stale watchdog firing after a swipe would burn
@@ -4569,7 +5095,31 @@
     try { applyBodyVibe(song); } catch {}
     const hasYear = !!(song.year && song.year > 0);
     const yearInline = hasYear ? ` <span class="year-chip">${song.year}</span>` : '';
+    // Mood/theme line — small italic caption beneath the artist that surfaces
+    // the LLM's reading of the song ("страстное · любовь и разлука"). Hidden
+    // when the analyzer hasn't run yet (vibe_status NULL / failed).
+    const themeLine = (song.mood || song.theme)
+      ? `<div class="mood-line">${[song.mood, song.theme].filter(Boolean).map(escapeHtml).join(' · ')}</div>`
+      : '';
     const addedTag = song.added_by ? `<div class="added-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${escapeHtml(t('card.addedBy', { by: song.added_by })).replace('{a}', (song.added_by === 'Юля') ? 'а' : '')}</div>` : '';
+    // Co-owner status banner — when the OTHER owner (mom for Артур, or
+    // Артур for mom) has already classified or commented on this song,
+    // surface that immediately in the card so the user knows the work
+    // was done. Without this, after the queue stopped excluding already-
+    // classified songs (user wanted to see them stay in the stream),
+    // there was no visible hint that a co-owner had touched it. The chip
+    // is non-interactive — pure information. Empty string if no other-
+    // owner work exists on this song.
+    const otherOwnerName = (song.other_by && song.other_by !== userName) ? song.other_by : null;
+    const otherCatLabel = song.other_category
+      ? song.other_category.split(',').filter(Boolean).map(c => t(`cat.${c}.short`) || c).join(', ')
+      : '';
+    const coOwnerLineParts = [];
+    if (otherOwnerName && otherCatLabel) coOwnerLineParts.push(`📌 ${escapeHtml(otherOwnerName)} → ${escapeHtml(otherCatLabel)}`);
+    if (otherOwnerName && song.other_comment && song.other_comment.trim()) coOwnerLineParts.push(`💬 ${escapeHtml(otherOwnerName)}: «${escapeHtml(song.other_comment.trim().slice(0, 120))}${song.other_comment.length > 120 ? '…' : ''}»`);
+    const coOwnerTag = coOwnerLineParts.length
+      ? `<div class="co-owner-tag">${coOwnerLineParts.join('<br>')}</div>`
+      : '';
     /* Per-song colour palette — UNIQUE per track. Each song gets its own
        tactile colour identity from a curated 24-palette set tuned by genre
        family, decade, and a stable hash of the song id. Two adjacent tracks
@@ -4581,7 +5131,10 @@
     // propagated to the lovers_songs / dj_songs tables on the server so the
     // shared workspaces stay in sync automatically.
     const catsHTML = CATEGORIES.map(c => `<button type="button" class="cat-pill${(c === 'LOVERS' || c === 'DJ Микки') ? ' shared' : ''}" data-cat="${escapeHtml(c)}" aria-pressed="false"><span class="nm">${escapeHtml(t(`cat.${c}.short`))}</span><span class="ctx">${escapeHtml(t(`cat.${c}.ctx`))}</span></button>`).join('');
-    const ratingHTML = Array.from({length: 10}, (_, i) => `<button type="button" class="rating-btn" data-r="${i+1}" aria-pressed="false" aria-label="${escapeHtml(t('rating.label'))} ${i+1}">${i+1}</button>`).join('');
+    // Rating UI is currently hidden (per spec). Don't generate 10 rating
+    // buttons + attach 10 click listeners on every renderCard — wasted DOM
+    // + layout cost on mom's Android. To re-enable: restore ratingHTML +
+    // its block in the template + the listener loop below.
     const canBack = seenIdx > 0;
     const savedComment = drafts[song.id] || '';
 
@@ -4598,17 +5151,14 @@
         <div class="meta">
           <div class="title">${escapeHtml(song.title)}</div>
           <div class="by">${escapeHtml(song.artist)}${yearInline}</div>
+          ${themeLine}
           ${addedTag}
+          ${coOwnerTag}
         </div>
         <div class="comment-row">
           <textarea id="comment-input" placeholder="${escapeHtml(t('card.commentPh'))}" rows="1">${escapeHtml(savedComment)}</textarea>
           <div class="save-indicator" id="save-indicator"><span class="dot"></span><span id="save-indicator-text"></span></div>
           <div class="others-comments" id="others-comments"></div>
-        </div>
-        <div class="rating">
-          <div class="rating-label">${escapeHtml(t('rating.label'))}</div>
-          <div class="rating-grid" id="rating-grid">${ratingHTML}</div>
-          <div class="rating-hint" id="rating-hint">${escapeHtml(t('rating.hint.empty'))}</div>
         </div>
         <details class="cats-collapse">
           <summary class="cats-summary"><span class="cats-summary-label">${escapeHtml(t('card.placeAt'))}</span><svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
@@ -4657,20 +5207,11 @@
       const pill = cardHost.querySelector(`.cat-pill[data-cat="${c.replace(/"/g, '\\"')}"]`);
       if (pill) { pill.classList.add('selected'); pill.setAttribute('aria-pressed', 'true'); }
     }
+    // Rating block is hidden via CSS — keep currentRating for back-compat
+    // with code that reads `snap.rating` / `song.my_rating` (the queue path
+    // still records ratings if they exist in the snapshot), but skip all
+    // DOM state restoration for the (now absent) rating buttons.
     let currentRating = snap.rating || song.my_rating || 0;
-    if (currentRating) {
-      cardHost.querySelectorAll('.rating-btn').forEach(x => {
-        const on = parseInt(x.dataset.r, 10) <= currentRating;
-        x.classList.toggle('filled', on);
-        x.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-    }
-    const hint = document.getElementById('rating-hint');
-    if (hint) {
-      if (currentRating) hint.textContent = t('rating.hint.set', { n: currentRating });
-      else if (selectedCategories.size) hint.textContent = t('rating.hint.with_cat');
-      else hint.textContent = t('rating.hint.empty');
-    }
     // If we have a server-side comment and no fresher local draft, use the server one
     if (song.my_comment && !savedComment) {
       const ta = document.getElementById('comment-input');
@@ -4756,42 +5297,28 @@
 
     // Skip / back buttons removed — navigation is swipe (mobile) + arrow keys
     // (desktop). The 'Удалить из списка' link stays.
-    document.getElementById('remove-link')?.addEventListener('click', () => onRemoveCurrent());
-    document.getElementById('meta-delete')?.addEventListener('click', () => onRemoveCurrent());
+    document.getElementById('remove-link')?.addEventListener('click', () => onRemoveCurrent(), { signal: cardSignal });
 
     cardHost.querySelectorAll('.cat-pill').forEach(b => b.addEventListener('click', () => {
       setDirty(true);
       const cat = b.dataset.cat;
+      const hadAnyCatsBeforeThisTap = selectedCategories.size > 0;
       if (selectedCategories.has(cat)) { selectedCategories.delete(cat); b.classList.remove('selected'); b.setAttribute('aria-pressed', 'false'); }
       else { selectedCategories.add(cat); b.classList.add('selected'); b.setAttribute('aria-pressed', 'true'); }
-      // Local snapshot first — survives reload even if server save fails
-      snapshotSet(song.id, { categories: [...selectedCategories].join(','), rating: currentRating });
-      const hint = document.getElementById('rating-hint');
-      if (hint) {
-        if (currentRating) hint.textContent = t('rating.hint.set', { n: currentRating });
-        else hint.textContent = selectedCategories.size ? t('rating.hint.with_cat') : t('rating.hint.empty');
-      }
+      // Local snapshot. Crucially: if mom had categories selected and just
+      // untapped the LAST one (so the field is now empty), record that as
+      // an EXPLICIT clear intent — without this flag, a tab close + boot
+      // recovery would see `categories: ''` and treat it as "never set",
+      // so the prior server category silently survives the untap.
+      const cleanedAllCats = hadAnyCatsBeforeThisTap && selectedCategories.size === 0;
+      snapshotSet(song.id, {
+        categories: [...selectedCategories].join(','),
+        rating: currentRating,
+        ...(cleanedAllCats ? { _cleared_cats: 1 } : {}),
+      });
       persistCard();
-    }));
-    cardHost.querySelectorAll('.rating-btn').forEach(b => b.addEventListener('click', () => {
-      const r = parseInt(b.dataset.r, 10);
-      if (currentRating === r) {
-        currentRating = 0;
-        cardHost.querySelectorAll('.rating-btn').forEach(x => { x.classList.remove('filled'); x.setAttribute('aria-pressed', 'false'); });
-      } else {
-        currentRating = r;
-        cardHost.querySelectorAll('.rating-btn').forEach(x => {
-          const on = parseInt(x.dataset.r, 10) <= r;
-          x.classList.toggle('filled', on);
-          x.setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
-      }
-      // Local snapshot FIRST — guarantees survival even if network fails or tab is killed
-      snapshotSet(song.id, { rating: currentRating, categories: [...selectedCategories].join(',') });
-      const hint = document.getElementById('rating-hint');
-      if (hint) hint.textContent = currentRating ? t('rating.hint.set', { n: currentRating }) : (selectedCategories.size ? t('rating.hint.with_cat') : t('rating.hint.empty'));
-      persistCard();
-    }));
+    }, { signal: cardSignal }));
+    // Rating buttons removed — no listeners to attach.
     const ta = document.getElementById('comment-input');
     // iOS keyboard handling: when the textarea is focused, the soft keyboard
     // slides up ~280-340px. With body.discovery-locked + overflow:hidden the
@@ -4819,7 +5346,7 @@
           }
         } catch {}
       }, 300);
-    });
+    }, { signal: cardSignal });
     ta.addEventListener('input', () => {
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
@@ -4838,7 +5365,7 @@
       } else {
         showSaveIndicator('saved');
       }
-    });
+    }, { signal: cardSignal });
     ta.dataset.edited = '0';
     if (ta.value) {
       setTimeout(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
@@ -4867,10 +5394,18 @@
         </div>
       </div>`;
   }
+  // Abort the previous /api/song/comments request when a new card mounts,
+  // so a queue of stale fetches doesn't pile up when mom swipes quickly.
+  let othersCommentsAbort = null;
   async function loadOthersComments(songId) {
     const host = document.getElementById('others-comments');
     if (!host) return;
-    const entries = await apiSongComments(songId);
+    if (othersCommentsAbort) { try { othersCommentsAbort.abort(); } catch {} }
+    othersCommentsAbort = new AbortController();
+    const mySignal = othersCommentsAbort.signal;
+    const entries = await apiSongComments(songId, mySignal).catch(() => null);
+    if (mySignal.aborted) return;
+    if (!entries) return;
     if (currentSong?.id !== songId) return;
     const others = entries.filter(e => e.user_name !== userName && e.comment && e.comment.trim());
     if (!others.length) { host.innerHTML = ''; return; }
@@ -5035,13 +5570,42 @@
   window.addEventListener('touchstart', () => { hasUserGesture = true; }, { once: true, capture: true, passive: true });
   // Track which video IDs we've already tried per song so re-resolve doesn't
   // loop on the same broken video.
+  // Bounded LRU — Map preserves insertion order, so the oldest key is the
+  // first iterated entry. Without this cap the Map grows for every song mom
+  // ever played in this tab and never gets GC'd.
   const ytTried = new Map();
+  const YT_TRIED_CAP = 50;
+  function ytTriedTouch(songId) {
+    if (ytTried.has(songId)) {
+      // Re-insert to move to MRU position
+      const set = ytTried.get(songId);
+      ytTried.delete(songId);
+      ytTried.set(songId, set);
+    } else {
+      ytTried.set(songId, new Set());
+    }
+    while (ytTried.size > YT_TRIED_CAP) {
+      ytTried.delete(ytTried.keys().next().value);
+    }
+  }
   let ytMsgAbort = null;
   let ytWatchdogTimer = null;
+  // Mount generation — incremented on each mount so stray timeouts from
+  // prior mounts can self-cancel via `gen === ytMountGen` check (saves ~4
+  // stray setTimeout firings per mount).
+  let ytMountGen = 0;
+  // Set of pending wakeListening timer IDs for the CURRENT mount, so a new
+  // mount can clear them eagerly instead of just relying on the gen check.
+  let ytWakeTimers = [];
   function mountYTIframe(wrap, videoId) {
+    ytMountGen++;
+    // Clear any wake-timers from the previous mount.
+    for (const t of ytWakeTimers) { try { clearTimeout(t); } catch {} }
+    ytWakeTimers = [];
+    const myGen = ytMountGen;
     const songRef = currentSong;
     if (songRef) {
-      if (!ytTried.has(songRef.id)) ytTried.set(songRef.id, new Set());
+      ytTriedTouch(songRef.id);
       ytTried.get(songRef.id).add(videoId);
     }
     const iframe = document.createElement('iframe');
@@ -5058,6 +5622,17 @@
     // No iframe.loading='lazy' — iOS Safari can fail to fire load on
     // dynamically-inserted lazy iframes even when visible; the player is the
     // primary intent of the page so we want eager-load.
+    // Tear down the prior iframe. On iOS Safari, setting `src='about:blank'`
+    // triggers an ADDITIONAL navigation (loading about:blank) that occupies
+    // the main thread briefly and can stack up under fast swiping. Just
+    // remove the element — when the iframe is detached from the document,
+    // its Window context is queued for teardown by the browser. stopVideo
+    // postMessage signals YT to halt audio/playback before we drop the node.
+    const oldIframes = wrap.querySelectorAll('iframe');
+    oldIframes.forEach(old => {
+      try { old.contentWindow?.postMessage('{"event":"command","func":"stopVideo","args":[]}', '*'); } catch {}
+      try { old.remove(); } catch {}
+    });
     wrap.innerHTML = '';
     wrap.appendChild(iframe);
     // Stay in `.loading` (shimmer overlay covers the iframe) until we hear
@@ -5113,25 +5688,37 @@
     // before the player has wired up its listener; retry until we've heard
     // back or hit four attempts. Each retry is cheap (1 postMessage call).
     const wakeListening = (delay, tries) => {
-      setTimeout(() => {
-        // Bail if user moved on — no point waking a player that's not in view.
+      const tid = setTimeout(() => {
+        // Stale-mount guard — newer mount has superseded this one.
+        if (myGen !== ytMountGen) return;
         if (!songRef || currentSong?.id !== songRef.id) return;
         if (ytAlive) return;
         try { iframe.contentWindow?.postMessage('{"event":"listening"}', '*'); } catch {}
         if (tries > 1) wakeListening(1200, tries - 1);
       }, delay);
+      ytWakeTimers.push(tid);
     };
     wakeListening(500, 4);
     // Watchdog: if 7s after mount we still haven't heard a single life signal
     // from the iframe, assume the embed silently failed (region-block, embed
     // disabled, "Повторите попытку позже" — none of these emit onError). Try
     // a different video ID instead of leaving the user staring at the error.
-    ytWatchdogTimer = setTimeout(() => {
+    ytWatchdogTimer = setTimeout(async () => {
       ytWatchdogTimer = null;
       if (ytAlive) return;
       if (!songRef || currentSong?.id !== songRef.id) return;
-      console.warn('YT watchdog: no life signal in 7s for ' + videoId + ', trying alternate');
+      console.warn('YT watchdog: no life signal in 7s for ' + videoId + ', trying Yandex first');
       ytMsgAbort?.abort();
+      // The most common cause of "iframe never sent a life signal" in mom's
+      // setup is RKN's YouTube throttle in Russia — every YT video ID will
+      // silently hang the same way, so cycling through 6 alternate IDs would
+      // burn ~40s of her time for no gain. Try Yandex.Music first; if it
+      // succeeds she gets the track right away. If it fails (track not on
+      // Yandex, or we're outside RU where the API is 451), fall through to
+      // the regular YT alternate-video loop.
+      const ok = await mountYandex(songRef);
+      if (ok) return;
+      if (!songRef || currentSong?.id !== songRef.id) return;
       tryAnotherVideo(songRef);
     }, 7000);
   }
@@ -5166,6 +5753,9 @@
     // surface that we're working on it so the user knows something is happening.
     wrap.dataset.loadingLabel = (ytAttempt > 0) ? (lang === 'ru' ? 'Подбираем рабочее видео…' : 'Finding a working version…') : '';
     if (ytAttempt >= MAX_YT_ATTEMPTS) {
+      // Last-ditch Yandex.Music try before showing the error state.
+      const ok = await mountYandex(song);
+      if (ok) return;
       wrap.classList.remove('loading');
       wrap.classList.add('error');
       wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>${escapeHtml(lang === 'ru' ? 'Этот трек не нашёлся на YouTube. Можно нажать «Дальше →»' : 'No playable YouTube version. Press Next →')}</div>`;
@@ -5200,6 +5790,69 @@
       }, 800);
     }
   }
+  /* Yandex Music fallback. Used when the YouTube watchdog fires (i.e. the
+     embed never sent a life signal in 7s) — the most common cause of that in
+     mom's setup is RKN's YouTube throttle in Russia. Yandex.Music plays inside
+     Russia without VPN, so a successful Yandex mount means mom can audition
+     the track. Outside Russia we usually never get here because YT loads, so
+     this stays invisible to family members on French / UK connections. */
+  let yandexTried = new Set();
+  async function mountYandex(song) {
+    if (!song || currentSong?.id !== song.id) return false;
+    if (yandexTried.has(song.id)) return false;
+    yandexTried.add(song.id);
+    const wrap = document.getElementById('yt-wrap');
+    if (!wrap) return false;
+    let j = null;
+    try {
+      const r = await fetchWithRetry(
+        `${API}/api/yandex?song_id=${song.id}&user=${encodeURIComponent(userName)}`,
+        undefined, 1, 15000
+      );
+      j = await r.json();
+    } catch (e) { j = null; }
+    if (currentSong?.id !== song.id) return false;
+    if (!j || !j.yandex_track_id || !j.yandex_album_id) return false;
+    if (ytWatchdogTimer) { clearTimeout(ytWatchdogTimer); ytWatchdogTimer = null; }
+    if (ytMsgAbort) { ytMsgAbort.abort(); ytMsgAbort = null; }
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://music.yandex.ru/iframe/#track/${encodeURIComponent(j.yandex_track_id)}/${encodeURIComponent(j.yandex_album_id)}`;
+    iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+    iframe.title = 'Яндекс.Музыка плеер';
+    iframe.allowFullscreen = true;
+    const oldIframes = wrap.querySelectorAll('iframe');
+    oldIframes.forEach(old => { try { old.remove(); } catch {} });
+    wrap.innerHTML = '';
+    wrap.appendChild(iframe);
+    wrap.classList.remove('loading', 'error');
+    wrap.classList.add('playing', 'alive');
+    wrap.dataset.svc = 'yandex';
+    // Tiny corner badge so mom understands why the player suddenly looks
+    // different from the YouTube one. Same corner-icon idiom as the YT
+    // retry/delete buttons so it doesn't compete visually.
+    const oldBadge = wrap.querySelector('.yandex-badge');
+    if (oldBadge) oldBadge.remove();
+    const badge = document.createElement('div');
+    badge.className = 'yandex-badge';
+    badge.textContent = lang === 'ru' ? 'Яндекс.Музыка' : 'Yandex Music';
+    wrap.appendChild(badge);
+    // Re-attach the delete control (owners only) — mountYTIframe normally
+    // does this; we mirror so owners can still remove the song from here.
+    const oldDel = wrap.querySelector('.yt-delete');
+    if (oldDel) oldDel.remove();
+    if (!document.body.classList.contains('guest-mode')) {
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'yt-delete';
+      del.title = t('card.remove');
+      del.setAttribute('aria-label', t('card.remove'));
+      del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+      del.addEventListener('click', (e) => { e.stopPropagation(); onRemoveCurrent(); });
+      wrap.appendChild(del);
+    }
+    return true;
+  }
+
   function mountSpotifyIframe(wrap, spotifyId) {
     const iframe = document.createElement('iframe');
     iframe.src = `https://open.spotify.com/embed/track/${spotifyId}?utm_source=embed`;
@@ -5313,25 +5966,32 @@
         cardEl.style.transition = 'opacity 0.22s, transform 0.22s';
         await new Promise(r => setTimeout(r, 220));
       }
-      const res = await apiAction(payload);
-      if (!res.ok) {
-        // Payload IS in the local queue and will retry (the badge "Не
-        // отправлено: N" shows the user). We still advance to the next card
-        // so mom isn't stuck waiting on a network blip.
-        diag('act_queued_offline', { song_id: songRef.id, action });
-      } else {
-        // Cancel any pending debounced draft push for this card — without
-        // this, a 700ms-old typed comment would re-create the server draft
-        // moments after we just told the server to clear it.
+      // FIRE-AND-FORGET — don't await the server. On a slow connection
+      // `apiAction` could hang up to 86 sec (fetchWithRetry's 20s × 3
+      // retries + backoff) before resolving. While it hung, `actInFlight`
+      // stayed `true`, blocking EVERY subsequent swipe / tap. That looked
+      // like "плеер виснет, ничего не нажимается" on mom's iPhone.
+      // The action is durably stored in the local queue by qEnqueue
+      // inside apiAction, so we don't lose anything by not awaiting.
+      // Successful saves still get their post-write side-effects via the
+      // promise's .then below — they just don't block the UI.
+      apiAction(payload).then(res => {
+        if (!res.ok) {
+          diag('act_queued_offline', { song_id: songRef.id, action });
+          return;
+        }
+        // Server confirmed save — clear any pending draft push and snapshot.
         if (window.__draftTimer) { clearTimeout(window.__draftTimer); window.__draftTimer = null; }
         saveDraft(songRef.id, '');
         snapshotClear(songRef.id);
         apiDraftClear(songRef.id).catch(() => {});
-        // Sync the local song object so back-navigation shows the just-saved values.
         if (commentEdited || comment) songRef.my_comment = comment;
         if (category) songRef.my_category = category;
         if (rating) songRef.my_rating = rating;
-      }
+      }).catch(() => {});
+      // UI continues IMMEDIATELY — toast + advance happen sync below,
+      // not waiting for the server. The local queue + WAL means we never
+      // lose data even if the user closes the tab during the in-flight POST.
       if (action === 'assign') {
         const r = rating ? ` · ★${rating}` : '';
         showToast(t('toast.assigned', { cat: t(`cat.${category}.short`) }) + r);
@@ -5348,7 +6008,31 @@
       actInFlight = false;
     }
   }
+  // Long-session perf monitor — every 50 renderCard calls, report DOM
+  // node count + queue depth + draft/snapshot sizes + (if available)
+  // performance.memory.usedJSHeapSize. Lets us catch any new growth
+  // before it impacts mom: if a fresh accumulator slips in, we'll see
+  // it in the diag log instead of having to debug from her screen.
+  let _swipeCount = 0;
+  function _perfTick() {
+    _swipeCount++;
+    if (_swipeCount % 50 !== 0) return;
+    try {
+      const mem = (performance && performance.memory) ? Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) : null;
+      diag('perf_tick', {
+        swipes: _swipeCount,
+        dom_nodes: document.getElementsByTagName('*').length,
+        queue_depth: (qGet() || []).length,
+        drafts: Object.keys(drafts || {}).length,
+        snapshots: Object.keys(snapshots || {}).length,
+        tc_cards: document.querySelectorAll('.tc-card').length,
+        heap_mb: mem,
+        exp_threads: document.querySelectorAll('.tc-card.expanded').length,
+      });
+    } catch {}
+  }
   async function loadNext() {
+    _perfTick();
     // Show whatever total/processed we already have so the chip never sits
     // at "…" longer than the first network hop.
     if (progressTotal > 0) {
@@ -5400,9 +6084,12 @@
       loadNext._retries = 0;
     }
     seenStack.push(d.song);
-    seenIdx = seenStack.length - 1;
     if (seenStack.length > 30) seenStack.splice(0, seenStack.length - 30);
-    if (seenStack.length < 30) seenIdx = seenStack.length - 1;
+    // Always recompute seenIdx AFTER the splice — otherwise on a trim the
+    // index pointed at the just-pushed item (now at length-1 = 29) was
+    // left at the pre-splice value (30) and the next renderCard rendered
+    // an out-of-bounds undefined.
+    seenIdx = seenStack.length - 1;
     renderCard(d.song);
   }
   async function goBack() {
@@ -5420,10 +6107,22 @@
     // Mark as removed in the local replica FIRST so even if the server fight
     // is slow / the next-card request races ahead, the song can't reappear
     // on the deck for this session.
-    localRemoved.add(songRef.id);
+    localRemovedAdd(songRef.id);
     const r = await apiRemoveSong(songRef.id);
     if (!r.ok) { showToast(t('toast.failed')); return; }
-    showToast(t('toast.removed'));
+    // Toast with 6-second UNDO. Soft safety net for accidental presses
+    // (and Артур also picked this up after mom did 197 swipe-deletes
+    // in the all-tracks grid — even though confirm() runs before this
+    // path, the toast gives one more clear undo affordance).
+    showUndoToast(t('toast.removedUndo'), async () => {
+      const res = await apiRestoreSong(songRef.id);
+      if (res?.ok) {
+        try { localRemoved.delete(songRef.id); } catch {}
+        showToast(t('toast.restored'));
+      } else {
+        showToast(t('toast.failed'));
+      }
+    });
     // Remove from local stack
     const idx = seenStack.findIndex(s => s.id === songRef.id);
     if (idx >= 0) seenStack.splice(idx, 1);
@@ -5569,6 +6268,15 @@
   function openOv(id) {
     // Flush any pending card save before navigating away — never lose state.
     if (typeof window.__flushCardSave === 'function') window.__flushCardSave();
+    // Pause the YouTube iframe while an overlay is open — otherwise it
+    // keeps consuming CPU/audio in the background even though invisible.
+    // Without this, after a few overlay-open/close cycles the page audio
+    // can stutter and the next song-mount races against the still-active
+    // prior player.
+    try {
+      const iframe = document.querySelector('#yt-wrap iframe');
+      if (iframe?.contentWindow) iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":[]}', '*');
+    } catch {}
     document.getElementById(id).classList.add('open');
   }
   function closeOv(id) { document.getElementById(id).classList.remove('open'); }
@@ -5579,20 +6287,43 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       if (typeof window.__flushCardSave === 'function') window.__flushCardSave();
+      // Flush any pending debounced LS writes (snapshots/drafts) and the
+      // pending server draft push BEFORE the tab loses focus — otherwise
+      // a swipe-then-lock-screen could lose the last 250ms of typing.
+      try { _flushSnapshotsLs(); _flushDraftsLs(); } catch {}
+      if (window.__draftTimer) { clearTimeout(window.__draftTimer); window.__draftTimer = null; }
       qFlushBeacon();
     } else if (document.visibilityState === 'visible') {
-      // Coming back — drain any unsent entries
+      // Coming back — drain any unsent entries AND trigger an immediate
+      // server reconcile. Without the reconcile, if mom did something on
+      // her iPhone and switched to her iPad, the iPad would stay stale
+      // for up to 60s (until the periodic sync ticks). Calling the
+      // debounced sync makes the iPad pull mom's latest server state on
+      // unlock/refocus.
       qDrain();
       if (currentSong) loadOthersComments(currentSong.id);
+      try { periodicSyncDebounced(); } catch {}
     }
   });
   window.addEventListener('pagehide', () => {
     if (typeof window.__flushCardSave === 'function') window.__flushCardSave();
+    try { _flushSnapshotsLs(); _flushDraftsLs(); } catch {}
+    if (window.__draftTimer) { clearTimeout(window.__draftTimer); window.__draftTimer = null; }
     qFlushBeacon();
   });
   window.addEventListener('online', () => { qDrain(); });
   document.getElementById('search-close').addEventListener('click', () => closeOv('search-overlay'));
-  document.getElementById('all-close').addEventListener('click', () => closeOv('all-overlay'));
+  document.getElementById('all-close').addEventListener('click', () => {
+    closeOv('all-overlay');
+    // Free the up-to-3000 .tc-card DOM nodes the infinite-scroll built up.
+    // Without this, every global querySelectorAll the page runs later
+    // (i18n re-apply, palette refresh, theme swap) walks that whole
+    // detached-but-attached subtree and the page gradually grinds.
+    // aoOffset + aoDone are reset on next openAll via aoResetForNewFilter.
+    const ar = document.getElementById('all-results');
+    if (ar) ar.innerHTML = '';
+    aoOffset = 0; aoDone = false; aoRunId++;
+  });
   document.getElementById('mine-close').addEventListener('click', () => closeOv('mine-overlay'));
   document.getElementById('settings-close').addEventListener('click', () => closeOv('settings-overlay'));
   document.getElementById('trash-close')?.addEventListener('click', () => closeOv('trash-overlay'));
@@ -5791,11 +6522,34 @@
          responds to the tap, iOS-style. */
       head.addEventListener('click', async e => {
         if (e.target.closest('.tc-card__hover-delete')) return;
+        const willExpand = !card.classList.contains('expanded');
         card.classList.toggle('expanded');
         // Clear any partial swipe transform — if the user started dragging
         // and then tapped to expand instead, the leftover translateX on the
         // inner could leave the card visually offset.
         if (inner) { inner.style.transform = ''; card.classList.remove('swipe-armed', 'swiping'); }
+        // LRU-cap expanded threads: collapse the oldest expanded card if
+        // we're about to open one and we're already at the cap. Without
+        // this the user can expand all 3000 cards across an afternoon
+        // and every expanded thread's DOM (5-15 nodes each) stays in
+        // memory — combined with #1 + #2 above this is what makes mom's
+        // session grind after a few hours.
+        if (willExpand) {
+          const open = container.querySelectorAll('.tc-card.expanded');
+          if (open.length > 8) {
+            for (let k = 0; k < open.length - 8; k++) {
+              if (open[k] === card) continue;
+              open[k].classList.remove('expanded');
+              const oldThread = open[k].querySelector('.tc-thread');
+              if (oldThread) { oldThread.innerHTML = ''; oldThread.dataset.loaded = '0'; }
+            }
+          }
+        } else {
+          // On collapse — purge the fetched comment HTML so the cached
+          // thread strings don't linger in DOM.
+          if (thread) { thread.innerHTML = ''; thread.dataset.loaded = '0'; }
+          return;
+        }
         if (card.classList.contains('expanded') && thread.dataset.loaded !== '1') {
           // Keep the user's own seeded comment visible while we fetch others.
           const seedHtml = thread.innerHTML;
@@ -5868,13 +6622,20 @@
         const ok = confirm(t('confirm.remove', { t: `${song.artist} — ${song.title}` }));
         if (!ok) return;
         // Mark locally BEFORE the server call — same reason as onRemoveCurrent.
-        localRemoved.add(songId);
+        localRemovedAdd(songId);
         const idx = seenStack.findIndex(s => s.id === songId);
         if (idx >= 0) seenStack.splice(idx, 1);
         if (seenIdx >= seenStack.length) seenIdx = seenStack.length - 1;
         const r = await apiRemoveSong(songId);
         if (r.ok) {
-          showToast(t('toast.removed'));
+          // Undo-toast — same as player. Mouse-click hover-delete already
+          // gates with confirm(), but the toast gives a second safety net
+          // in case the user clicked through the dialog by reflex.
+          showUndoToast(t('toast.removedUndo'), async () => {
+            const res = await apiRestoreSong(songId);
+            if (res?.ok) { try { localRemoved.delete(songId); } catch {} showToast(t('toast.restored')); }
+            else showToast(t('toast.failed'));
+          });
           card.classList.add('deleting');
           setTimeout(() => card.remove(), 420);
         } else showToast(t('toast.failed'));
@@ -5930,13 +6691,25 @@
           card.classList.add('deleting');
           const song = items[i];
           // Local-replica mark + seenStack cleanup BEFORE server call.
-          localRemoved.add(songId);
+          localRemovedAdd(songId);
           const sIdx = seenStack.findIndex(s => s.id === songId);
           if (sIdx >= 0) seenStack.splice(sIdx, 1);
           if (seenIdx >= seenStack.length) seenIdx = seenStack.length - 1;
           const r = await apiRemoveSong(songId);
           if (r.ok) {
-            showToast(t('toast.removed'));
+            // Undo-toast for swipe-to-delete — THIS is the path mom used
+            // for 197 deletes between 12-13 May. The swipe has no
+            // confirm() (mobile UX), so the 6-second undo window IS the
+            // safety net. One accidental swipe → tap «ВЕРНУТЬ» → restore.
+            showUndoToast(t('toast.removedUndo'), async () => {
+              const res = await apiRestoreSong(songId);
+              if (res?.ok) {
+                try { localRemoved.delete(songId); } catch {}
+                showToast(t('toast.restored'));
+              } else {
+                showToast(t('toast.failed'));
+              }
+            });
             setTimeout(() => card.remove(), 420);
           } else {
             // Revert if server refused
@@ -6493,6 +7266,9 @@
      in the wedding palette that fall + spin for ~3 seconds. Triggered on
      successful report submission so mom sees a "well done!" moment. */
   function fireConfetti() {
+    // Single-shot guard — fast clicks on "send report" used to stack
+    // multiple 80-piece confetti layers, briefly animating 400+ DOM nodes.
+    if (document.querySelector('.confetti-layer')) return;
     const palette = [
       'rgb(var(--c-yulia))', 'rgb(var(--c-lovers))',
       'rgb(var(--c-lounge))', 'rgb(var(--c-cake))',
@@ -6553,7 +7329,17 @@
   let addPreviewSimilarCount = 0; // # fuzzy hits — used to gate submit with a confirm()
   let addParsedArtist = ''; // what the server understood as artist (from split or YouTube title)
   let addParsedTitle = '';  // ditto for title
+  // Bounded LRU — query-typed cache grows unbounded if the user types
+  // many queries without committing an add. Cleared explicitly on add.
   const addPreviewCache = new Map(); // key = lowered single-line query
+  const ADD_PREVIEW_CAP = 100;
+  function addPreviewCacheSet(k, v) {
+    if (addPreviewCache.has(k)) addPreviewCache.delete(k);
+    addPreviewCache.set(k, v);
+    while (addPreviewCache.size > ADD_PREVIEW_CAP) {
+      addPreviewCache.delete(addPreviewCache.keys().next().value);
+    }
+  }
   function openAdd() {
     openOv('add-overlay');
     document.getElementById('add-query').value = '';
@@ -6617,7 +7403,7 @@
         );
         if (!r.ok) { if (runId === addPreviewRunId) { status.innerHTML = `<div class="pv-hint">${escapeHtml(t('add.ytNone'))}</div>`; } return; }
         data = await r.json();
-        addPreviewCache.set(cacheKey, data);
+        addPreviewCacheSet(cacheKey, data);
       } catch (e) {
         if (runId === addPreviewRunId) status.innerHTML = `<div class="pv-hint">${escapeHtml(t('add.ytNone'))}</div>`;
         return;
@@ -6801,7 +7587,7 @@
   // differs, briefly toast and reload — mom never needs to clear cache to
   // see a new deploy.
   const CLIENT_BUILD = (() => {
-    const m = document.documentElement.innerHTML.match(/<!--\s*build:\s*([^\s-][^-]*)\s*-->/);
+    const m = document.documentElement.innerHTML.match(/<!--\s*build:\s*([^\s][^\s>]*?)\s*-->/);
     return m ? m[1].trim() : null;
   })();
   let reloadScheduled = false;
@@ -6813,12 +7599,21 @@
       const r = await fetch('/?_v=' + Date.now(), { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
       if (!r.ok) return;
       const txt = await r.text();
-      const m = txt.match(/<!--\s*build:\s*([^\s-][^-]*)\s*-->/);
+      const m = txt.match(/<!--\s*build:\s*([^\s][^\s>]*?)\s*-->/);
       const serverBuild = m ? m[1].trim() : null;
       if (serverBuild && serverBuild !== CLIENT_BUILD) {
         reloadScheduled = true;
         try { showToast('Загружаю свежую версию…'); } catch {}
-        // Flush any in-flight save before bouncing the page.
+        // Flush EVERYTHING in-flight before bouncing the page. Previously
+        // only `qFlushBeacon` ran — that catches WAL queue items but
+        // misses snapshots (debounced 250ms LS write), drafts (debounced
+        // 250ms LS write), in-flight card save, and the 800ms server-
+        // draft push timer. A user typing 100ms before the reload would
+        // lose those last keystrokes. Now we drain all four flush paths
+        // so the reload-after-deploy is lossless.
+        try { if (typeof window.__flushCardSave === 'function') window.__flushCardSave(); } catch {}
+        try { _flushSnapshotsLs(); _flushDraftsLs(); } catch {}
+        if (window.__draftTimer) { try { clearTimeout(window.__draftTimer); window.__draftTimer = null; } catch {} }
         try { qFlushBeacon(); } catch {}
         setTimeout(() => { try { location.reload(); } catch {} }, 1500);
       }
@@ -6853,6 +7648,63 @@
     // Poll every 60s (was 30s) — halves the worker request budget.
     syncTimer = setInterval(periodicSyncDebounced, 60000);
     periodicSyncDebounced();
+    // perfBeacon removed — it ran 30 requestAnimationFrame samples every
+    // 30s "to measure jank", but that itself added real work to the main
+    // thread every half-minute (the diagnostic was making the diagnosed
+    // problem worse). If we need observability later we can re-add as
+    // a one-shot on visible / on slow-frame trigger, not as a recurring
+    // synthetic load.
+  }
+  // Frame-time sampling — measures one second of rAF intervals and reports
+  // the worst frame. > 100ms = visible jank. Cheap (only fires when the
+  // tab is foregrounded).
+  function samplePerf() {
+    return new Promise(resolve => {
+      if (document.visibilityState !== 'visible') return resolve(null);
+      const samples = [];
+      let last = performance.now();
+      let frames = 0;
+      function tick(now) {
+        samples.push(now - last);
+        last = now;
+        frames++;
+        if (frames < 30) requestAnimationFrame(tick);
+        else resolve(samples);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+  async function perfBeacon() {
+    if (document.visibilityState !== 'visible') return;
+    if (!userName) return;
+    try {
+      const samples = await samplePerf();
+      const maxFrame = samples ? Math.max(...samples) : null;
+      const avgFrame = samples ? samples.reduce((a, b) => a + b, 0) / samples.length : null;
+      const mem = (performance.memory) ? {
+        used_mb: Math.round(performance.memory.usedJSHeapSize / 1048576),
+        limit_mb: Math.round(performance.memory.jsHeapSizeLimit / 1048576),
+      } : null;
+      const domNodes = document.getElementsByTagName('*').length;
+      diag('perf_sample', {
+        max_frame_ms: maxFrame ? Math.round(maxFrame) : null,
+        avg_frame_ms: avgFrame ? Math.round(avgFrame) : null,
+        mem,
+        dom_nodes: domNodes,
+        queue_size: qGet().length,
+        snapshots: Object.keys(snapshots).length,
+        drafts: Object.keys(drafts).length,
+        yt_tried_size: ytTried.size,
+        local_removed_size: localRemoved.size,
+        color_cache_size: colorCache.size,
+        cur_song_id: currentSong?.id || null,
+        screen_w: window.innerWidth,
+        screen_h: window.innerHeight,
+        kbd_open: document.body.classList.contains('kbd-open'),
+        online: navigator.onLine,
+        ua: navigator.userAgent.slice(0, 100),
+      });
+    } catch (e) {}
   }
 
   // Pull server-side drafts on boot. Local draft wins over server draft when
@@ -6874,10 +7726,13 @@
     lsSetJSON(K_DRAFTS, drafts);
   }
 
-  // Refresh on tab focus and after long idles
+  // Refresh on tab focus and after long idles. Same logic as
+  // visibility-visible: trigger immediate sync so device B picks up
+  // device A's changes without waiting up to 60s for the periodic tick.
   window.addEventListener('focus', () => {
     if (currentSong) loadOthersComments(currentSong.id);
     if (document.getElementById('mine-overlay')?.classList.contains('open')) renderMine();
+    try { periodicSyncDebounced(); } catch {}
   });
   window.addEventListener('online', () => { periodicSyncDebounced(); });
 
@@ -6922,7 +7777,14 @@
   recomputeKbdOffset();
 
   /* ===== Boot ===== */
+  // Guard against double-boot. iOS bfcache restore + a missing pageshow
+  // handler could otherwise call bootstrapAndRecover twice in the same
+  // tab lifetime — each call drains the queue + re-attaches listeners.
+  // Without this guard we'd silently leak duplicate listeners.
+  let booted = false;
   async function bootstrapAndRecover() {
+    if (booted) { diag('boot_skipped_already_booted', {}); return; }
+    booted = true;
     diag('boot', { ua: navigator.userAgent, queue: qGet().length, snapshots: Object.keys(lsGetJSON(K_SNAPSHOTS, {})).length });
     // 1) Drain any pending action queue from a previous session
     await qDrain();
@@ -6934,8 +7796,15 @@
     for (const sid of songIds) {
       const s = pendingSnap[sid];
       if (!s) continue;
-      // Skip totally empty snapshots — nothing to recover.
-      const hasState = s.rating || s.categories || (s.comment !== undefined && s.comment !== null);
+      // Skip totally empty snapshots — nothing to recover. An empty-
+      // string comment counts as NOTHING here (not as "explicitly
+      // cleared"): without an explicit `commentEdited` flag we can't
+      // distinguish "user never typed" from "user typed and erased",
+      // and shipping `comment: ''` to the server would wipe a freshly-
+      // committed comment from another device.
+      // `_cleared_cats` IS a valid recovery state — mom explicitly
+      // untapped her last category and that intent must reach the server.
+      const hasState = s.rating || s.categories || (s.comment && s.comment.length > 0) || s._cleared_cats;
       if (!hasState) { snapshotClear(sid); continue; }
       const cats = (s.categories || '').split(',').filter(Boolean).join(',');
       const sidInt = parseInt(sid, 10);
@@ -6955,9 +7824,17 @@
       const payload = { song_id: sidInt, user: userName, action };
       if (cats) payload.category = cats;
       if (s.rating) payload.rating = s.rating;
-      // Include comment even if it's an empty string — that signals "user
-      // explicitly cleared the note" and the server needs to propagate it.
-      if (s.comment !== undefined && s.comment !== null) payload.comment = s.comment;
+      // Propagate explicit category-clear intent through recovery — without
+      // this, mom untapping her last category right before a tab close
+      // would silently keep the prior server category alive.
+      if (s._cleared_cats && !cats) payload.clear = ['category'];
+      // Only include a non-empty comment on recovery — empty strings on
+      // boot have no way to be distinguished from "never typed", and
+      // shipping comment:'' would silently wipe a committed comment from
+      // another device. Real "explicit clear" intent must go through the
+      // dedicated clear path (action='comment' with empty string after
+      // user typed something), which is handled live, not on recovery.
+      if (s.comment && s.comment.length > 0) payload.comment = s.comment;
       qEnqueue(payload);
     }
     await qDrain();
@@ -7058,17 +7935,18 @@
                  : (path === 'dj') ? 'DJ Микки'
                  : null;
   // Hard guest-lock: the _worker.js stamps `mm_guest_lock=LOVERS` (or `DJ`)
-  // on every visit to /lovers or /dj. If that cookie is present on this
-  // device AND someone tries to visit the owner-facing root, we bounce
-  // them straight back to the guest portal. Defense beyond the worker-side
-  // 302, which Cloudflare CDN may swallow due to edge caching.
-  if (!guestCat) {
-    const lockedAs = getCookie('mm_guest_lock');
-    if (lockedAs === 'LOVERS') { window.location.replace('/lovers'); return; }
-    if (lockedAs === 'DJ') { window.location.replace('/dj'); return; }
-  }
-  const isOwner = (userName === 'Юля' || userName === 'Артур');
-  const isGuest = (userName === 'Lovers' || userName === 'DJ Микки');
+  // as an HttpOnly cookie on every visit to /lovers or /dj. The server-side
+  // 302 in _worker.js is the sole consumer — we used to also do a JS-side
+  // window.location.replace as belt-and-suspenders against ITP, but with
+  // HttpOnly the client can't read the cookie at all (which is the point —
+  // XSS can't bypass the lock). The Cache-Control: private, no-store header
+  // on / now reliably ensures CF edge doesn't swallow the worker's 302.
+  // `let` instead of `const` because `userName` can change inside the
+  // name-gate `await` below — these flags MUST be recomputed after the
+  // gate resolves, otherwise the post-gate role checks read stale values
+  // (often empty string) captured before the user identified herself.
+  let isOwner = (userName === 'Юля' || userName === 'Артур');
+  let isGuest = (userName === 'Lovers' || userName === 'DJ Микки');
 
   // Show name gate if we're on an owner-facing path AND no fresh session
   // cookie is present. This is the LAST line of defense — guests who
@@ -7078,11 +7956,12 @@
   // other boot work fires.
   if (!guestCat && !isNameAuthed()) {
     await showNameGate();
-    // After gate passes, userName is set; isOwner needs to be re-evaluated.
+    // Re-evaluate role flags with the post-gate user name.
+    isOwner = (userName === 'Юля' || userName === 'Артур');
+    isGuest = (userName === 'Lovers' || userName === 'DJ Микки');
   }
   // Stale-guest cleanup: a guest user who lands on root (no guestCat path)
-  // shouldn't see the owners' cat-picker. Send them back to their own portal,
-  // which re-anchors the guest scope and avoids confusing assign failures.
+  // shouldn't see the owners' cat-picker. Send them back to their own portal.
   if (!guestCat && isGuest) {
     const portal = userName === 'Lovers' ? '/lovers' : '/dj';
     window.location.replace(portal);
@@ -7112,7 +7991,13 @@
     // Guest mode and owners landing on /lovers or /dj skip the picker.
     const goStraightToDiscovery = guestCat || !!currentCat;
     if (guestCat && isOwner) setCat(guestCat);
-    bootstrapAndRecover().then(() => goStraightToDiscovery ? enterDiscovery() : showCatPicker());
+    // Show UI IMMEDIATELY so mom never sees a blank screen during boot.
+    // bootstrapAndRecover does queue-drain + draft-pull + server-reconcile,
+    // none of which need to complete before the first paint. Running them
+    // after showScreen keeps the first frame instant.
+    if (goStraightToDiscovery) enterDiscovery();
+    else showCatPicker();
+    bootstrapAndRecover();
     startSyncLoop();
   }
 })();

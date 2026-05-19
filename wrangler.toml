@@ -12,3 +12,8 @@ routes = [
 directory = "."
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+# Run the Worker on EVERY request (including HTML hits), not just on asset
+# misses. Without this Cloudflare edge serves cached index.html directly,
+# bypassing _worker.js — which means our no-store headers + guest-lock
+# redirect never fire and stale HTML can stick on phones for hours.
+run_worker_first = true

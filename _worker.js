@@ -31,11 +31,13 @@ function readGuestLock(req) {
 }
 function setGuestLockCookie(headers, portal) {
   // 1-year persistent cookie. SameSite=Lax so the redirect path drives it,
-  // not third-party-iframe contexts. Secure because we always run on HTTPS.
-  headers.append('Set-Cookie', `mm_guest_lock=${portal}; Path=/; Max-Age=31536000; Secure; SameSite=Lax`);
+  // not third-party-iframe contexts. Secure (HTTPS only) and HttpOnly so
+  // any XSS that ever lands in the SPA cannot read or alter the cookie —
+  // the server-side redirect at line 86 is the sole consumer.
+  headers.append('Set-Cookie', `mm_guest_lock=${portal}; Path=/; Max-Age=31536000; Secure; HttpOnly; SameSite=Lax`);
 }
 function clearGuestLockCookie(headers) {
-  headers.append('Set-Cookie', `mm_guest_lock=; Path=/; Max-Age=0; Secure; SameSite=Lax`);
+  headers.append('Set-Cookie', `mm_guest_lock=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax`);
 }
 export default {
   async fetch(req, env) {
